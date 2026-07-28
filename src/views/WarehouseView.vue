@@ -107,6 +107,7 @@ async function onSubmit(payload: Omit<NewBatch, 'company_id'>) {
         :columns="columns"
         :rows="filtered"
         row-key="id"
+        :loading="inventory.loading"
       >
         <template #cell-name="{ row }">
           <div

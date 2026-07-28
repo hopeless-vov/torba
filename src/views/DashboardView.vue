@@ -5,6 +5,7 @@ import StatCard from '@/components/ui/StatCard.vue'
 import { useCurrency } from '@/composables/use-currency'
 import type { BurningRow } from '@/composables/use-dashboard'
 import { useDashboard } from '@/composables/use-dashboard'
+import { useInventoryStore } from '@/stores/inventory'
 import { formatDate } from '@/utils/format'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -13,6 +14,7 @@ import { useRouter } from 'vue-router'
 const { t } = useI18n()
 const router = useRouter()
 const { format } = useCurrency()
+const inventory = useInventoryStore()
 const { stats, burning } = useDashboard()
 
 const columns = computed<Column[]>(() => [
@@ -78,6 +80,7 @@ const columns = computed<Column[]>(() => [
         :columns="columns"
         :rows="burning"
         row-key="id"
+        :loading="inventory.loading"
       >
         <template #cell-name="{ row }">
           <div class="flex flex-col">

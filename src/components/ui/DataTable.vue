@@ -15,10 +15,12 @@ withDefaults(
     rows: T[]
     rowKey?: string
     clickable?: boolean
+    loading?: boolean
   }>(),
   {
     rowKey: 'id',
     clickable: false,
+    loading: false,
   },
 )
 
@@ -55,7 +57,22 @@ const cell = tv({
           </th>
         </tr>
       </thead>
-      <tbody>
+      <tbody v-if="loading && rows.length === 0">
+        <tr
+          v-for="n in 6"
+          :key="`skeleton-${n}`"
+          class="border-b border-line-soft last:border-0"
+        >
+          <td
+            v-for="col in columns"
+            :key="col.key"
+            class="px-4 py-3"
+          >
+            <span class="block h-3.5 w-2/3 animate-pulse rounded bg-hover" />
+          </td>
+        </tr>
+      </tbody>
+      <tbody v-else>
         <tr
           v-for="row in rows"
           :key="String(row[rowKey])"
@@ -80,7 +97,7 @@ const cell = tv({
       </tbody>
     </table>
     <slot
-      v-if="rows.length === 0"
+      v-if="rows.length === 0 && !loading"
       name="empty"
     />
   </div>

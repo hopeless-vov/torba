@@ -2,12 +2,14 @@
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppTopbar from '@/components/AppTopbar.vue'
 import CartDrawer from '@/components/CartDrawer.vue'
+import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
 import { watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { RouterView } from 'vue-router'
 
 const auth = useAuthStore()
@@ -15,17 +17,22 @@ const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const clients = useClientsStore()
 const orders = useOrdersStore()
+const toast = useToast()
+const { t } = useI18n()
 
 // Load the workspace once the company is known (survives a hard refresh,
 // where the session resolves asynchronously before this mounts).
 watch(
   () => auth.companyId,
-  (companyId) => {
+  async (companyId) => {
     if (!companyId) return
-    void reference.load(companyId)
-    void inventory.load(companyId)
-    void clients.load(companyId)
-    void orders.load(companyId)
+    const results = await Promise.allSettled([
+      reference.load(companyId),
+      inventory.load(companyId),
+      clients.load(companyId),
+      orders.load(companyId),
+    ])
+    if (results.some((r) => r.status === 'rejected')) toast.error(t('errors.load'))
   },
   { immediate: true },
 )

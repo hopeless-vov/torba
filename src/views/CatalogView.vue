@@ -14,6 +14,7 @@ import Tag from '@/components/ui/Tag.vue'
 import { useCart } from '@/composables/use-cart'
 import { useCatalog } from '@/composables/use-catalog'
 import { useCurrency } from '@/composables/use-currency'
+import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
 import type { NewProduct, Product } from '@/types/database'
 import type { ProductView } from '@/types/models'
@@ -23,6 +24,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const reference = useReferenceStore()
+const inventory = useInventoryStore()
 const { code, format } = useCurrency()
 const { addFromCatalog } = useCart()
 const {
@@ -142,6 +144,7 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
         :columns="columns"
         :rows="filtered"
         row-key="id"
+        :loading="inventory.loading"
       >
         <template #cell-sku="{ row }">
           <span class="text-faint">{{ (row as ProductView).sku }}</span>

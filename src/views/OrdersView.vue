@@ -11,6 +11,7 @@ import Tabs from '@/components/ui/Tabs.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useOrders } from '@/composables/use-orders'
 import { useClientsStore } from '@/stores/clients'
+import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
 import type { Order, OrderPatch, OrderStatus } from '@/types/database'
 import type { OrderView } from '@/types/models'
@@ -22,6 +23,7 @@ const { t } = useI18n()
 const { format } = useCurrency()
 const reference = useReferenceStore()
 const clients = useClientsStore()
+const ordersStore = useOrdersStore()
 const { filtered, kpis, statusFilter, paymentFilter, clientFilter, setStatus, updateOrder } = useOrders()
 
 const editing = ref<Order | null>(null)
@@ -137,6 +139,7 @@ function clientMeta(order: OrderView) {
         :rows="filtered"
         row-key="id"
         clickable
+        :loading="ordersStore.loading"
         @row-click="openEdit($event as OrderView)"
       >
         <template #cell-number="{ row }">
