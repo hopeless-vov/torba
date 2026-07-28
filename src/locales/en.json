@@ -180,8 +180,13 @@
       "phone": "Phone",
       "city": "City",
       "delivery": "Delivery (branch / parcel locker)",
-      "note": "Note"
-    }
+      "note": "Note",
+      "discount": "Discount, %"
+    },
+    "discountBadge": "{pct}% off",
+    "cardTitle": "Client card",
+    "history": "Order history",
+    "noOrders": "No orders yet"
   },
   "orders": {
     "subtitle": "History and profit",
@@ -269,6 +274,8 @@
     "itemsCount": "{count} items",
     "fromStock": "From stock",
     "fromCatalog": "From catalog",
+    "pickerSearch": "Search product…",
+    "discount": "Client discount",
     "empty": "Cart is empty",
     "emptyHint": "Add products from the catalog or via search",
     "client": "Client",

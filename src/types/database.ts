@@ -91,6 +91,7 @@ export interface Client {
   city: string | null
   delivery: string | null
   note: string | null
+  discount: number
   created_at: string
 }
 

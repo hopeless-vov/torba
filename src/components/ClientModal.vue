@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
+import NumberInput from '@/components/ui/NumberInput.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import type { Client, NewClient } from '@/types/database'
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
@@ -17,6 +18,7 @@ const { t } = useI18n()
 const open = defineModel<boolean>('open', { default: false })
 
 const form = reactive({ name: '', phone: '', city: '', delivery: '', note: '' })
+const discount = ref(0)
 const canSave = computed(() => !!form.name.trim())
 
 watch(
@@ -29,6 +31,7 @@ watch(
     form.city = c?.city ?? ''
     form.delivery = c?.delivery ?? ''
     form.note = c?.note ?? ''
+    discount.value = c?.discount ?? 0
   },
   { immediate: true },
 )
@@ -41,6 +44,7 @@ function submit() {
     city: form.city.trim() || null,
     delivery: form.delivery.trim() || null,
     note: form.note.trim() || null,
+    discount: discount.value || 0,
   })
 }
 </script>
@@ -75,9 +79,17 @@ function submit() {
         class="col-span-1"
         :label="t('clients.form.delivery')"
       />
+      <NumberInput
+        v-model="discount"
+        class="col-span-1"
+        :label="t('clients.form.discount')"
+        :min="0"
+        :max="100"
+        suffix="%"
+      />
       <TextInput
         v-model="form.note"
-        class="col-span-2"
+        class="col-span-1"
         :label="t('clients.form.note')"
       />
     </form>

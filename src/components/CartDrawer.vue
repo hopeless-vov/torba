@@ -5,17 +5,23 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
 import Select from '@/components/ui/Select.vue'
+import Tabs from '@/components/ui/Tabs.vue'
+import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
 import { useCurrency } from '@/composables/use-currency'
 import { useClientsStore } from '@/stores/clients'
+import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
-import { computed } from 'vue'
+import { batchStatus } from '@/utils/batch-status'
+import { formatPercent } from '@/utils/format'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const { cart, totals, submitting, checkout } = useCart()
+const { cart, totals, discountPct, linePrice, submitting, checkout, addProduct, addFromBatch } = useCart()
 const { format } = useCurrency()
 const reference = useReferenceStore()
+const inventory = useInventoryStore()
 const clients = useClientsStore()
 
 const open = computed({
@@ -27,7 +33,6 @@ const clientId = computed({
   get: () => cart.clientId ?? '',
   set: (v: string) => (cart.clientId = v || null),
 })
-
 const paymentMethod = computed({
   get: () => cart.paymentMethod ?? '',
   set: (v: string) => (cart.paymentMethod = v || null),
@@ -35,6 +40,29 @@ const paymentMethod = computed({
 
 const clientOptions = computed(() => clients.clients.map((c) => ({ value: c.id, label: c.name })))
 const paymentOptions = computed(() => reference.paymentMethods.map((p) => ({ value: p.name, label: p.name })))
+
+// ── add-items picker ──
+const pickerTab = ref<'stock' | 'catalog'>('catalog')
+const pickerSearch = ref('')
+
+const inStockBatches = computed(() => inventory.batches.filter((b) => b.remaining_qty > 0))
+
+const pickerTabs = computed(() => [
+  { value: 'stock', label: t('cart.fromStock'), count: inStockBatches.value.length },
+  { value: 'catalog', label: t('cart.fromCatalog') },
+])
+
+function matches(text: string) {
+  const q = pickerSearch.value.trim().toLowerCase()
+  return !q || text.toLowerCase().includes(q)
+}
+
+const catalogResults = computed(() =>
+  inventory.products.filter((p) => p.is_active && matches(`${p.name} ${p.sku}`)).slice(0, 40),
+)
+const stockResults = computed(() =>
+  inStockBatches.value.filter((b) => matches(`${b.product?.name ?? ''} ${b.product?.sku ?? ''} ${b.batch_number ?? ''}`)).slice(0, 40),
+)
 </script>
 
 <template>
@@ -42,11 +70,88 @@ const paymentOptions = computed(() => reference.paymentMethods.map((p) => ({ val
     v-model:open="open"
     :title="t('cart.title')"
     :subtitle="t('cart.itemsCount', { count: cart.count })"
-    width="27rem"
+    width="28rem"
   >
+    <!-- Picker -->
+    <div class="mb-4 flex flex-col gap-2">
+      <Tabs
+        v-model="pickerTab"
+        :tabs="pickerTabs"
+        size="sm"
+      />
+      <TextInput
+        v-model="pickerSearch"
+        icon-left="fa-solid fa-magnifying-glass"
+        :placeholder="t('cart.pickerSearch')"
+      />
+
+      <ul class="max-h-52 overflow-y-auto rounded-lg border border-line-soft">
+        <template v-if="pickerTab === 'catalog'">
+          <li
+            v-for="p in catalogResults"
+            :key="p.id"
+            class="flex items-center gap-2 border-b border-line-soft px-3 py-2 last:border-0 hover:bg-row-hover"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm text-fg">
+                {{ p.name }}
+              </p>
+              <p class="font-mono text-xs text-faint">
+                {{ p.sku }}
+              </p>
+            </div>
+            <span class="text-xs text-faint tabular-nums">
+              {{ `${inventory.stockByProduct.get(p.id) ?? 0} ${t('common.pcs')}` }}
+            </span>
+            <button
+              type="button"
+              class="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line text-muted transition-colors hover:border-accent-line hover:text-accent"
+              @click="addProduct(p)"
+            >
+              <Icon
+                icon="fa-solid fa-plus"
+                size="sm"
+              />
+            </button>
+          </li>
+        </template>
+        <template v-else>
+          <li
+            v-for="b in stockResults"
+            :key="b.id"
+            class="flex items-center gap-2 border-b border-line-soft px-3 py-2 last:border-0 hover:bg-row-hover"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm text-fg">
+                {{ b.product?.name }}
+              </p>
+              <p class="font-mono text-xs text-faint">
+                {{ `${b.batch_number ?? '—'} · ${b.remaining_qty} ${t('common.pcs')}` }}
+              </p>
+            </div>
+            <span
+              class="size-1.5 rounded-full"
+              :class="batchStatus(b.expiry_date) === 'expired' ? 'bg-faint' : 'bg-accent'"
+            />
+            <button
+              type="button"
+              class="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line text-muted transition-colors hover:border-accent-line hover:text-accent"
+              @click="addFromBatch(b)"
+            >
+              <Icon
+                icon="fa-solid fa-plus"
+                size="sm"
+              />
+            </button>
+          </li>
+        </template>
+      </ul>
+    </div>
+
+    <!-- Current lines -->
     <div
       v-if="cart.isEmpty"
-      class="flex h-full items-center"
+      class="py-6"
     >
       <EmptyState
         icon="fa-solid fa-basket-shopping"
@@ -82,7 +187,7 @@ const paymentOptions = computed(() => reference.paymentMethods.map((p) => ({ val
           @update:model-value="cart.setQty(line.key, $event ?? 1)"
         />
         <span class="w-24 text-right font-mono text-sm text-fg tabular-nums">
-          {{ format(line.unitPrice * line.qty) }}
+          {{ format(linePrice(line) * line.qty) }}
         </span>
         <button
           type="button"
@@ -99,16 +204,12 @@ const paymentOptions = computed(() => reference.paymentMethods.map((p) => ({ val
 
     <template #footer>
       <div class="flex flex-col gap-3">
-        <div class="flex items-end gap-2">
-          <Select
-            v-model="clientId"
-            class="flex-1"
-            :label="t('cart.client')"
-            :placeholder="t('cart.chooseClient')"
-            :options="clientOptions"
-          />
-        </div>
-
+        <Select
+          v-model="clientId"
+          :label="t('cart.client')"
+          :placeholder="t('cart.chooseClient')"
+          :options="clientOptions"
+        />
         <Select
           v-model="paymentMethod"
           :label="t('cart.payment')"
@@ -128,20 +229,23 @@ const paymentOptions = computed(() => reference.paymentMethods.map((p) => ({ val
               {{ format(totals.saleTotal) }}
             </dd>
           </div>
+          <div
+            v-if="discountPct > 0"
+            class="flex justify-between"
+          >
+            <dt class="text-muted">
+              {{ t('cart.discount') }}
+            </dt>
+            <dd class="font-mono text-warn tabular-nums">
+              {{ `−${formatPercent(discountPct / 100)}` }}
+            </dd>
+          </div>
           <div class="flex justify-between">
             <dt class="text-muted">
               {{ t('cart.goodsCost') }}
             </dt>
             <dd class="font-mono text-muted tabular-nums">
               {{ `− ${format(totals.goodsCost)}` }}
-            </dd>
-          </div>
-          <div class="flex justify-between">
-            <dt class="text-muted">
-              {{ t('cart.deliveryPack') }}
-            </dt>
-            <dd class="text-xs text-faint">
-              {{ t('cart.afterTtn') }}
             </dd>
           </div>
           <div class="flex justify-between border-t border-line-soft pt-1.5">

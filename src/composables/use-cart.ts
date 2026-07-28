@@ -1,12 +1,18 @@
+import type { BatchRow } from '@/api/batches'
 import { ordersApi } from '@/api/orders'
+import type { ProductRow } from '@/api/products'
+import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
+import { useClientsStore } from '@/stores/clients'
 import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
-import type { ProductView } from '@/types/models'
+import { useReferenceStore } from '@/stores/reference'
+import type { CartLine, ProductView } from '@/types/models'
 import { computeOrderTotals } from '@/utils/orders'
+import { applyDiscount } from '@/utils/pricing'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -19,26 +25,75 @@ export function useCart() {
   const currency = useCurrencyStore()
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
+  const clients = useClientsStore()
+  const reference = useReferenceStore()
+  const { convert } = useCurrency()
   const toast = useToast()
   const { t } = useI18n()
 
   const submitting = ref(false)
   const error = ref<string | null>(null)
 
+  // Agreed discount of the selected client, applied to sale prices.
+  const discountPct = computed(() => {
+    const client = clients.clients.find((c) => c.id === cart.clientId)
+    return client?.discount ?? 0
+  })
+
+  function linePrice(line: CartLine) {
+    return applyDiscount(line.unitPrice, discountPct.value)
+  }
+
   const totals = computed(() =>
     computeOrderTotals(
-      cart.lines.map((l) => ({ qty: l.qty, unit_price: l.unitPrice, unit_cost: l.unitCost })),
+      cart.lines.map((l) => ({ qty: l.qty, unit_price: linePrice(l), unit_cost: l.unitCost })),
     ),
   )
 
   function addFromCatalog(product: ProductView) {
-    const sale = product.discounted ?? product.retail ?? product.purchase
+    const sale = product.retail ?? product.purchase
     const added = cart.addLine({
       product,
       brand: product.brand,
       unitPrice: sale,
       unitCost: product.purchase,
       maxQty: product.inStock,
+    })
+    cart.toggle(true)
+    if (!added) toast.error(t('toasts.outOfStock', { name: product.name }))
+  }
+
+  // Add a catalog product (aggregate stock), computing display prices
+  // from the brand rate. Used by the in-drawer "from catalog" picker.
+  function addProduct(product: ProductRow) {
+    const rate = reference.brandRate(product.brand_id)
+    const purchase = convert(product.price_usd, rate)
+    const retail = product.retail_price_usd != null ? convert(product.retail_price_usd, rate) : purchase
+    const added = cart.addLine({
+      product,
+      brand: product.brand,
+      unitPrice: retail,
+      unitCost: purchase,
+      maxQty: inventory.stockByProduct.get(product.id) ?? 0,
+    })
+    cart.toggle(true)
+    if (!added) toast.error(t('toasts.outOfStock', { name: product.name }))
+  }
+
+  // Add a line tied to a specific warehouse batch (capped at its stock).
+  function addFromBatch(batch: BatchRow) {
+    const product = batch.product
+    if (!product) return
+    const rate = reference.brandRate(product.brand_id)
+    const purchase = convert(product.price_usd, rate)
+    const retail = product.retail_price_usd != null ? convert(product.retail_price_usd, rate) : purchase
+    const added = cart.addLine({
+      product,
+      brand: null,
+      batch,
+      unitPrice: retail,
+      unitCost: purchase,
+      maxQty: batch.remaining_qty,
     })
     cart.toggle(true)
     if (!added) toast.error(t('toasts.outOfStock', { name: product.name }))
@@ -59,7 +114,7 @@ export function useCart() {
           product_name: l.product.name,
           sku: l.product.sku,
           qty: l.qty,
-          unit_price: l.unitPrice,
+          unit_price: linePrice(l),
           unit_cost: l.unitCost,
         })),
       })
@@ -82,5 +137,16 @@ export function useCart() {
     }
   }
 
-  return { cart, totals, submitting, error, addFromCatalog, checkout }
+  return {
+    cart,
+    totals,
+    discountPct,
+    linePrice,
+    submitting,
+    error,
+    addFromCatalog,
+    addProduct,
+    addFromBatch,
+    checkout,
+  }
 }
