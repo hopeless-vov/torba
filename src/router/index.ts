@@ -10,6 +10,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/LoginView.vue'),
   },
   {
+    path: '/reset-password',
+    name: 'reset-password',
+    meta: { public: true },
+    component: () => import('@/views/ResetPasswordView.vue'),
+  },
+  {
     path: '/',
     component: () => import('@/components/AppLayout.vue'),
     children: [

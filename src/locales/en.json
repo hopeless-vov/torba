@@ -55,6 +55,13 @@
     "creating": "Creating…",
     "checkEmail": "Check your email to confirm registration.",
     "resetSent": "Password reset email sent.",
+    "resetTitle": "New password",
+    "resetSubtitle": "Enter a new password for your account.",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat password",
+    "updatePassword": "Save password",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordUpdated": "Password updated.",
     "errorInvalid": "Invalid email or password.",
     "errorGeneric": "Something went wrong. Please try again."
   },

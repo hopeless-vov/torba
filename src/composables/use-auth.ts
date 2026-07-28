@@ -62,7 +62,9 @@ export function useAuth() {
     info.value = null
     try {
       const { authApi } = await import('@/api/auth')
-      await authApi.resetPassword(email)
+      const redirectTo =
+        typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined
+      await authApi.resetPassword(email, redirectTo)
       info.value = t('auth.resetSent')
     } catch (e) {
       error.value = mapError(e)
@@ -71,5 +73,21 @@ export function useAuth() {
     }
   }
 
-  return { loading, error, info, signIn, signUp, resetPassword }
+  async function updatePassword(newPassword: string) {
+    loading.value = true
+    error.value = null
+    info.value = null
+    try {
+      const { authApi } = await import('@/api/auth')
+      await authApi.updatePassword(newPassword)
+      await store.loadContext()
+      await router.replace('/')
+    } catch (e) {
+      error.value = mapError(e)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, error, info, signIn, signUp, resetPassword, updatePassword }
 }

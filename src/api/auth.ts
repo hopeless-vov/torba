@@ -42,8 +42,13 @@ export const authApi = {
     if (error) throw error
   },
 
-  resetPassword: async (email: string): Promise<void> => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
+  resetPassword: async (email: string, redirectTo?: string): Promise<void> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, redirectTo ? { redirectTo } : undefined)
+    if (error) throw error
+  },
+
+  updatePassword: async (password: string): Promise<void> => {
+    const { error } = await supabase.auth.updateUser({ password })
     if (error) throw error
   },
 }

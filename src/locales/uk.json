@@ -55,6 +55,13 @@
     "creating": "Створення…",
     "checkEmail": "Перевірте пошту для підтвердження реєстрації.",
     "resetSent": "Лист для відновлення пароля надіслано.",
+    "resetTitle": "Новий пароль",
+    "resetSubtitle": "Введіть новий пароль для вашого акаунта.",
+    "newPassword": "Новий пароль",
+    "confirmPassword": "Повторіть пароль",
+    "updatePassword": "Зберегти пароль",
+    "passwordMismatch": "Паролі не збігаються.",
+    "passwordUpdated": "Пароль оновлено.",
     "errorInvalid": "Невірний email або пароль.",
     "errorGeneric": "Щось пішло не так. Спробуйте ще раз."
   },
