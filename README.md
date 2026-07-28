@@ -42,11 +42,12 @@ Both come from your Supabase project → **Project Settings → API**.
 ### Database schema
 
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
-trigger, a self-heal bootstrap RPC, and the atomic `create_order` function) lives
-in [`supabase/migrations/`](supabase/migrations). Apply **both files, in order**:
+trigger, a self-heal bootstrap RPC, the atomic `create_order` function, and a
+per-client discount) lives in [`supabase/migrations/`](supabase/migrations).
+Apply **all files, in order**:
 
 - **Supabase CLI:** `supabase db push`, or
-- **Dashboard:** paste `0001_init.sql` into the SQL Editor and run, then do the same for `0002_bootstrap_and_orders.sql`.
+- **Dashboard:** run `0001_init.sql`, then `0002_bootstrap_and_orders.sql`, then `0003_client_discount.sql` in the SQL Editor.
 
 On first sign-up a company + owner profile are created automatically, along with
 default categories and payment methods. If the sign-up trigger ever fails to run,
@@ -128,10 +129,12 @@ and exposed as Tailwind utilities (`bg-surface`, `text-muted`, `border-line`,
 
 USD is the **canonical** currency: product prices are stored in USD. Each **brand**
 carries its own USD→UAH exchange rate. The **display currency** (₴ by default,
-switchable) is resolved at render time by [`use-currency`](src/composables/use-currency.ts) —
-so updating a brand's rate reprices its whole catalog, and the platform can switch
-display currency without touching stored data. Orders snapshot the actually-transacted
-amounts.
+switchable via the top-bar ₴/$ toggle) is resolved at render time by
+[`use-currency`](src/composables/use-currency.ts) — so updating a brand's rate
+reprices its whole catalog, and the platform can switch display currency without
+touching stored data. The top bar also carries a UK/EN language toggle. Orders
+snapshot the actually-transacted amounts, and a client's agreed discount is applied
+to sale prices in the cart.
 
 ---
 
@@ -172,7 +175,8 @@ src/
     (root)               → smart components that wire ui/ to stores/composables
   composables/           → all app logic (use-auth, use-catalog, use-csv-import,
                            use-currency, use-cart, use-orders, use-warehouse,
-                           use-clients, use-rates, use-personalization, use-dashboard, use-theme)
+                           use-clients, use-rates, use-personalization, use-dashboard,
+                           use-theme, use-locale, use-toast)
   locales/               → uk.json (default) + en.json
   router/                → routes + auth guard
   stores/                → Pinia state (auth, reference, inventory, clients,
@@ -215,9 +219,11 @@ composed across every screen: `Button`, `TextInput`, `NumberInput`, `Select`,
 Unit tests live in `tests/unit/` and cover the pure utilities (pricing, batch
 status, order totals, formatting, **CSV parsing**), Pinia stores (cart, currency),
 the composable logic (`useCatalog`), and the API layer (mocked Supabase client).
+A Playwright smoke test in `tests/e2e/` verifies the auth gate.
 
 ```bash
-npm run test:unit:run
+npm run test:unit:run   # unit
+npm run test:e2e        # e2e (first run: npx playwright install chromium)
 ```
 
 ---
