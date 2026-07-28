@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OrderEditModal from '@/components/OrderEditModal.vue'
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
 import Badge from '@/components/ui/Badge.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
@@ -11,17 +12,37 @@ import { useCurrency } from '@/composables/use-currency'
 import { useOrders } from '@/composables/use-orders'
 import { useClientsStore } from '@/stores/clients'
 import { useReferenceStore } from '@/stores/reference'
-import type { OrderStatus } from '@/types/database'
+import type { Order, OrderPatch, OrderStatus } from '@/types/database'
 import type { OrderView } from '@/types/models'
 import { formatDate, formatPercent } from '@/utils/format'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const { format } = useCurrency()
 const reference = useReferenceStore()
 const clients = useClientsStore()
-const { filtered, kpis, statusFilter, paymentFilter, clientFilter, setStatus } = useOrders()
+const { filtered, kpis, statusFilter, paymentFilter, clientFilter, setStatus, updateOrder } = useOrders()
+
+const editing = ref<Order | null>(null)
+const editOpen = ref(false)
+const saving = ref(false)
+
+function openEdit(order: OrderView) {
+  editing.value = order
+  editOpen.value = true
+}
+
+async function onSubmit(patch: OrderPatch) {
+  if (!editing.value) return
+  saving.value = true
+  try {
+    await updateOrder(editing.value.id, patch)
+    editOpen.value = false
+  } finally {
+    saving.value = false
+  }
+}
 
 const statusTabs = computed(() => [
   { value: 'all', label: t('common.all') },
@@ -115,6 +136,8 @@ function clientMeta(order: OrderView) {
         :columns="columns"
         :rows="filtered"
         row-key="id"
+        clickable
+        @row-click="openEdit($event as OrderView)"
       >
         <template #cell-number="{ row }">
           <div class="flex flex-col">
@@ -159,10 +182,15 @@ function clientMeta(order: OrderView) {
           <OrderStatusBadge :status="(row as OrderView).status" />
         </template>
         <template #cell-actions="{ row }">
-          <DropdownMenu
-            :items="statusMenu"
-            @select="setStatus((row as OrderView).id, $event as OrderStatus)"
-          />
+          <span
+            class="inline-flex"
+            @click.stop
+          >
+            <DropdownMenu
+              :items="statusMenu"
+              @select="setStatus((row as OrderView).id, $event as OrderStatus)"
+            />
+          </span>
         </template>
         <template #empty>
           <EmptyState
@@ -172,5 +200,12 @@ function clientMeta(order: OrderView) {
         </template>
       </DataTable>
     </div>
+
+    <OrderEditModal
+      v-model:open="editOpen"
+      :order="editing"
+      :saving="saving"
+      @submit="onSubmit"
+    />
   </div>
 </template>

@@ -3,7 +3,7 @@ import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useOrdersStore } from '@/stores/orders'
 import { useUiStore } from '@/stores/ui'
-import type { OrderStatus } from '@/types/database'
+import type { OrderPatch, OrderStatus } from '@/types/database'
 import type { OrderView } from '@/types/models'
 import { computeOrderTotals } from '@/utils/orders'
 import { computed, ref } from 'vue'
@@ -75,5 +75,16 @@ export function useOrders() {
     }
   }
 
-  return { filtered, kpis, statusFilter, paymentFilter, clientFilter, setStatus }
+  async function updateOrder(id: string, patch: OrderPatch) {
+    try {
+      await ordersApi.update(id, patch)
+      if (auth.companyId) await store.load(auth.companyId)
+      toast.success(t('toasts.saved'))
+    } catch (e) {
+      toast.error(t('errors.save'))
+      throw e
+    }
+  }
+
+  return { filtered, kpis, statusFilter, paymentFilter, clientFilter, setStatus, updateOrder }
 }

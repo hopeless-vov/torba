@@ -212,7 +212,18 @@
       "status": "Статус"
     },
     "expensesMissing": "витрати ще не внесені",
-    "empty": "Замовлень ще немає"
+    "empty": "Замовлень ще немає",
+    "edit": {
+      "title": "Замовлення #{number}",
+      "status": "Статус",
+      "payment": "Оплата",
+      "client": "Клієнт",
+      "tracking": "ТТН",
+      "delivery": "Доставка",
+      "packaging": "Пакування",
+      "note": "Нотатка",
+      "noPayment": "— без оплати —"
+    }
   },
   "rates": {
     "subtitle": "По брендах",

@@ -212,7 +212,18 @@
       "status": "Status"
     },
     "expensesMissing": "expenses not entered yet",
-    "empty": "No orders yet"
+    "empty": "No orders yet",
+    "edit": {
+      "title": "Order #{number}",
+      "status": "Status",
+      "payment": "Payment",
+      "client": "Client",
+      "tracking": "Waybill",
+      "delivery": "Delivery",
+      "packaging": "Packaging",
+      "note": "Note",
+      "noPayment": "— no payment —"
+    }
   },
   "rates": {
     "subtitle": "By brand",
