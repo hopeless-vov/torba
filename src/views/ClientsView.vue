@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import ClientCardModal from '@/components/ClientCardModal.vue'
 import ClientModal from '@/components/ClientModal.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -18,6 +20,9 @@ const modalOpen = ref(false)
 const editing = ref<Client | null>(null)
 const saving = ref(false)
 
+const cardOpen = ref(false)
+const activeCard = ref<ClientView | null>(null)
+
 function openNew() {
   editing.value = null
   modalOpen.value = true
@@ -26,6 +31,11 @@ function openNew() {
 function openEdit(client: ClientView) {
   editing.value = client
   modalOpen.value = true
+}
+
+function openCard(client: ClientView) {
+  activeCard.value = client
+  cardOpen.value = true
 }
 
 function meta(client: ClientView) {
@@ -74,7 +84,8 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
       <div
         v-for="client in filtered"
         :key="client.id"
-        class="flex flex-col rounded-xl border border-line bg-panel p-5"
+        class="flex cursor-pointer flex-col rounded-xl border border-line bg-panel p-5 transition-colors hover:border-line-hover"
+        @click="openCard(client)"
       >
         <div class="flex items-start justify-between">
           <div class="min-w-0">
@@ -88,16 +99,27 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
               {{ client.phone }}
             </p>
           </div>
-          <button
-            type="button"
-            class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-fg"
-            @click="openEdit(client)"
+          <div
+            class="flex items-center gap-1"
+            @click.stop
           >
-            <Icon
-              icon="fa-solid fa-pen"
-              size="xs"
-            />
-          </button>
+            <Badge
+              v-if="client.discount > 0"
+              tone="warn"
+            >
+              {{ t('clients.discountBadge', { pct: client.discount }) }}
+            </Badge>
+            <button
+              type="button"
+              class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-fg"
+              @click="openEdit(client)"
+            >
+              <Icon
+                icon="fa-solid fa-pen"
+                size="xs"
+              />
+            </button>
+          </div>
         </div>
 
         <p
@@ -133,6 +155,10 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
       :client="editing"
       :saving="saving"
       @submit="onSubmit"
+    />
+    <ClientCardModal
+      v-model:open="cardOpen"
+      :client="activeCard"
     />
   </div>
 </template>
