@@ -1,0 +1,304 @@
+{
+  "app": {
+    "name": "torba",
+    "tagline": "Облік прайсів, складу та замовлень"
+  },
+  "common": {
+    "cancel": "Скасувати",
+    "save": "Зберегти",
+    "saving": "Збереження…",
+    "delete": "Видалити",
+    "edit": "Редагувати",
+    "add": "Додати",
+    "next": "Далі",
+    "back": "Назад",
+    "all": "Усі",
+    "loading": "Завантаження…",
+    "retry": "Повторити",
+    "close": "Закрити",
+    "confirm": "Підтвердити",
+    "search": "Пошук",
+    "none": "немає",
+    "pcs": "шт",
+    "perUsd": "за 1 USD",
+    "emptyValue": "—"
+  },
+  "nav": {
+    "dashboard": "Дашборд",
+    "catalog": "Каталог",
+    "warehouse": "Склад",
+    "clients": "Клієнти",
+    "orders": "Замовлення",
+    "rates": "Курси валют",
+    "profile": "Профіль",
+    "logout": "Вихід",
+    "searchPlaceholder": "Пошук по складу і каталогу — напр. histolab sun block",
+    "cart": "Кошик",
+    "theme": "Тема"
+  },
+  "auth": {
+    "loginTitle": "Вхід у систему",
+    "loginSubtitle": "Внутрішній облік прайсів, складу та замовлень",
+    "registerTitle": "Реєстрація",
+    "registerSubtitle": "Створіть акаунт для вашої компанії",
+    "email": "Email",
+    "password": "Пароль",
+    "fullName": "Ваше ім'я",
+    "companyName": "Назва компанії",
+    "forgot": "Забули пароль?",
+    "signIn": "Увійти",
+    "signingIn": "Вхід…",
+    "noAccount": "Немає акаунта?",
+    "register": "Зареєструватися",
+    "haveAccount": "Вже є акаунт?",
+    "createAccount": "Створити акаунт",
+    "creating": "Створення…",
+    "checkEmail": "Перевірте пошту для підтвердження реєстрації.",
+    "resetSent": "Лист для відновлення пароля надіслано.",
+    "errorInvalid": "Невірний email або пароль.",
+    "errorGeneric": "Щось пішло не так. Спробуйте ще раз."
+  },
+  "dashboard": {
+    "subtitle": "Загальний стан",
+    "kpi": {
+      "sku": "SKU в каталозі",
+      "skuHint": "на складі {count} позицій",
+      "critical": "Критично · <90 днів",
+      "criticalHint": "{ending} закінчується · {expired} прострочено",
+      "expiring": "Одиниць спливає",
+      "expiringHint": "{critical} критично · {ending} закінчується",
+      "stockValue": "Вартість складу",
+      "stockValueHint": "за закупкою",
+      "profit": "Чистий прибуток",
+      "profitHint": "по {count} замовленнях"
+    },
+    "burning": {
+      "title": "Що горить найближчим часом",
+      "subtitle": "топ-10 партій за терміном",
+      "all": "Весь склад →"
+    },
+    "cols": {
+      "product": "Товар",
+      "batch": "Партія",
+      "remaining": "Залишок",
+      "expiry": "Термін",
+      "status": "Статус"
+    }
+  },
+  "catalog": {
+    "subtitle": "Усе, що можна замовити",
+    "searchPlaceholder": "Пошук за назвою або артикулом",
+    "allBrands": "Усі бренди",
+    "allCategories": "Усі категорії",
+    "discount": "Знижка",
+    "inactive": "Неактивні",
+    "importCsv": "Імпорт CSV",
+    "newProduct": "Новий товар",
+    "cols": {
+      "article": "Артикул",
+      "name": "Назва",
+      "purchaseUsd": "Закупка USD",
+      "purchase": "Закупка",
+      "retail": "Роздріб",
+      "discounted": "Зі знижкою",
+      "margin": "Маржа",
+      "stock": "Наявність"
+    },
+    "addToCart": "У кошик",
+    "empty": "Каталог порожній",
+    "emptyHint": "Імпортуйте CSV або додайте перший товар.",
+    "menu": {
+      "edit": "Редагувати",
+      "active": "Активний",
+      "delete": "Видалити"
+    },
+    "form": {
+      "titleNew": "Новий товар",
+      "titleEdit": "Редагувати товар",
+      "sku": "Артикул",
+      "name": "Назва",
+      "brand": "Бренд",
+      "category": "Категорія",
+      "volume": "Об'єм",
+      "priceUsd": "Закупка, USD",
+      "retailUsd": "Роздріб, USD",
+      "active": "Активний"
+    }
+  },
+  "csv": {
+    "title": "Імпорт CSV",
+    "step1": "Крок 1 з 2 · Файл і бренд",
+    "step2": "Крок 2 з 2 · Перевірка",
+    "brandForImport": "Бренд для імпорту",
+    "chooseBrand": "Оберіть бренд",
+    "noFile": "Файл не обрано",
+    "dropHint": "Перетягніть CSV сюди або натисніть, щоб обрати",
+    "fileSelected": "Файл: {name}",
+    "detectedRate": "Знайдено курс: {rate} за 1 USD",
+    "willImport": "Буде імпортовано товарів: {count}",
+    "reviewImport": "Товарів до імпорту",
+    "reviewSkipped": "Пропущено рядків",
+    "skipped": "Пропущено рядків: {count}",
+    "applyRate": "Оновити курс бренду до {rate}",
+    "newCategories": "Нові категорії будуть створені: {list}",
+    "import": "Імпортувати ({count})",
+    "importing": "Імпорт…",
+    "done": "Імпортовано товарів: {count}",
+    "errorParse": "Не вдалося прочитати файл.",
+    "errorEmpty": "У файлі не знайдено товарів.",
+    "errorNoBrand": "Спершу оберіть бренд."
+  },
+  "warehouse": {
+    "subtitle": "Партії та терміни придатності",
+    "searchPlaceholder": "Пошук за товаром або № партії",
+    "newBatch": "Нова партія",
+    "cols": {
+      "product": "Товар",
+      "batch": "Партія №",
+      "delivery": "Завіз",
+      "expiry": "Термін",
+      "remaining": "Залишок / отримано",
+      "status": "Статус"
+    },
+    "batchOf": "термін {index} з {total}",
+    "empty": "На складі порожньо",
+    "emptyHint": "Додайте партію до товару з каталогу."
+  },
+  "clients": {
+    "subtitle": "Картки та контакти",
+    "searchPlaceholder": "Пошук за іменем або телефоном",
+    "newClient": "Новий клієнт",
+    "orders": "Замовлень",
+    "spent": "Сума покупок",
+    "card": "Картка",
+    "empty": "Клієнтів ще немає",
+    "emptyHint": "Додайте першого клієнта.",
+    "form": {
+      "titleNew": "Новий клієнт",
+      "titleEdit": "Редагувати клієнта",
+      "name": "Ім'я",
+      "phone": "Телефон",
+      "city": "Місто",
+      "delivery": "Доставка (відділення / поштомат)",
+      "note": "Нотатка"
+    }
+  },
+  "orders": {
+    "subtitle": "Історія і прибуток",
+    "searchPlaceholder": "Пошук за № або клієнтом",
+    "kpi": {
+      "revenue": "Виручка",
+      "revenueHint": "з замовлень",
+      "cost": "Собівартість",
+      "costHint": "закупка + доставка + пакування",
+      "profit": "Чистий прибуток",
+      "profitHint": "продаж – собівартість",
+      "margin": "Середня маржа",
+      "marginHint": "по відфільтрованих"
+    },
+    "anyPayment": "Будь-яка оплата",
+    "allClients": "Усі клієнти",
+    "expensesAll": "Витрати: усі",
+    "count": "{count} замовлень",
+    "cols": {
+      "number": "№ / Дата",
+      "client": "Клієнт",
+      "items": "Позицій",
+      "sale": "Продаж",
+      "cost": "Собівартість",
+      "profit": "Прибуток",
+      "margin": "Маржа",
+      "payment": "Оплата",
+      "status": "Статус"
+    },
+    "expensesMissing": "витрати ще не внесені",
+    "empty": "Замовлень ще немає"
+  },
+  "rates": {
+    "subtitle": "По брендах",
+    "history": "Історія курсу",
+    "update": "Оновити курс",
+    "updatedAt": "Оновлено {date}",
+    "modalTitle": "Оновити курс — {brand}",
+    "newRate": "Новий курс, ₴ за 1 USD",
+    "empty": "Ще немає брендів",
+    "emptyHint": "Додайте бренд у профілі."
+  },
+  "profile": {
+    "subtitle": "Акаунт",
+    "owner": "owner",
+    "email": "Пошта",
+    "lastSignIn": "Останній вхід",
+    "stats": {
+      "brands": "Брендів",
+      "products": "Товарів",
+      "clients": "Клієнтів",
+      "orders": "Замовлень"
+    },
+    "logout": "Вийти з акаунту",
+    "personalization": {
+      "title": "Персоналізація",
+      "hint": "Ці значення бачите лише ви — вони наповнюють дропдауни в каталозі, курсах і замовленнях"
+    },
+    "tabs": {
+      "brands": "Бренди",
+      "categories": "Категорії",
+      "payment": "Оплата"
+    },
+    "addBrand": "Додати бренд",
+    "addCategory": "Додати категорію",
+    "addPayment": "Додати спосіб",
+    "brandPlaceholder": "Назва бренду, напр. Colorescience",
+    "categoryPlaceholder": "Назва категорії, напр. Сироватки",
+    "paymentPlaceholder": "Спосіб оплати, напр. Готівка",
+    "brandMeta": "{products} товарів · {categories} категорій"
+  },
+  "cart": {
+    "title": "Кошик",
+    "itemsCount": "{count} поз.",
+    "fromStock": "Зі складу",
+    "fromCatalog": "З каталогу",
+    "empty": "Кошик порожній",
+    "emptyHint": "Додайте товари з каталогу або через пошук",
+    "client": "Клієнт",
+    "chooseClient": "— оберіть клієнта —",
+    "payment": "Спосіб оплати",
+    "expensesLater": "Доставку і пакування вносите пізніше — після створення ТТН, у редагуванні замовлення.",
+    "sale": "Продаж",
+    "goodsCost": "Закупка товару",
+    "deliveryPack": "Доставка + пакування",
+    "afterTtn": "після ТТН",
+    "profit": "Прибуток без витрат",
+    "checkout": "Оформити замовлення",
+    "qty": "К-сть"
+  },
+  "status": {
+    "batch": {
+      "expired": "Прострочено",
+      "critical": "Критично",
+      "ending": "Закінчується",
+      "almost": "Майже",
+      "ok": "OK",
+      "days": "{n} дн"
+    },
+    "order": {
+      "new": "Нове",
+      "paid": "Оплачено",
+      "sent": "Відправлено",
+      "done": "Виконано"
+    }
+  },
+  "toasts": {
+    "saved": "Збережено",
+    "deleted": "Видалено",
+    "orderPlaced": "Замовлення оформлено",
+    "rateUpdated": "Курс оновлено",
+    "statusUpdated": "Статус оновлено",
+    "outOfStock": "Недостатньо на складі: {name}"
+  },
+  "errors": {
+    "load": "Не вдалося завантажити дані.",
+    "save": "Не вдалося зберегти зміни.",
+    "delete": "Не вдалося видалити."
+  }
+}

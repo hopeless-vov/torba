@@ -1,0 +1,304 @@
+{
+  "app": {
+    "name": "torba",
+    "tagline": "Price lists, stock and orders"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "next": "Next",
+    "back": "Back",
+    "all": "All",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "close": "Close",
+    "confirm": "Confirm",
+    "search": "Search",
+    "none": "none",
+    "pcs": "pcs",
+    "perUsd": "per 1 USD",
+    "emptyValue": "—"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "catalog": "Catalog",
+    "warehouse": "Warehouse",
+    "clients": "Clients",
+    "orders": "Orders",
+    "rates": "Exchange rates",
+    "profile": "Profile",
+    "logout": "Log out",
+    "searchPlaceholder": "Search stock and catalog — e.g. histolab sun block",
+    "cart": "Cart",
+    "theme": "Theme"
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "loginSubtitle": "Internal tracking of price lists, stock and orders",
+    "registerTitle": "Sign up",
+    "registerSubtitle": "Create an account for your company",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Your name",
+    "companyName": "Company name",
+    "forgot": "Forgot password?",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "noAccount": "No account?",
+    "register": "Sign up",
+    "haveAccount": "Already have an account?",
+    "createAccount": "Create account",
+    "creating": "Creating…",
+    "checkEmail": "Check your email to confirm registration.",
+    "resetSent": "Password reset email sent.",
+    "errorInvalid": "Invalid email or password.",
+    "errorGeneric": "Something went wrong. Please try again."
+  },
+  "dashboard": {
+    "subtitle": "Overview",
+    "kpi": {
+      "sku": "SKU in catalog",
+      "skuHint": "{count} positions in stock",
+      "critical": "Critical · <90 days",
+      "criticalHint": "{ending} ending · {expired} expired",
+      "expiring": "Units expiring",
+      "expiringHint": "{critical} critical · {ending} ending",
+      "stockValue": "Stock value",
+      "stockValueHint": "at purchase price",
+      "profit": "Net profit",
+      "profitHint": "across {count} orders"
+    },
+    "burning": {
+      "title": "Expiring soonest",
+      "subtitle": "top-10 batches by date",
+      "all": "All stock →"
+    },
+    "cols": {
+      "product": "Product",
+      "batch": "Batch",
+      "remaining": "Stock",
+      "expiry": "Expiry",
+      "status": "Status"
+    }
+  },
+  "catalog": {
+    "subtitle": "Everything you can order",
+    "searchPlaceholder": "Search by name or article",
+    "allBrands": "All brands",
+    "allCategories": "All categories",
+    "discount": "Discount",
+    "inactive": "Inactive",
+    "importCsv": "Import CSV",
+    "newProduct": "New product",
+    "cols": {
+      "article": "Article",
+      "name": "Name",
+      "purchaseUsd": "Purchase USD",
+      "purchase": "Purchase",
+      "retail": "Retail",
+      "discounted": "Discounted",
+      "margin": "Margin",
+      "stock": "Stock"
+    },
+    "addToCart": "Add to cart",
+    "empty": "Catalog is empty",
+    "emptyHint": "Import a CSV or add your first product.",
+    "menu": {
+      "edit": "Edit",
+      "active": "Active",
+      "delete": "Delete"
+    },
+    "form": {
+      "titleNew": "New product",
+      "titleEdit": "Edit product",
+      "sku": "Article",
+      "name": "Name",
+      "brand": "Brand",
+      "category": "Category",
+      "volume": "Volume",
+      "priceUsd": "Purchase, USD",
+      "retailUsd": "Retail, USD",
+      "active": "Active"
+    }
+  },
+  "csv": {
+    "title": "Import CSV",
+    "step1": "Step 1 of 2 · File and brand",
+    "step2": "Step 2 of 2 · Review",
+    "brandForImport": "Brand to import into",
+    "chooseBrand": "Choose a brand",
+    "noFile": "No file selected",
+    "dropHint": "Drag a CSV here or click to choose",
+    "fileSelected": "File: {name}",
+    "detectedRate": "Detected rate: {rate} per 1 USD",
+    "willImport": "Products to import: {count}",
+    "reviewImport": "Products to import",
+    "reviewSkipped": "Rows skipped",
+    "skipped": "Rows skipped: {count}",
+    "applyRate": "Update the brand rate to {rate}",
+    "newCategories": "New categories will be created: {list}",
+    "import": "Import ({count})",
+    "importing": "Importing…",
+    "done": "Imported products: {count}",
+    "errorParse": "Could not read the file.",
+    "errorEmpty": "No products found in the file.",
+    "errorNoBrand": "Choose a brand first."
+  },
+  "warehouse": {
+    "subtitle": "Batches and expiry dates",
+    "searchPlaceholder": "Search by product or batch №",
+    "newBatch": "New batch",
+    "cols": {
+      "product": "Product",
+      "batch": "Batch №",
+      "delivery": "Received",
+      "expiry": "Expiry",
+      "remaining": "Left / received",
+      "status": "Status"
+    },
+    "batchOf": "batch {index} of {total}",
+    "empty": "Warehouse is empty",
+    "emptyHint": "Add a batch to a catalog product."
+  },
+  "clients": {
+    "subtitle": "Cards and contacts",
+    "searchPlaceholder": "Search by name or phone",
+    "newClient": "New client",
+    "orders": "Orders",
+    "spent": "Total spent",
+    "card": "Card",
+    "empty": "No clients yet",
+    "emptyHint": "Add your first client.",
+    "form": {
+      "titleNew": "New client",
+      "titleEdit": "Edit client",
+      "name": "Name",
+      "phone": "Phone",
+      "city": "City",
+      "delivery": "Delivery (branch / parcel locker)",
+      "note": "Note"
+    }
+  },
+  "orders": {
+    "subtitle": "History and profit",
+    "searchPlaceholder": "Search by № or client",
+    "kpi": {
+      "revenue": "Revenue",
+      "revenueHint": "from orders",
+      "cost": "Cost",
+      "costHint": "purchase + delivery + packaging",
+      "profit": "Net profit",
+      "profitHint": "sale – cost",
+      "margin": "Average margin",
+      "marginHint": "across filtered"
+    },
+    "anyPayment": "Any payment",
+    "allClients": "All clients",
+    "expensesAll": "Expenses: all",
+    "count": "{count} orders",
+    "cols": {
+      "number": "№ / Date",
+      "client": "Client",
+      "items": "Items",
+      "sale": "Sale",
+      "cost": "Cost",
+      "profit": "Profit",
+      "margin": "Margin",
+      "payment": "Payment",
+      "status": "Status"
+    },
+    "expensesMissing": "expenses not entered yet",
+    "empty": "No orders yet"
+  },
+  "rates": {
+    "subtitle": "By brand",
+    "history": "Rate history",
+    "update": "Update rate",
+    "updatedAt": "Updated {date}",
+    "modalTitle": "Update rate — {brand}",
+    "newRate": "New rate, ₴ per 1 USD",
+    "empty": "No brands yet",
+    "emptyHint": "Add a brand in your profile."
+  },
+  "profile": {
+    "subtitle": "Account",
+    "owner": "owner",
+    "email": "Email",
+    "lastSignIn": "Last sign-in",
+    "stats": {
+      "brands": "Brands",
+      "products": "Products",
+      "clients": "Clients",
+      "orders": "Orders"
+    },
+    "logout": "Log out",
+    "personalization": {
+      "title": "Personalization",
+      "hint": "Only you see these — they fill the dropdowns in catalog, rates and orders"
+    },
+    "tabs": {
+      "brands": "Brands",
+      "categories": "Categories",
+      "payment": "Payment"
+    },
+    "addBrand": "Add brand",
+    "addCategory": "Add category",
+    "addPayment": "Add method",
+    "brandPlaceholder": "Brand name, e.g. Colorescience",
+    "categoryPlaceholder": "Category name, e.g. Serums",
+    "paymentPlaceholder": "Payment method, e.g. Cash",
+    "brandMeta": "{products} products · {categories} categories"
+  },
+  "cart": {
+    "title": "Cart",
+    "itemsCount": "{count} items",
+    "fromStock": "From stock",
+    "fromCatalog": "From catalog",
+    "empty": "Cart is empty",
+    "emptyHint": "Add products from the catalog or via search",
+    "client": "Client",
+    "chooseClient": "— choose a client —",
+    "payment": "Payment method",
+    "expensesLater": "Add delivery and packaging later — after creating the waybill, when editing the order.",
+    "sale": "Sale",
+    "goodsCost": "Goods cost",
+    "deliveryPack": "Delivery + packaging",
+    "afterTtn": "after waybill",
+    "profit": "Profit before expenses",
+    "checkout": "Place order",
+    "qty": "Qty"
+  },
+  "status": {
+    "batch": {
+      "expired": "Expired",
+      "critical": "Critical",
+      "ending": "Ending",
+      "almost": "Almost",
+      "ok": "OK",
+      "days": "{n}d"
+    },
+    "order": {
+      "new": "New",
+      "paid": "Paid",
+      "sent": "Sent",
+      "done": "Done"
+    }
+  },
+  "toasts": {
+    "saved": "Saved",
+    "deleted": "Deleted",
+    "orderPlaced": "Order placed",
+    "rateUpdated": "Rate updated",
+    "statusUpdated": "Status updated",
+    "outOfStock": "Not enough in stock: {name}"
+  },
+  "errors": {
+    "load": "Could not load data.",
+    "save": "Could not save changes.",
+    "delete": "Could not delete."
+  }
+}

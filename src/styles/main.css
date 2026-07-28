@@ -1,0 +1,182 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import 'tailwindcss';
+
+/* ──────────────────────────────────────────────────────────────
+   Semantic theme tokens.
+   Raw values live in :root / [data-theme] and flip between light
+   and dark. `@theme inline` exposes them as Tailwind utilities
+   (bg-surface, text-muted, border-line, …) that resolve per-element,
+   so a single set of classes themes correctly in both modes.
+   ────────────────────────────────────────────────────────────── */
+@theme inline {
+  --font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg2);
+  --color-panel: var(--panel);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface2);
+  --color-row-hover: var(--row-hover);
+
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-violet: var(--violet);
+
+  --color-line: var(--border);
+  --color-line-soft: var(--border-soft);
+  --color-line-strong: var(--border-strong);
+  --color-line-hover: var(--border-hover);
+
+  --color-hover: var(--hover);
+  --color-chip: var(--chip);
+  --color-zebra: var(--zebra);
+}
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0f1112;
+  --bg2: #171a1c;
+  --panel: #131617;
+  --surface: #1c1f21;
+  --surface2: #22282a;
+  --row-hover: #23282a;
+
+  --text: #ededed;
+  --muted: #8b93a0;
+  --faint: #5c6370;
+
+  --accent: #3ecf8e;
+  --accent-hover: #4fe0a0;
+  --on-accent: #0b1f16;
+  --accent-soft: rgba(62, 207, 142, 0.12);
+  --accent-line: rgba(62, 207, 142, 0.4);
+
+  --warn: #f5a623;
+  --warn-soft: rgba(245, 166, 35, 0.12);
+  --danger: #f04438;
+  --danger-soft: rgba(240, 68, 56, 0.12);
+  --info: #7aa2f7;
+  --info-soft: rgba(122, 162, 247, 0.12);
+  --violet: #c792ea;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.24);
+
+  --hover: rgba(255, 255, 255, 0.06);
+  --chip: rgba(255, 255, 255, 0.05);
+  --zebra: rgba(255, 255, 255, 0.012);
+  --scroll: #2a2e31;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f4f6f7;
+  --bg2: #f1f3f5;
+  --panel: #ffffff;
+  --surface: #ffffff;
+  --surface2: #eaeef0;
+  --row-hover: #eff3f4;
+
+  --text: #16191c;
+  --muted: #5b6570;
+  --faint: #8b95a1;
+
+  --accent: #17935e;
+  --accent-hover: #0f7c4d;
+  --on-accent: #ffffff;
+  --accent-soft: rgba(23, 147, 94, 0.12);
+  --accent-line: rgba(23, 147, 94, 0.4);
+
+  --warn: #b26a00;
+  --warn-soft: rgba(178, 106, 0, 0.12);
+  --danger: #c4322a;
+  --danger-soft: rgba(196, 50, 42, 0.1);
+  --info: #3563c9;
+  --info-soft: rgba(53, 99, 201, 0.12);
+  --violet: #7b4fb5;
+
+  --border: rgba(0, 0, 0, 0.1);
+  --border-soft: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --border-hover: rgba(0, 0, 0, 0.3);
+
+  --hover: rgba(0, 0, 0, 0.05);
+  --chip: rgba(0, 0, 0, 0.05);
+  --zebra: rgba(0, 0, 0, 0.015);
+  --scroll: #c9d1d6;
+}
+
+@layer base {
+  html {
+    background-color: var(--bg);
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tabular, aligned numerals for prices, SKUs and codes. */
+  .font-mono,
+  code,
+  kbd {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scroll);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* Route transition — a quick, subtle cross-fade. */
+.page-enter-active {
+  transition:
+    opacity 0.24s ease,
+    transform 0.24s ease;
+}
+.page-leave-active {
+  transition: opacity 0.14s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.page-leave-to {
+  opacity: 0;
+}
