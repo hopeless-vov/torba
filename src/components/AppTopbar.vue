@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import Icon from '@/components/ui/Icon.vue'
+import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
+import { useCurrency } from '@/composables/use-currency'
+import { useLocale } from '@/composables/use-locale'
 import { useTheme } from '@/composables/use-theme'
 import { useCartStore } from '@/stores/cart'
 import { useUiStore } from '@/stores/ui'
@@ -14,11 +17,31 @@ const route = useRoute()
 const ui = useUiStore()
 const cart = useCartStore()
 const { isDark, toggle } = useTheme()
+const { code, setCurrency } = useCurrency()
+const { locale, setLocale } = useLocale()
 
 const search = computed({
   get: () => ui.search,
   set: (v: string) => ui.setSearch(v),
 })
+
+const currency = computed({
+  get: () => code.value,
+  set: (v: string) => setCurrency(v),
+})
+const currencyTabs = [
+  { value: 'UAH', label: '₴' },
+  { value: 'USD', label: '$' },
+]
+
+const language = computed({
+  get: () => locale.value,
+  set: (v: string) => setLocale(v),
+})
+const languageTabs = [
+  { value: 'uk', label: 'UK' },
+  { value: 'en', label: 'EN' },
+]
 
 const title = computed(() => (route.name ? t(`nav.${String(route.name)}`) : t('app.name')))
 const subtitle = computed(() => (route.name ? t(`${String(route.name)}.subtitle`) : ''))
@@ -46,7 +69,20 @@ const today = formatDate(new Date())
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
-      <span class="hidden font-mono text-xs tracking-wide text-faint tabular-nums sm:inline">
+      <Tabs
+        v-model="currency"
+        :tabs="currencyTabs"
+        size="sm"
+        class="hidden lg:inline-flex"
+      />
+      <Tabs
+        v-model="language"
+        :tabs="languageTabs"
+        size="sm"
+        class="hidden lg:inline-flex"
+      />
+
+      <span class="hidden font-mono text-xs tracking-wide text-faint tabular-nums xl:inline">
         {{ today }}
       </span>
 
