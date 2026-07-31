@@ -1,4 +1,4 @@
-import { currencySymbol, formatDate, formatMoney, formatNumber, formatPercent } from '@/utils/format'
+import { currencySymbol, formatAmount, formatDate, formatMoney, formatNumber, formatPercent } from '@/utils/format'
 import { describe, expect, it } from 'vitest'
 
 // uk-UA groups with a non-breaking space; normalise for stable assertions.
@@ -15,6 +15,16 @@ describe('formatMoney', () => {
   it('appends the currency symbol', () => {
     expect(norm(formatMoney(2047, 'UAH', 0))).toBe('2 047 ₴')
     expect(norm(formatMoney(46, 'USD', 2))).toBe('46,00 $')
+  })
+})
+
+describe('formatAmount', () => {
+  it('uses a symbol the built-in map does not know', () => {
+    expect(norm(formatAmount(1200, 'zł', 0))).toBe('1 200 zł')
+  })
+
+  it('omits the trailing space when there is no symbol', () => {
+    expect(norm(formatAmount(12, '', 0))).toBe('12')
   })
 })
 

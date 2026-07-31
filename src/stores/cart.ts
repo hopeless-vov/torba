@@ -6,6 +6,11 @@ import { computed, ref } from 'vue'
 // Order-in-progress. Lines can come from the catalog (no batch) or from a
 // specific warehouse batch. Prices are held in the current display
 // currency; the order is snapshotted from these at checkout.
+//
+// Quantity is never capped by stock: anything in the catalog can be sold,
+// and a line above `stockQty` goes out as a backorder (the database draws
+// down what exists and leaves the rest — see migration 0004). The drawer
+// flags such lines so the shortfall is visible before checkout.
 export const useCartStore = defineStore('cart', () => {
   const lines = ref<CartLine[]>([])
   const open = ref(false)
@@ -14,13 +19,12 @@ export const useCartStore = defineStore('cart', () => {
 
   const count = computed(() => lines.value.reduce((sum, l) => sum + l.qty, 0))
   const isEmpty = computed(() => lines.value.length === 0)
+  const hasBackorder = computed(() => lines.value.some((l) => l.qty > l.stockQty))
 
   function lineKey(productId: string, batchId: string | null) {
     return batchId ? `${productId}:${batchId}` : productId
   }
 
-  // Returns false when the requested quantity was clamped by available
-  // stock (or nothing could be added), so callers can warn the user.
   function addLine(input: {
     product: Product
     brand: Brand | null
@@ -28,46 +32,67 @@ export const useCartStore = defineStore('cart', () => {
     unitPrice: number
     unitCost: number
     qty?: number
-    maxQty?: number
-  }): boolean {
+    stockQty?: number
+  }) {
     const batch = input.batch ?? null
-    const max = input.maxQty ?? Infinity
-    const want = input.qty ?? 1
+    const want = Math.max(1, input.qty ?? 1)
     const key = lineKey(input.product.id, batch?.id ?? null)
     const existing = lines.value.find((l) => l.key === key)
 
     if (existing) {
-      const next = existing.qty + want
-      existing.qty = Math.min(next, existing.maxQty)
-      return next <= existing.maxQty
+      existing.qty += want
+      if (input.stockQty !== undefined) existing.stockQty = input.stockQty
+      return
     }
 
-    const qty = Math.min(want, max)
-    if (qty <= 0) return false
     lines.value.push({
       key,
       product: input.product,
       brand: input.brand,
       batch,
-      qty,
-      maxQty: max,
+      qty: want,
+      stockQty: input.stockQty ?? 0,
       unitPrice: input.unitPrice,
       unitCost: input.unitCost,
     })
-    return qty >= want
   }
 
-  // Returns false when clamped to available stock.
-  function setQty(key: string, qty: number): boolean {
+  function setQty(key: string, qty: number) {
     const line = lines.value.find((l) => l.key === key)
-    if (!line) return true
+    if (!line) return
     if (qty <= 0) {
       remove(key)
-      return true
+      return
     }
-    const clamped = Math.min(qty, line.maxQty)
-    line.qty = clamped
-    return clamped >= qty
+    line.qty = qty
+  }
+
+  /**
+   * Move a line onto another batch of the same product — this is how the
+   * user chooses which expiry date to ship. Landing on a batch that is
+   * already in the cart merges the two lines.
+   */
+  function setBatch(key: string, batch: Batch | null, stockQty: number) {
+    const line = lines.value.find((l) => l.key === key)
+    if (!line) return
+
+    const nextKey = lineKey(line.product.id, batch?.id ?? null)
+    if (nextKey === key) {
+      line.stockQty = stockQty
+      return
+    }
+
+    const clash = lines.value.find((l) => l.key === nextKey)
+    if (clash) {
+      clash.qty += line.qty
+      clash.stockQty = stockQty
+      remove(key)
+      return
+    }
+
+    line.batch = batch
+    line.stockQty = stockQty
+    line.key = nextKey
   }
 
   function remove(key: string) {
@@ -91,8 +116,10 @@ export const useCartStore = defineStore('cart', () => {
     paymentMethod,
     count,
     isEmpty,
+    hasBackorder,
     addLine,
     setQty,
+    setBatch,
     remove,
     clear,
     toggle,

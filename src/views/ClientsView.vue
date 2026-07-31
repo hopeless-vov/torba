@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import ClientCardModal from '@/components/ClientCardModal.vue'
 import ClientModal from '@/components/ClientModal.vue'
+import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
+import TextInput from '@/components/ui/TextInput.vue'
 import { useClients } from '@/composables/use-clients'
 import { useCurrency } from '@/composables/use-currency'
+import { useOrders } from '@/composables/use-orders'
+import { useUiStore } from '@/stores/ui'
 import type { Client, NewClient } from '@/types/database'
-import type { ClientView } from '@/types/models'
-import { ref } from 'vue'
+import type { ClientView, OrderView } from '@/types/models'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const { format } = useCurrency()
 const { filtered, createClient, updateClient } = useClients()
+const { views: orderViews } = useOrders()
+const ui = useUiStore()
 
 const modalOpen = ref(false)
 const editing = ref<Client | null>(null)
@@ -22,6 +28,20 @@ const saving = ref(false)
 
 const cardOpen = ref(false)
 const activeCard = ref<ClientView | null>(null)
+
+const orderOpen = ref(false)
+const activeOrder = ref<OrderView | null>(null)
+
+const search = computed({
+  get: () => ui.search,
+  set: (v: string) => ui.setSearch(v),
+})
+
+// Drill down from the client's history into the full order.
+function openOrder(orderId: string) {
+  activeOrder.value = orderViews.value.find((o) => o.id === orderId) ?? null
+  if (activeOrder.value) orderOpen.value = true
+}
 
 function openNew() {
   editing.value = null
@@ -56,10 +76,19 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
 
 <template>
   <div class="flex flex-col gap-4 p-6">
-    <div class="flex items-center justify-end">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="w-72">
+        <TextInput
+          v-model="search"
+          type="search"
+          icon-left="fa-solid fa-magnifying-glass"
+          :placeholder="t('clients.searchPlaceholder')"
+        />
+      </div>
       <Button
         variant="primary"
         icon="fa-solid fa-plus"
+        class="ml-auto"
         @click="openNew"
       >
         {{ t('clients.newClient') }}
@@ -159,6 +188,12 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
     <ClientCardModal
       v-model:open="cardOpen"
       :client="activeCard"
+      @open-order="openOrder"
+    />
+    <OrderDetailsModal
+      v-model:open="orderOpen"
+      :order="activeOrder"
+      :actions="false"
     />
   </div>
 </template>

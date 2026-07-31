@@ -21,6 +21,23 @@ export function daysUntil(expiry: string | null, today: string | Date = new Date
   return toUtcDay(expiry) - toUtcDay(today)
 }
 
+/**
+ * FIFO order — soonest expiry first, undated batches last, oldest
+ * delivery breaking ties. Matches the `order by` in create_order so the
+ * cart shows the batch the database would actually draw from.
+ */
+export function compareByExpiry(
+  a: { expiry_date: string | null; created_at?: string },
+  b: { expiry_date: string | null; created_at?: string },
+): number {
+  if (a.expiry_date !== b.expiry_date) {
+    if (!a.expiry_date) return 1
+    if (!b.expiry_date) return -1
+    return a.expiry_date < b.expiry_date ? -1 : 1
+  }
+  return (a.created_at ?? '').localeCompare(b.created_at ?? '')
+}
+
 export function batchStatus(expiry: string | null, today: string | Date = new Date()): BatchStatus {
   const days = daysUntil(expiry, today)
   if (days == null) return 'ok'

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import Button from '@/components/ui/Button.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
-import Select from '@/components/ui/Select.vue'
 import { useCsvImport } from '@/composables/use-csv-import'
 import { useReferenceStore } from '@/stores/reference'
 import { formatMoney } from '@/utils/format'
@@ -88,10 +88,12 @@ function onDrop(event: DragEvent) {
       v-else-if="step === 1"
       class="flex flex-col gap-4"
     >
-      <Select
+      <Combobox
         v-model="brandId"
         :label="t('csv.brandForImport')"
         :placeholder="t('csv.chooseBrand')"
+        :search-placeholder="t('common.search')"
+        :empty-text="t('common.noMatches')"
         :options="brandOptions"
       />
 

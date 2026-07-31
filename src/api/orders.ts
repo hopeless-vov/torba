@@ -8,6 +8,16 @@ export type OrderRow = Order & {
 
 const SELECT_WITH_RELATIONS = '*, client:clients(*), items:order_items(*)'
 
+// Deletion goes through delete_orders so the quantities drawn from
+// batch-tied lines land back on the shelf (see migration 0004).
+// order_items cascade with the order.
+async function deleteOrders(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0
+  const { data, error } = await supabase.rpc('delete_orders', { p_ids: ids })
+  if (error) throw error
+  return (data as number) ?? 0
+}
+
 export const ordersApi = {
   list: async (companyId: string): Promise<OrderRow[]> => {
     const { data, error } = await supabase
@@ -25,13 +35,15 @@ export const ordersApi = {
     return (data as number) ?? 2041
   },
 
-  // Atomic order creation: assigns the number, inserts items and
-  // decrements warehouse stock in one transaction (see create_order in
-  // supabase/migrations/0002). Throws 'INSUFFICIENT_STOCK:<name>' on oversell.
+  // Atomic order creation: assigns the number, inserts items and draws
+  // down warehouse stock in one transaction (see create_order in
+  // supabase/migrations/0004). Stock never goes negative — a line that
+  // exceeds what is on hand ships short as a backorder.
   place: async (input: {
     clientId: string | null
     paymentMethod: string | null
     currency: string
+    deliveryAddress?: string | null
     items: {
       product_id: string | null
       batch_id: string | null
@@ -47,6 +59,7 @@ export const ordersApi = {
       p_payment_method: input.paymentMethod,
       p_currency: input.currency,
       p_items: input.items,
+      p_delivery_address: input.deliveryAddress ?? null,
     })
     if (error) throw error
     return data as string
@@ -95,7 +108,8 @@ export const ordersApi = {
   },
 
   remove: async (id: string): Promise<void> => {
-    const { error } = await supabase.from('orders').delete().eq('id', id)
-    if (error) throw error
+    await deleteOrders([id])
   },
+
+  removeMany: deleteOrders,
 }

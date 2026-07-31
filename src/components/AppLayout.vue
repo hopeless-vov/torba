@@ -8,17 +8,27 @@ import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
+import { useUiStore } from '@/stores/ui'
 import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterView } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 
 const auth = useAuthStore()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const clients = useClientsStore()
 const orders = useOrdersStore()
+const ui = useUiStore()
 const toast = useToast()
+const route = useRoute()
 const { t } = useI18n()
+
+// Each page owns its search box, so a stale query must not leak into the
+// next page's filters.
+watch(
+  () => route.name,
+  () => ui.setSearch(''),
+)
 
 // Load the workspace once the company is known (survives a hard refresh,
 // where the session resolves asynchronously before this mounts).

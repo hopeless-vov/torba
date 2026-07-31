@@ -1,21 +1,26 @@
 <script setup lang="ts">
+import BulkActionBar from '@/components/BulkActionBar.vue'
 import CsvImportModal from '@/components/CsvImportModal.vue'
 import ProductFormModal from '@/components/ProductFormModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
+import Combobox from '@/components/ui/Combobox.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
-import Select from '@/components/ui/Select.vue'
 import Tag from '@/components/ui/Tag.vue'
+import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
 import { useCatalog } from '@/composables/use-catalog'
 import { useCurrency } from '@/composables/use-currency'
+import { useSelection } from '@/composables/use-selection'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
+import { useUiStore } from '@/stores/ui'
 import type { NewProduct, Product } from '@/types/database'
 import type { ProductView } from '@/types/models'
 import { formatNumber, formatPercent } from '@/utils/format'
@@ -25,6 +30,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
+const ui = useUiStore()
 const { code, format } = useCurrency()
 const { addFromCatalog } = useCart()
 const {
@@ -36,12 +42,33 @@ const {
   createProduct,
   updateProduct,
   removeProduct,
+  removeProducts,
 } = useCatalog()
 
 const importOpen = ref(false)
 const formOpen = ref(false)
 const editing = ref<Product | null>(null)
 const saving = ref(false)
+
+const { selected, count: selectedCount, hasSelection, clear: clearSelection } = useSelection(filtered)
+const confirmOpen = ref(false)
+const deleting = ref(false)
+
+const search = computed({
+  get: () => ui.search,
+  set: (v: string) => ui.setSearch(v),
+})
+
+async function deleteSelected() {
+  deleting.value = true
+  try {
+    await removeProducts([...selected.value])
+    clearSelection()
+    confirmOpen.value = false
+  } finally {
+    deleting.value = false
+  }
+}
 
 const brandOptions = computed(() => [
   { value: 'all', label: t('catalog.allBrands') },
@@ -99,17 +126,29 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
   <div class="flex flex-col gap-4 p-6">
     <!-- Toolbar -->
     <div class="flex flex-wrap items-center gap-3">
-      <Select
+      <Combobox
         v-model="brandFilter"
         :options="brandOptions"
+        :search-placeholder="t('common.search')"
+        :empty-text="t('common.noMatches')"
         class="w-44"
       />
-      <Select
+      <Combobox
         v-model="categoryFilter"
         :options="categoryOptions"
+        :search-placeholder="t('common.search')"
+        :empty-text="t('common.noMatches')"
         class="w-44"
       />
-      <div class="w-32">
+      <div class="w-64">
+        <TextInput
+          v-model="search"
+          type="search"
+          icon-left="fa-solid fa-magnifying-glass"
+          :placeholder="t('catalog.searchPlaceholder')"
+        />
+      </div>
+      <div class="w-28">
         <NumberInput
           v-model="discount"
           :min="0"
@@ -138,12 +177,23 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
       </div>
     </div>
 
+    <BulkActionBar
+      :count="selectedCount"
+      :visible="hasSelection"
+      :delete-label="t('common.deleteSelected')"
+      :clear-label="t('common.clearSelection')"
+      @delete="confirmOpen = true"
+      @clear="clearSelection"
+    />
+
     <!-- Table -->
     <div class="rounded-xl border border-line bg-panel">
       <DataTable
+        v-model:selected="selected"
         :columns="columns"
         :rows="filtered"
         row-key="id"
+        selectable
         :loading="inventory.loading"
       >
         <template #cell-sku="{ row }">
@@ -252,6 +302,15 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
       :product="editing"
       :saving="saving"
       @submit="onSubmit"
+    />
+    <ConfirmDialog
+      v-model:open="confirmOpen"
+      :title="t('catalog.deleteTitle')"
+      :message="t('catalog.deleteMessage', { count: selectedCount })"
+      :confirm-label="t('common.delete')"
+      :cancel-label="t('common.cancel')"
+      :loading="deleting"
+      @confirm="deleteSelected"
     />
   </div>
 </template>

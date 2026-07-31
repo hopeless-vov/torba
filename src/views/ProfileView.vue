@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CurrencyManager from '@/components/CurrencyManager.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
@@ -26,13 +27,14 @@ const orders = useOrdersStore()
 const { brandStats, addBrand, removeBrand, addCategory, removeCategory, addPayment, removePayment } =
   usePersonalization()
 
-const tab = ref<'brands' | 'categories' | 'payment'>('brands')
+const tab = ref<'brands' | 'categories' | 'payment' | 'currencies'>('brands')
 const newValue = ref('')
 
 const tabs = computed(() => [
   { value: 'brands', label: t('profile.tabs.brands'), count: reference.brands.length },
   { value: 'categories', label: t('profile.tabs.categories'), count: reference.categories.length },
   { value: 'payment', label: t('profile.tabs.payment'), count: reference.paymentMethods.length },
+  { value: 'currencies', label: t('profile.tabs.currencies'), count: reference.currencies.length },
 ])
 
 const email = computed(() => auth.user?.email ?? '')
@@ -161,7 +163,10 @@ async function logout() {
         :tabs="tabs"
       />
 
+      <CurrencyManager v-if="tab === 'currencies'" />
+
       <form
+        v-if="tab !== 'currencies'"
         class="flex items-center gap-2"
         @submit.prevent="add"
       >
@@ -244,7 +249,7 @@ async function logout() {
 
       <!-- Payment methods -->
       <ul
-        v-else
+        v-else-if="tab === 'payment'"
         class="flex flex-col gap-2"
       >
         <li

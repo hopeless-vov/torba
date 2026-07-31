@@ -1,4 +1,4 @@
-import { batchStatus, daysUntil } from '@/utils/batch-status'
+import { batchStatus, compareByExpiry, daysUntil } from '@/utils/batch-status'
 import { describe, expect, it } from 'vitest'
 
 const TODAY = '2026-07-28'
@@ -32,5 +32,26 @@ describe('batchStatus', () => {
 
   it('treats a missing date as ok', () => {
     expect(batchStatus(null, TODAY)).toBe('ok')
+  })
+})
+
+describe('compareByExpiry', () => {
+  it('sorts the soonest expiry first and undated batches last', () => {
+    const sorted = [
+      { expiry_date: null },
+      { expiry_date: '2027-01-01' },
+      { expiry_date: '2026-09-01' },
+    ].sort(compareByExpiry)
+
+    expect(sorted.map((b) => b.expiry_date)).toEqual(['2026-09-01', '2027-01-01', null])
+  })
+
+  it('breaks ties on the older delivery', () => {
+    const sorted = [
+      { expiry_date: '2026-09-01', created_at: '2026-05-02' },
+      { expiry_date: '2026-09-01', created_at: '2026-03-11' },
+    ].sort(compareByExpiry)
+
+    expect(sorted.map((b) => b.created_at)).toEqual(['2026-03-11', '2026-05-02'])
   })
 })

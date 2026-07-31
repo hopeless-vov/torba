@@ -20,9 +20,15 @@ export function formatNumber(amount: number, fractionDigits = 2): string {
   }).format(amount)
 }
 
+/** e.g. formatAmount(2047, '₴') → "2 047 ₴". For user-defined currencies,
+ *  whose symbol is not in CURRENCY_SYMBOLS. */
+export function formatAmount(amount: number, symbol: string, fractionDigits = 0): string {
+  return `${formatNumber(amount, fractionDigits)} ${symbol}`.trim()
+}
+
 /** e.g. formatMoney(2047, 'UAH') → "2 047 ₴"; formatMoney(46, 'USD', 2) → "46,00 $". */
 export function formatMoney(amount: number, currency = 'UAH', fractionDigits = 0): string {
-  return `${formatNumber(amount, fractionDigits)} ${currencySymbol(currency)}`
+  return formatAmount(amount, currencySymbol(currency), fractionDigits)
 }
 
 /** Ratio (0..1) → integer percent string, e.g. 0.48 → "48%". */

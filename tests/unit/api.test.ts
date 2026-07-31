@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // method returns the same object, and awaiting it resolves to `result`.
 function builder(result: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {}
-  for (const method of ['select', 'insert', 'update', 'delete', 'upsert', 'eq', 'order', 'single', 'maybeSingle']) {
+  for (const method of ['select', 'insert', 'update', 'delete', 'upsert', 'eq', 'in', 'order', 'single', 'maybeSingle']) {
     chain[method] = vi.fn(() => chain)
   }
   chain.then = (resolve: (value: unknown) => unknown) => resolve(result)
@@ -67,6 +67,22 @@ describe('brandsApi.updateRate', () => {
   })
 })
 
+describe('productsApi.removeMany', () => {
+  it('deletes every id in one request', async () => {
+    const chain = builder({ data: null, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { productsApi } = await import('@/api/products')
+    await productsApi.removeMany(['p1', 'p2'])
+    expect(chain.in).toHaveBeenCalledWith('id', ['p1', 'p2'])
+  })
+
+  it('skips the request when nothing is selected', async () => {
+    const { productsApi } = await import('@/api/products')
+    await productsApi.removeMany([])
+    expect(mocked.from).not.toHaveBeenCalled()
+  })
+})
+
 describe('ordersApi.nextNumber', () => {
   it('reads the next number via rpc', async () => {
     mocked.rpc.mockResolvedValue({ data: 2044, error: null } as never)
@@ -74,6 +90,69 @@ describe('ordersApi.nextNumber', () => {
     const number = await ordersApi.nextNumber('c1')
     expect(mocked.rpc).toHaveBeenCalledWith('next_order_number', { p_company_id: 'c1' })
     expect(number).toBe(2044)
+  })
+})
+
+describe('ordersApi.place', () => {
+  it('passes the delivery address through to create_order', async () => {
+    mocked.rpc.mockResolvedValue({ data: 'order-1', error: null } as never)
+    const { ordersApi } = await import('@/api/orders')
+    await ordersApi.place({
+      clientId: 'cl1',
+      paymentMethod: 'Готівка',
+      currency: 'UAH',
+      deliveryAddress: 'Львів, НП №30',
+      items: [],
+    })
+    expect(mocked.rpc).toHaveBeenCalledWith('create_order', {
+      p_client_id: 'cl1',
+      p_payment_method: 'Готівка',
+      p_currency: 'UAH',
+      p_items: [],
+      p_delivery_address: 'Львів, НП №30',
+    })
+  })
+
+  it('sends a null address when none was given', async () => {
+    mocked.rpc.mockResolvedValue({ data: 'order-1', error: null } as never)
+    const { ordersApi } = await import('@/api/orders')
+    await ordersApi.place({ clientId: null, paymentMethod: null, currency: 'UAH', items: [] })
+    expect(mocked.rpc.mock.calls[0][1]).toMatchObject({ p_delivery_address: null })
+  })
+})
+
+describe('ordersApi deletion', () => {
+  it('goes through delete_orders so stock is restored', async () => {
+    mocked.rpc.mockResolvedValue({ data: 2, error: null } as never)
+    const { ordersApi } = await import('@/api/orders')
+    const deleted = await ordersApi.removeMany(['o1', 'o2'])
+    expect(mocked.rpc).toHaveBeenCalledWith('delete_orders', { p_ids: ['o1', 'o2'] })
+    expect(deleted).toBe(2)
+  })
+
+  it('routes a single delete through the same rpc', async () => {
+    mocked.rpc.mockResolvedValue({ data: 1, error: null } as never)
+    const { ordersApi } = await import('@/api/orders')
+    await ordersApi.remove('o1')
+    expect(mocked.rpc).toHaveBeenCalledWith('delete_orders', { p_ids: ['o1'] })
+  })
+
+  it('skips the request when nothing is selected', async () => {
+    const { ordersApi } = await import('@/api/orders')
+    await ordersApi.removeMany([])
+    expect(mocked.rpc).not.toHaveBeenCalled()
+  })
+})
+
+describe('currenciesApi', () => {
+  it('lists the company currencies by code', async () => {
+    const chain = builder({ data: [{ id: 'cur1', code: 'EUR' }], error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { currenciesApi } = await import('@/api/currencies')
+    const result = await currenciesApi.list('c1')
+    expect(mocked.from).toHaveBeenCalledWith('currencies')
+    expect(chain.eq).toHaveBeenCalledWith('company_id', 'c1')
+    expect(result).toEqual([{ id: 'cur1', code: 'EUR' }])
   })
 })
 

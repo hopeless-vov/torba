@@ -86,8 +86,13 @@ export function useCatalog() {
   }
 
   async function removeProduct(id: string) {
+    await removeProducts([id])
+  }
+
+  async function removeProducts(ids: string[]) {
+    if (ids.length === 0) return
     try {
-      await productsApi.remove(id)
+      await productsApi.removeMany(ids)
       await reload()
       toast.success(t('toasts.deleted'))
     } catch {
@@ -105,6 +110,7 @@ export function useCatalog() {
     updateProduct,
     toggleActive,
     removeProduct,
+    removeProducts,
     reload,
   }
 }

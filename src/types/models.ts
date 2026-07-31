@@ -51,7 +51,7 @@ export interface CartLine {
   brand: Brand | null
   batch: Batch | null // set when selling from a specific warehouse batch
   qty: number
-  maxQty: number // available stock — qty is clamped to this
+  stockQty: number // what is actually on hand — qty above this ships as a backorder
   unitPrice: number // sale price / unit, display currency
   unitCost: number // purchase cost / unit, display currency
 }

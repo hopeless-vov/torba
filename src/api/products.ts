@@ -41,6 +41,12 @@ export const productsApi = {
     if (error) throw error
   },
 
+  removeMany: async (ids: string[]): Promise<void> => {
+    if (ids.length === 0) return
+    const { error } = await supabase.from('products').delete().in('id', ids)
+    if (error) throw error
+  },
+
   // Bulk insert/update from a CSV import. Conflicts on (company_id, sku)
   // update the existing row so re-importing a refreshed price list is safe.
   bulkUpsert: async (products: NewProduct[]): Promise<Product[]> => {

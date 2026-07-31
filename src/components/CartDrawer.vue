@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 import Drawer from '@/components/ui/Drawer.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -12,13 +14,26 @@ import { useCurrency } from '@/composables/use-currency'
 import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
+import type { CartLine } from '@/types/models'
 import { batchStatus } from '@/utils/batch-status'
-import { formatPercent } from '@/utils/format'
+import { formatDate, formatPercent } from '@/utils/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const { cart, totals, discountPct, linePrice, submitting, checkout, addProduct, addFromBatch } = useCart()
+const {
+  cart,
+  totals,
+  discountPct,
+  linePrice,
+  submitting,
+  checkout,
+  batchesFor,
+  shortfall,
+  addProduct,
+  addFromBatch,
+  selectBatch,
+} = useCart()
 const { format } = useCurrency()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
@@ -63,6 +78,18 @@ const catalogResults = computed(() =>
 const stockResults = computed(() =>
   inStockBatches.value.filter((b) => matches(`${b.product?.name ?? ''} ${b.product?.sku ?? ''} ${b.batch_number ?? ''}`)).slice(0, 40),
 )
+
+// ── which expiry ships ──
+// Same product, two deliveries: the line names the batch it draws from,
+// and this list lets the user hand over the other one instead.
+function batchOptions(line: CartLine) {
+  return batchesFor(line.product.id)
+    .filter((b) => b.remaining_qty > 0 || b.id === line.batch?.id)
+    .map((b) => ({
+      value: b.id,
+      label: `${formatDate(b.expiry_date)} · ${b.remaining_qty} ${t('common.pcs')}`,
+    }))
+}
 </script>
 
 <template>
@@ -70,7 +97,7 @@ const stockResults = computed(() =>
     v-model:open="open"
     :title="t('cart.title')"
     :subtitle="t('cart.itemsCount', { count: cart.count })"
-    width="28rem"
+    width="30rem"
   >
     <!-- Picker -->
     <div class="mb-4 flex flex-col gap-2">
@@ -100,8 +127,15 @@ const stockResults = computed(() =>
                 {{ p.sku }}
               </p>
             </div>
-            <span class="text-xs text-faint tabular-nums">
-              {{ `${inventory.stockByProduct.get(p.id) ?? 0} ${t('common.pcs')}` }}
+            <span
+              class="text-xs tabular-nums"
+              :class="(inventory.stockByProduct.get(p.id) ?? 0) > 0 ? 'text-faint' : 'text-warn'"
+            >
+              {{
+                (inventory.stockByProduct.get(p.id) ?? 0) > 0
+                  ? `${inventory.stockByProduct.get(p.id)} ${t('common.pcs')}`
+                  : t('cart.underOrder')
+              }}
             </span>
             <button
               type="button"
@@ -126,7 +160,7 @@ const stockResults = computed(() =>
                 {{ b.product?.name }}
               </p>
               <p class="font-mono text-xs text-faint">
-                {{ `${b.batch_number ?? '—'} · ${b.remaining_qty} ${t('common.pcs')}` }}
+                {{ `${formatDate(b.expiry_date)} · ${b.remaining_qty} ${t('common.pcs')}` }}
               </p>
             </div>
             <span
@@ -167,53 +201,87 @@ const stockResults = computed(() =>
       <li
         v-for="line in cart.lines"
         :key="line.key"
-        class="flex items-center gap-3 rounded-lg border border-line-soft bg-surface px-3 py-2.5"
+        class="flex flex-col gap-2 rounded-lg border border-line-soft bg-surface px-3 py-2.5"
       >
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-sm font-medium text-fg">
-            {{ line.product.name }}
-          </p>
-          <p class="font-mono text-xs text-faint">
-            {{ line.product.sku }}
-          </p>
-        </div>
-        <NumberInput
-          :model-value="line.qty"
-          size="sm"
-          :min="1"
-          :max="line.maxQty"
-          align="right"
-          class="w-16"
-          @update:model-value="cart.setQty(line.key, $event ?? 1)"
-        />
-        <span class="w-24 text-right font-mono text-sm text-fg tabular-nums">
-          {{ format(linePrice(line) * line.qty) }}
-        </span>
-        <button
-          type="button"
-          class="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
-          @click="cart.remove(line.key)"
-        >
-          <Icon
-            icon="fa-solid fa-xmark"
+        <div class="flex items-center gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium text-fg">
+              {{ line.product.name }}
+            </p>
+            <p class="font-mono text-xs text-faint">
+              {{ line.product.sku }}
+            </p>
+          </div>
+          <NumberInput
+            :model-value="line.qty"
             size="sm"
+            :min="1"
+            align="right"
+            class="w-16"
+            @update:model-value="cart.setQty(line.key, $event ?? 1)"
           />
-        </button>
+          <span class="w-24 text-right font-mono text-sm text-fg tabular-nums">
+            {{ format(linePrice(line) * line.qty) }}
+          </span>
+          <button
+            type="button"
+            class="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
+            @click="cart.remove(line.key)"
+          >
+            <Icon
+              icon="fa-solid fa-xmark"
+              size="sm"
+            />
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <Icon
+            icon="fa-solid fa-calendar-days"
+            size="xs"
+            class="shrink-0 text-faint"
+          />
+          <Select
+            v-if="batchOptions(line).length > 0"
+            :model-value="line.batch?.id ?? ''"
+            :options="batchOptions(line)"
+            size="sm"
+            class="min-w-0 flex-1"
+            @update:model-value="selectBatch(line, $event ?? '')"
+          />
+          <span
+            v-else
+            class="flex-1 text-xs text-faint"
+          >{{ t('cart.noBatches') }}</span>
+          <Badge
+            v-if="shortfall(line) > 0"
+            tone="warn"
+          >
+            {{ t('cart.backorder', { count: shortfall(line) }) }}
+          </Badge>
+        </div>
       </li>
     </ul>
 
     <template #footer>
       <div class="flex flex-col gap-3">
-        <Select
+        <Combobox
           v-model="clientId"
           :label="t('cart.client')"
           :placeholder="t('cart.chooseClient')"
+          :search-placeholder="t('clients.searchPlaceholder')"
+          :empty-text="t('common.noMatches')"
           :options="clientOptions"
+          clearable
         />
-        <Select
+        <Combobox
           v-model="paymentMethod"
           :label="t('cart.payment')"
+          :placeholder="t('orders.edit.noPayment')"
+          :search-placeholder="t('common.search')"
+          :empty-text="t('common.noMatches')"
           :options="paymentOptions"
+          clearable
         />
 
         <p class="text-xs text-faint">
@@ -257,6 +325,18 @@ const stockResults = computed(() =>
             </dd>
           </div>
         </dl>
+
+        <p
+          v-if="cart.hasBackorder"
+          class="flex items-start gap-2 rounded-lg bg-warn-soft px-3 py-2 text-xs leading-relaxed text-warn"
+        >
+          <Icon
+            icon="fa-solid fa-triangle-exclamation"
+            size="xs"
+            class="mt-0.5 shrink-0"
+          />
+          {{ t('cart.backorderHint') }}
+        </p>
 
         <Button
           variant="primary"

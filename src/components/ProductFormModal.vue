@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import Button from '@/components/ui/Button.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 import Modal from '@/components/ui/Modal.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
-import Select from '@/components/ui/Select.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useReferenceStore } from '@/stores/reference'
 import type { NewProduct, Product } from '@/types/database'
@@ -97,19 +97,24 @@ function submit() {
         class="col-span-2"
         :label="t('catalog.form.name')"
       />
-      <Select
+      <Combobox
         v-model="form.brand_id"
         class="col-span-1"
         :label="t('catalog.form.brand')"
         :placeholder="t('csv.chooseBrand')"
+        :search-placeholder="t('common.search')"
+        :empty-text="t('common.noMatches')"
         :options="brandOptions"
       />
-      <Select
+      <Combobox
         v-model="form.category_id"
         class="col-span-1"
         :label="t('catalog.form.category')"
-        :placeholder="t('catalog.allCategories')"
+        :placeholder="t('catalog.chooseCategory')"
+        :search-placeholder="t('common.search')"
+        :empty-text="t('common.noMatches')"
         :options="categoryOptions"
+        clearable
       />
       <NumberInput
         v-model="priceModel"

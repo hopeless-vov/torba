@@ -56,6 +56,17 @@ export interface PaymentMethod {
   created_at: string
 }
 
+// An extra display currency the owner added. USD (the stored base) and
+// UAH (derived per brand) are built in and never live here.
+export interface Currency {
+  id: string
+  company_id: string
+  code: string
+  symbol: string
+  usd_rate: number // units of this currency per 1 USD
+  created_at: string
+}
+
 export interface Product {
   id: string
   company_id: string
@@ -104,6 +115,7 @@ export interface Order {
   payment_method: string | null
   currency: string
   tracking_number: string | null
+  delivery_address: string | null // where this parcel goes; prefilled from the client
   delivery_cost: number
   packaging_cost: number
   note: string | null
@@ -131,6 +143,9 @@ export type NewBrand = Pick<Brand, 'company_id' | 'name' | 'usd_rate'>
 export type NewCategory = Pick<Category, 'company_id' | 'name'>
 export type NewPaymentMethod = Pick<PaymentMethod, 'company_id' | 'name'>
 export type NewClient = Omit<Client, 'id' | 'created_at'>
+
+export type NewCurrency = Pick<Currency, 'company_id' | 'code' | 'symbol' | 'usd_rate'>
+export type CurrencyPatch = Partial<Pick<Currency, 'code' | 'symbol' | 'usd_rate'>>
 
 export type NewProduct = Omit<Product, 'id' | 'created_at' | 'updated_at'>
 export type ProductPatch = Partial<Omit<Product, 'id' | 'company_id' | 'created_at' | 'updated_at'>>

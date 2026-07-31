@@ -2,6 +2,7 @@
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useOrdersStore } from '@/stores/orders'
@@ -12,6 +13,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ client?: ClientView | null }>()
+
+const emit = defineEmits<{ openOrder: [orderId: string] }>()
 
 const { t } = useI18n()
 const { format } = useCurrency()
@@ -106,7 +109,9 @@ const history = computed(() => {
           <li
             v-for="order in history"
             :key="order.id"
-            class="flex items-center justify-between gap-3 px-3 py-2.5"
+            class="flex cursor-pointer items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-row-hover"
+            :title="t('clients.openOrder')"
+            @click="emit('openOrder', order.id)"
           >
             <div class="flex flex-col">
               <span class="font-mono text-sm text-fg">{{ `#${order.number}` }}</span>
@@ -114,6 +119,11 @@ const history = computed(() => {
             </div>
             <OrderStatusBadge :status="order.status" />
             <span class="font-mono text-sm text-fg tabular-nums">{{ format(order.total) }}</span>
+            <Icon
+              icon="fa-solid fa-chevron-right"
+              size="xs"
+              class="text-faint"
+            />
           </li>
         </ul>
         <p

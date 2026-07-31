@@ -1,6 +1,7 @@
 import { ordersApi } from '@/api/orders'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
+import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useUiStore } from '@/stores/ui'
 import type { OrderPatch, OrderStatus } from '@/types/database'
@@ -11,6 +12,7 @@ import { useI18n } from 'vue-i18n'
 
 export function useOrders() {
   const store = useOrdersStore()
+  const inventory = useInventoryStore()
   const ui = useUiStore()
   const auth = useAuthStore()
   const toast = useToast()
@@ -42,13 +44,27 @@ export function useOrders() {
     }),
   )
 
+  // Searching an order means "the number, or who/where it went" — a
+  // leading '#' is tolerated because that is how the number is displayed.
   const filtered = computed(() => {
-    const q = ui.search.trim().toLowerCase()
+    const q = ui.search.trim().toLowerCase().replace(/^#/, '')
     return views.value.filter((o) => {
       if (statusFilter.value !== 'all' && o.status !== statusFilter.value) return false
       if (paymentFilter.value !== 'all' && o.payment_method !== paymentFilter.value) return false
       if (clientFilter.value !== 'all' && o.client_id !== clientFilter.value) return false
-      if (q && !`${o.number} ${o.client?.name ?? ''}`.toLowerCase().includes(q)) return false
+      if (q) {
+        const haystack = [
+          o.number,
+          o.client?.name,
+          o.client?.phone,
+          o.tracking_number,
+          o.delivery_address,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
       return true
     })
   })
@@ -86,5 +102,36 @@ export function useOrders() {
     }
   }
 
-  return { filtered, kpis, statusFilter, paymentFilter, clientFilter, setStatus, updateOrder }
+  async function removeOrder(id: string) {
+    await removeOrders([id])
+  }
+
+  // Deleting returns the goods to their batches (delete_orders in
+  // migration 0004), so the warehouse has to be reloaded too.
+  async function removeOrders(ids: string[]) {
+    if (ids.length === 0) return
+    try {
+      await ordersApi.removeMany(ids)
+      if (auth.companyId) {
+        await Promise.all([store.load(auth.companyId), inventory.load(auth.companyId)])
+      }
+      toast.success(t('toasts.deleted'))
+    } catch (e) {
+      toast.error(t('errors.delete'))
+      throw e
+    }
+  }
+
+  return {
+    views,
+    filtered,
+    kpis,
+    statusFilter,
+    paymentFilter,
+    clientFilter,
+    setStatus,
+    updateOrder,
+    removeOrder,
+    removeOrders,
+  }
 }

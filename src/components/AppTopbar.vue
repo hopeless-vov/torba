@@ -1,38 +1,29 @@
 <script setup lang="ts">
+import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Tabs from '@/components/ui/Tabs.vue'
-import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useLocale } from '@/composables/use-locale'
 import { useTheme } from '@/composables/use-theme'
 import { useCartStore } from '@/stores/cart'
-import { useUiStore } from '@/stores/ui'
 import { formatDate } from '@/utils/format'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
+// Search lives in each page's own toolbar, next to that page's filters —
+// a single global box could not say what it was searching.
 const { t } = useI18n()
 const route = useRoute()
-const ui = useUiStore()
 const cart = useCartStore()
 const { isDark, toggle } = useTheme()
-const { code, setCurrency } = useCurrency()
+const { code, symbol, options, setCurrency } = useCurrency()
 const { locale, setLocale } = useLocale()
 
-const search = computed({
-  get: () => ui.search,
-  set: (v: string) => ui.setSearch(v),
-})
-
-const currency = computed({
-  get: () => code.value,
-  set: (v: string) => setCurrency(v),
-})
-const currencyTabs = [
-  { value: 'UAH', label: '₴' },
-  { value: 'USD', label: '$' },
-]
+// Built-ins plus whatever the owner added in Profile → Currencies.
+const currencyItems = computed(() =>
+  options.value.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.code}` })),
+)
 
 const language = computed({
   get: () => locale.value,
@@ -52,29 +43,33 @@ const today = formatDate(new Date())
   <header
     class="sticky top-0 z-20 flex items-center gap-4 border-b border-line bg-panel/80 px-6 py-3 backdrop-blur"
   >
-    <div class="flex shrink-0 items-baseline gap-2">
+    <div class="flex min-w-0 flex-1 items-baseline gap-2">
       <h1 class="text-base font-semibold text-fg">
         {{ title }}
       </h1>
-      <span class="text-sm text-faint">{{ `/ ${subtitle}` }}</span>
-    </div>
-
-    <div class="mx-auto w-full max-w-xl">
-      <TextInput
-        v-model="search"
-        type="search"
-        icon-left="fa-solid fa-magnifying-glass"
-        :placeholder="t('nav.searchPlaceholder')"
-      />
+      <span class="truncate text-sm text-faint">{{ `/ ${subtitle}` }}</span>
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
-      <Tabs
-        v-model="currency"
-        :tabs="currencyTabs"
-        size="sm"
-        class="hidden lg:inline-flex"
-      />
+      <DropdownMenu
+        :items="currencyItems"
+        @select="setCurrency"
+      >
+        <button
+          type="button"
+          :title="t('nav.currency')"
+          class="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-fg transition-colors hover:bg-hover"
+        >
+          <span class="font-mono">{{ symbol }}</span>
+          <span class="text-xs text-faint">{{ code }}</span>
+          <Icon
+            icon="fa-solid fa-chevron-down"
+            size="xs"
+            class="text-faint"
+          />
+        </button>
+      </DropdownMenu>
+
       <Tabs
         v-model="language"
         :tabs="languageTabs"

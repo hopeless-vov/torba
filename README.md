@@ -42,12 +42,15 @@ Both come from your Supabase project → **Project Settings → API**.
 ### Database schema
 
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
-trigger, a self-heal bootstrap RPC, the atomic `create_order` function, and a
-per-client discount) lives in [`supabase/migrations/`](supabase/migrations).
+trigger, a self-heal bootstrap RPC, the atomic `create_order` / `delete_orders`
+functions, per-client discounts, per-order delivery addresses and user-defined
+currencies) lives in [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
 - **Supabase CLI:** `supabase db push`, or
-- **Dashboard:** run `0001_init.sql`, then `0002_bootstrap_and_orders.sql`, then `0003_client_discount.sql` in the SQL Editor.
+- **Dashboard:** run each file in the SQL Editor —
+  `0001_init.sql`, `0002_bootstrap_and_orders.sql`, `0003_client_discount.sql`,
+  `0004_addresses_currencies_backorder.sql`.
 
 On first sign-up a company + owner profile are created automatically, along with
 default categories and payment methods. If the sign-up trigger ever fails to run,
@@ -129,12 +132,17 @@ and exposed as Tailwind utilities (`bg-surface`, `text-muted`, `border-line`,
 
 USD is the **canonical** currency: product prices are stored in USD. Each **brand**
 carries its own USD→UAH exchange rate. The **display currency** (₴ by default,
-switchable via the top-bar ₴/$ toggle) is resolved at render time by
+picked from the top-bar currency menu) is resolved at render time by
 [`use-currency`](src/composables/use-currency.ts) — so updating a brand's rate
 reprices its whole catalog, and the platform can switch display currency without
-touching stored data. The top bar also carries a UK/EN language toggle. Orders
-snapshot the actually-transacted amounts, and a client's agreed discount is applied
-to sale prices in the cart.
+touching stored data.
+
+Two currencies are built in: **USD** (the stored base) and **UAH** (converted
+through each brand's own rate). Any other currency is **added by the owner** in
+**Profile → Currencies** with a flat company-wide rate (units per 1 USD) — so EUR,
+PLN or anything else can be displayed without touching the schema. The top bar also
+carries a UK/EN language toggle. Orders snapshot the actually-transacted amounts,
+and a client's agreed discount is applied to sale prices in the cart.
 
 ---
 
@@ -150,16 +158,36 @@ in the file are ignored — prices are recomputed from the brand rate.
 
 ---
 
+## Warehouse
+
+A **batch** is one delivery of one product, with its own expiry date. Three
+quantities describe it: **Отримано** (how many arrived), **Залишок** (how many are
+still on the shelf) and **Продано** (the difference — what already went to clients).
+Batch numbers are **generated** from the product's SKU (`FRY-500-01`, `FRY-500-02`;
+see [`utils/batch-number`](src/utils/batch-number.ts)), so nothing has to be typed.
+
+The warehouse has two views. **За партіями** lists every delivery separately.
+**За товаром** collapses them into one row per product with the total stock, which
+expands to show how much sits under each expiry date — that is how you see both
+"how much do I have" and "which of it expires when".
+
 ## Orders & stock
 
 Placing an order goes through the `create_order` Postgres function (see
-`supabase/migrations/0002`), which assigns the order number, inserts the line
-items, and decrements warehouse stock in **one transaction** with row locks — a
-batch-tied line draws from that batch, a catalog line draws FIFO across the
-product's batches by expiry. Overselling is impossible: the function raises
-`INSUFFICIENT_STOCK` and the whole order rolls back. The cart also caps each
-line's quantity to what's in stock on the client, and every action (save, delete,
-import, order placed, rate updated, out-of-stock) surfaces a **toast**.
+`supabase/migrations/0004`), which assigns the order number, inserts the line items,
+and draws down warehouse stock in **one transaction** with row locks — a batch-tied
+line draws from that batch, a catalog line draws FIFO across the product's batches
+by expiry.
+
+Anything in the catalog can be sold, in stock or not. Stock can never go negative:
+a line that exceeds what is on hand ships short and the remainder stays a
+**backorder**, which the cart flags per line before checkout. Each cart line names
+the batch (and therefore the expiry date) it draws from and can be switched to
+another one, so two deliveries of the same product are never confused.
+
+Deleting an order goes through `delete_orders`, which **returns the goods to their
+batches** before removing it (capped at what each batch was delivered with). Every
+action — save, delete, import, order placed, rate updated — surfaces a **toast**.
 
 ## Project Structure
 
@@ -168,22 +196,24 @@ src/
   api/                   → Supabase data layer (one file per resource)
     supabase.ts          → typed client (reads VITE_SUPABASE_* env)
     auth.ts, profile.ts, brands.ts, categories.ts, payment-methods.ts,
-    products.ts, batches.ts, clients.ts, orders.ts
+    currencies.ts, products.ts, batches.ts, clients.ts, orders.ts
   assets/                → static assets
   components/
     ui/                  → presentational kit (props in, events out — no store/api/composable access)
     (root)               → smart components that wire ui/ to stores/composables
   composables/           → all app logic (use-auth, use-catalog, use-csv-import,
-                           use-currency, use-cart, use-orders, use-warehouse,
-                           use-clients, use-rates, use-personalization, use-dashboard,
-                           use-theme, use-locale, use-toast)
+                           use-currency, use-currencies, use-cart, use-orders,
+                           use-warehouse, use-clients, use-rates, use-selection,
+                           use-personalization, use-dashboard, use-theme,
+                           use-locale, use-toast)
   locales/               → uk.json (default) + en.json
   router/                → routes + auth guard
   stores/                → Pinia state (auth, reference, inventory, clients,
                            orders, cart, currency, ui, toast)
   styles/main.css        → Tailwind + theme tokens
   types/                 → database (row shapes) + models (derived views)
-  utils/                 → pure helpers (pricing, batch-status, orders, format, csv, storage)
+  utils/                 → pure helpers (pricing, batch-status, batch-number, orders,
+                           format, csv, storage)
   views/                 → one component per route
 supabase/migrations/     → SQL schema + RLS
 tests/
@@ -209,17 +239,41 @@ See [`CLAUDE.md`](CLAUDE.md) for the full list. In short:
 
 Reusable presentational components in [`src/components/ui/`](src/components/ui),
 composed across every screen: `Button`, `TextInput`, `NumberInput`, `Select`,
-`Checkbox`, `Tabs`, `Badge`, `Tag`, `Card`, `StatCard`, `DataTable`, `Modal`,
-`Drawer`, `DropdownMenu`, `Avatar`, `EmptyState`, `Spinner`, `Toast`, `Icon`.
+`Combobox`, `Checkbox`, `Tabs`, `Badge`, `Tag`, `Card`, `StatCard`, `DataTable`,
+`Modal`, `ConfirmDialog`, `Drawer`, `DropdownMenu`, `Avatar`, `EmptyState`,
+`Spinner`, `Toast`, `Icon`.
+
+Two of them carry most of the interaction weight:
+
+- **`Combobox`** — a `Select` with a filter box and keyboard navigation, and the same
+  `v-model` contract, so the two are interchangeable. Every dropdown fed by
+  user-defined data (clients, brands, categories, products, payment methods) uses it;
+  plain `Select` is left for short fixed lists like order status.
+- **`DataTable`** — columns in, rows in, one slot per cell. `selectable` adds a
+  leading checkbox column with a select-all header (wired to
+  [`use-selection`](src/composables/use-selection.ts) and a bulk delete bar),
+  `expandable` adds a chevron that reveals an `#expanded` row, and a column's
+  `hint` renders an info tooltip explaining what it means.
+
+Search is **per page**, in each toolbar next to that page's filters, with a
+placeholder naming what it matches (orders, for instance, search by number, client,
+waybill or address). There is deliberately no single global search box — it could
+never say what it was searching. The query is held in the `ui` store and cleared on
+navigation.
 
 ---
 
 ## Testing
 
 Unit tests live in `tests/unit/` and cover the pure utilities (pricing, batch
-status, order totals, formatting, **CSV parsing**), Pinia stores (cart, currency),
-the composable logic (`useCatalog`), and the API layer (mocked Supabase client).
-A Playwright smoke test in `tests/e2e/` verifies the auth gate.
+status and FIFO ordering, batch numbering, order totals, formatting, **CSV
+parsing**), Pinia stores (cart — including backorders and switching a line's
+batch — and currency), the composable logic (`useCatalog`, `useWarehouse`
+grouping, `useCurrency` conversion, `useSelection`), and the API layer (mocked
+Supabase client). `views.test.ts` mounts Catalog, Warehouse, Orders and the cart
+drawer against seeded stores, so a broken template or missing slot fails in CI
+rather than in the browser. A Playwright smoke test in `tests/e2e/` verifies the
+auth gate.
 
 ```bash
 npm run test:unit:run   # unit

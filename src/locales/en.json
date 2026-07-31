@@ -18,6 +18,9 @@
     "close": "Close",
     "confirm": "Confirm",
     "search": "Search",
+    "noMatches": "Nothing found",
+    "deleteSelected": "Delete selected",
+    "clearSelection": "Clear selection",
     "none": "none",
     "pcs": "pcs",
     "perUsd": "per 1 USD",
@@ -32,8 +35,8 @@
     "rates": "Exchange rates",
     "profile": "Profile",
     "logout": "Log out",
-    "searchPlaceholder": "Search stock and catalog — e.g. histolab sun block",
     "cart": "Cart",
+    "currency": "Display currency",
     "theme": "Theme"
   },
   "auth": {
@@ -97,6 +100,7 @@
     "searchPlaceholder": "Search by name or article",
     "allBrands": "All brands",
     "allCategories": "All categories",
+    "chooseCategory": "Choose a category",
     "discount": "Discount",
     "inactive": "Inactive",
     "importCsv": "Import CSV",
@@ -114,6 +118,8 @@
     "addToCart": "Add to cart",
     "empty": "Catalog is empty",
     "emptyHint": "Import a CSV or add your first product.",
+    "deleteTitle": "Delete products?",
+    "deleteMessage": "{count} products will be deleted, along with their warehouse batches. This cannot be undone.",
     "menu": {
       "edit": "Edit",
       "active": "Active",
@@ -159,17 +165,36 @@
     "subtitle": "Batches and expiry dates",
     "searchPlaceholder": "Search by product or batch №",
     "newBatch": "New batch",
+    "editBatch": "Edit batch",
+    "chooseProduct": "Choose a catalog product",
+    "batchAuto": "generated automatically",
+    "view": {
+      "batches": "By batch",
+      "products": "By product"
+    },
     "cols": {
       "product": "Product",
       "batch": "Batch №",
-      "delivery": "Received",
+      "delivery": "Received on",
       "expiry": "Expiry",
-      "remaining": "Left / received",
+      "remaining": "Left",
+      "received": "Received",
+      "sold": "Sold",
+      "batches": "Batches",
+      "totalRemaining": "Total in stock",
+      "nearestExpiry": "Nearest expiry",
       "status": "Status"
     },
-    "batchOf": "batch {index} of {total}",
+    "hint": {
+      "remaining": "How many units of this batch are still on the shelf",
+      "received": "How many units arrived in this delivery",
+      "sold": "Received minus left — how many already went to clients",
+      "totalRemaining": "Sum of what is left across every batch of this product"
+    },
     "empty": "Warehouse is empty",
-    "emptyHint": "Add a batch to a catalog product."
+    "emptyHint": "Add a batch to a catalog product.",
+    "deleteTitle": "Delete batches?",
+    "deleteMessage": "{count} batches will be deleted and their stock will disappear. This cannot be undone."
   },
   "clients": {
     "subtitle": "Cards and contacts",
@@ -177,7 +202,6 @@
     "newClient": "New client",
     "orders": "Orders",
     "spent": "Total spent",
-    "card": "Card",
     "empty": "No clients yet",
     "emptyHint": "Add your first client.",
     "form": {
@@ -193,11 +217,12 @@
     "discountBadge": "{pct}% off",
     "cardTitle": "Client card",
     "history": "Order history",
+    "openOrder": "Open the order",
     "noOrders": "No orders yet"
   },
   "orders": {
     "subtitle": "History and profit",
-    "searchPlaceholder": "Search by № or client",
+    "searchPlaceholder": "Search by order №, client, waybill or address",
     "kpi": {
       "revenue": "Revenue",
       "revenueHint": "from orders",
@@ -210,12 +235,13 @@
     },
     "anyPayment": "Any payment",
     "allClients": "All clients",
-    "expensesAll": "Expenses: all",
     "count": "{count} orders",
+    "changeStatus": "Change status",
     "cols": {
       "number": "№ / Date",
       "client": "Client",
-      "items": "Items",
+      "address": "Ships to",
+      "tracking": "Waybill",
       "sale": "Sale",
       "cost": "Cost",
       "profit": "Profit",
@@ -223,18 +249,33 @@
       "payment": "Payment",
       "status": "Status"
     },
-    "expensesMissing": "expenses not entered yet",
+    "menu": {
+      "details": "Details"
+    },
     "empty": "No orders yet",
+    "deleteTitle": "Delete orders?",
+    "deleteMessage": "{count} orders will be deleted. Goods taken from batches go back to the warehouse. This cannot be undone.",
     "edit": {
       "title": "Order #{number}",
       "status": "Status",
       "payment": "Payment",
       "client": "Client",
       "tracking": "Waybill",
+      "address": "Ships to",
+      "addressPlaceholder": "City, branch or parcel locker",
       "delivery": "Delivery",
       "packaging": "Packaging",
       "note": "Note",
       "noPayment": "— no payment —"
+    },
+    "details": {
+      "client": "Client",
+      "phone": "Phone",
+      "address": "Ships to",
+      "note": "Note",
+      "goods": "Goods sale",
+      "unitPrice": "Unit price",
+      "lineTotal": "Total"
     }
   },
   "rates": {
@@ -266,7 +307,8 @@
     "tabs": {
       "brands": "Brands",
       "categories": "Categories",
-      "payment": "Payment"
+      "payment": "Payment",
+      "currencies": "Currencies"
     },
     "addBrand": "Add brand",
     "addCategory": "Add category",
@@ -274,7 +316,22 @@
     "brandPlaceholder": "Brand name, e.g. Colorescience",
     "categoryPlaceholder": "Category name, e.g. Serums",
     "paymentPlaceholder": "Payment method, e.g. Cash",
-    "brandMeta": "{products} products · {categories} categories"
+    "brandMeta": "{products} products · {categories} categories",
+    "currency": {
+      "hint": "Prices are stored in USD. Add a currency to also see amounts in it — you set the rate yourself, as units per 1 USD.",
+      "code": "Code",
+      "codePlaceholder": "EUR",
+      "symbol": "Symbol",
+      "symbolPlaceholder": "€",
+      "rate": "Rate per 1 USD",
+      "add": "Add currency",
+      "builtIn": "built in",
+      "baseHint": "base currency — prices are stored in it",
+      "brandRateHint": "the rate is kept per brand",
+      "errorCode": "A currency code is three letters, e.g. EUR.",
+      "errorBuiltIn": "This currency is already built in.",
+      "errorExists": "This currency has already been added."
+    }
   },
   "cart": {
     "title": "Cart",
@@ -291,11 +348,13 @@
     "expensesLater": "Add delivery and packaging later — after creating the waybill, when editing the order.",
     "sale": "Sale",
     "goodsCost": "Goods cost",
-    "deliveryPack": "Delivery + packaging",
-    "afterTtn": "after waybill",
     "profit": "Profit before expenses",
     "checkout": "Place order",
-    "qty": "Qty"
+    "qty": "Qty",
+    "underOrder": "on backorder",
+    "noBatches": "no batches in stock",
+    "backorder": "{count} short",
+    "backorderHint": "Some units are not in stock — the order still goes through, and the missing units stay on backorder."
   },
   "status": {
     "batch": {
@@ -318,8 +377,7 @@
     "deleted": "Deleted",
     "orderPlaced": "Order placed",
     "rateUpdated": "Rate updated",
-    "statusUpdated": "Status updated",
-    "outOfStock": "Not enough in stock: {name}"
+    "statusUpdated": "Status updated"
   },
   "errors": {
     "load": "Could not load data.",
