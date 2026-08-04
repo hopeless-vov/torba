@@ -2,7 +2,7 @@
 
 > **torba** (торба) — Ukrainian for *bag* or *sack*. Like the rest of my projects, it carries a Ukrainian name — a small way to bring a piece of my culture along for the ride.
 
-An internal inventory & sales tracker for a small cosmetics distributor: catalog with CSV price-list import, warehouse batches with expiry tracking, clients, orders with live profit/margin, and per-brand USD→UAH exchange rates. Built with Vue 3, TypeScript, Tailwind CSS v4 and Supabase.
+An internal inventory & sales tracker for a small cosmetics distributor: catalog with CSV price-list import, warehouse batches with expiry tracking, clients (add / edit / remove), orders with live profit/margin, and per-brand USD→UAH exchange rates. Built with Vue 3, TypeScript, Tailwind CSS v4 and Supabase.
 
 Dark/light, Supabase-styled, Ukrainian-first (uk) with English (en) available.
 

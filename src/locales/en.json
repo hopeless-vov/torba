@@ -204,6 +204,8 @@
     "spent": "Total spent",
     "empty": "No clients yet",
     "emptyHint": "Add your first client.",
+    "deleteTitle": "Delete client?",
+    "deleteMessage": "“{name}” will be deleted. Their past orders are kept but lose the link to this client. This cannot be undone.",
     "form": {
       "titleNew": "New client",
       "titleEdit": "Edit client",

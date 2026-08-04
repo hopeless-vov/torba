@@ -4,6 +4,7 @@ import ClientModal from '@/components/ClientModal.vue'
 import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import TextInput from '@/components/ui/TextInput.vue'
@@ -18,7 +19,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const { format, formatIn } = useCurrency()
-const { filtered, createClient, updateClient } = useClients()
+const { filtered, createClient, updateClient, removeClient } = useClients()
 
 // Spend is a snapshot sum — show it in the client's own order currency
 // when they share one, else fall back to the display currency.
@@ -38,6 +39,28 @@ const activeCard = ref<ClientView | null>(null)
 const orderOpen = ref(false)
 const activeOrder = ref<OrderView | null>(null)
 
+const pendingDelete = ref<ClientView | null>(null)
+const confirmOpen = ref(false)
+const deleting = ref(false)
+
+function askDelete(client: ClientView) {
+  pendingDelete.value = client
+  cardOpen.value = false
+  confirmOpen.value = true
+}
+
+async function confirmDelete() {
+  if (!pendingDelete.value) return
+  deleting.value = true
+  try {
+    await removeClient(pendingDelete.value.id)
+    confirmOpen.value = false
+    pendingDelete.value = null
+  } finally {
+    deleting.value = false
+  }
+}
+
 const search = computed({
   get: () => ui.search,
   set: (v: string) => ui.setSearch(v),
@@ -56,6 +79,7 @@ function openNew() {
 
 function openEdit(client: ClientView) {
   editing.value = client
+  cardOpen.value = false
   modalOpen.value = true
 }
 
@@ -155,10 +179,22 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
             <button
               type="button"
               class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-fg"
+              :title="t('common.edit')"
               @click="openEdit(client)"
             >
               <Icon
                 icon="fa-solid fa-pen"
+                size="xs"
+              />
+            </button>
+            <button
+              type="button"
+              class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-danger"
+              :title="t('common.delete')"
+              @click="askDelete(client)"
+            >
+              <Icon
+                icon="fa-solid fa-trash"
                 size="xs"
               />
             </button>
@@ -203,11 +239,22 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
       v-model:open="cardOpen"
       :client="activeCard"
       @open-order="openOrder"
+      @edit="openEdit"
+      @delete="askDelete"
     />
     <OrderDetailsModal
       v-model:open="orderOpen"
       :order="activeOrder"
       :actions="false"
+    />
+    <ConfirmDialog
+      v-model:open="confirmOpen"
+      :title="t('clients.deleteTitle')"
+      :message="t('clients.deleteMessage', { name: pendingDelete?.name ?? '' })"
+      :confirm-label="t('common.delete')"
+      :cancel-label="t('common.cancel')"
+      :loading="deleting"
+      @confirm="confirmDelete"
     />
   </div>
 </template>

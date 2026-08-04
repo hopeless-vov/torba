@@ -10,6 +10,7 @@ import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
 import type { Brand, Client, OrderItem } from '@/types/database'
 import CatalogView from '@/views/CatalogView.vue'
+import ClientsView from '@/views/ClientsView.vue'
 import OrdersView from '@/views/OrdersView.vue'
 import WarehouseView from '@/views/WarehouseView.vue'
 import { mount } from '@vue/test-utils'
@@ -208,6 +209,18 @@ describe('OrdersView', () => {
     // The product-info modal resolves the live product: brand + stock.
     expect(document.body.textContent).toContain('Fairy')
     expect(document.body.textContent).toContain(uk.catalog.cols.stock)
+  })
+})
+
+describe('ClientsView', () => {
+  it('asks for confirmation before removing a client', async () => {
+    const wrapper = render(ClientsView)
+    const del = wrapper.findAll('button').find((b) => b.attributes('title') === uk.common.delete)
+    expect(del).toBeTruthy()
+    await del?.trigger('click')
+    // The confirm dialog teleports to body with the client's name.
+    expect(document.body.textContent).toContain(uk.clients.deleteTitle)
+    expect(document.body.textContent).toContain('Олег Петренко')
   })
 })
 

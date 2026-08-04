@@ -2,6 +2,7 @@
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Button from '@/components/ui/Button.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { useCurrency } from '@/composables/use-currency'
@@ -14,7 +15,11 @@ import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ client?: ClientView | null }>()
 
-const emit = defineEmits<{ openOrder: [orderId: string] }>()
+const emit = defineEmits<{
+  openOrder: [orderId: string]
+  edit: [client: ClientView]
+  delete: [client: ClientView]
+}>()
 
 const { t } = useI18n()
 const { format, formatIn } = useCurrency()
@@ -143,5 +148,31 @@ const history = computed(() => {
         </p>
       </div>
     </div>
+
+    <template
+      v-if="client"
+      #footer
+    >
+      <Button
+        variant="danger"
+        icon="fa-solid fa-trash"
+        @click="emit('delete', client)"
+      >
+        {{ t('common.delete') }}
+      </Button>
+      <Button
+        variant="ghost"
+        @click="open = false"
+      >
+        {{ t('common.close') }}
+      </Button>
+      <Button
+        variant="primary"
+        icon="fa-solid fa-pen"
+        @click="emit('edit', client)"
+      >
+        {{ t('common.edit') }}
+      </Button>
+    </template>
   </Modal>
 </template>
