@@ -18,7 +18,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const reference = useReferenceStore()
-const { code: activeCode, baseCode, rateOf, setCurrency, setBase } = useCurrency()
+const { code: activeCode, baseCode, rateOf, setBase } = useCurrency()
 const { addCurrency, setRate, removeCurrency } = useCurrencies()
 const { updating, history, loadingHistory, updateRate, loadHistory } = useRates()
 
@@ -170,14 +170,6 @@ async function saveBrandRate() {
                 @click="setBase(row.code)"
               >
                 {{ t('rates.makeBase') }}
-              </Button>
-              <Button
-                v-if="row.code !== activeCode"
-                size="sm"
-                variant="ghost"
-                @click="setCurrency(row.code)"
-              >
-                {{ t('rates.makeActive') }}
               </Button>
               <Button
                 v-if="row.kind !== 'base'"

@@ -298,7 +298,6 @@
     "brandsHint": "Each brand's supplier reference rate.",
     "base": "Base",
     "active": "Active",
-    "makeActive": "Make active",
     "makeBase": "Make base",
     "addCurrency": "Add currency",
     "saveRate": "Save",
