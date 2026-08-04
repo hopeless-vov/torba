@@ -54,7 +54,7 @@ export function useDashboard() {
       (sum, o) =>
         sum +
         convertBetween(
-          computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost).profit,
+          computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost, o.discount).profit,
           o.currency,
         ),
       0,

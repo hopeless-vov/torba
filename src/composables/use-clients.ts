@@ -26,7 +26,7 @@ export function useClients() {
       // Each order is snapshotted in its own currency; convert to the active
       // one before summing so the spend total is coherent.
       const totalSpent = own.reduce(
-        (sum, o) => sum + convertBetween(computeOrderTotals(o.items).saleTotal, o.currency),
+        (sum, o) => sum + convertBetween(computeOrderTotals(o.items, 0, 0, o.discount).saleTotal, o.currency),
         0,
       )
       return { ...c, ordersCount: own.length, totalSpent }

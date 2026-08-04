@@ -43,14 +43,15 @@ Both come from your Supabase project → **Project Settings → API**.
 
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
 trigger, a self-heal bootstrap RPC, the atomic `create_order` / `delete_orders`
-functions, per-client discounts, per-order delivery addresses and user-defined
-currencies) lives in [`supabase/migrations/`](supabase/migrations).
+functions, per-client discounts, per-order delivery addresses, user-defined
+currencies and an order-level discount) lives in
+[`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
 - **Supabase CLI:** `supabase db push`, or
 - **Dashboard:** run each file in the SQL Editor —
   `0001_init.sql`, `0002_bootstrap_and_orders.sql`, `0003_client_discount.sql`,
-  `0004_addresses_currencies_backorder.sql`.
+  `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`.
 
 On first sign-up a company + owner profile are created automatically, along with
 default categories and payment methods. If the sign-up trigger ever fails to run,

@@ -34,7 +34,7 @@ export function useOrders() {
         lineSale: i.qty * i.unit_price,
         lineCost: i.qty * i.unit_cost,
       }))
-      const totals = computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost)
+      const totals = computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost, o.discount)
       return {
         ...o,
         client: o.client,

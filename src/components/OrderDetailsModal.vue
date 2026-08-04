@@ -77,12 +77,25 @@ function expiryOf(batchId: string | null) {
 const money = computed(() => {
   const order = props.order
   if (!order) return []
-  return [
-    { label: t('orders.details.goods'), value: fmt(order.saleTotal) },
+  // Lines are gross; the order discount reduces the sale total, so show the
+  // gross goods and the discount taken off separately.
+  const gross = order.items.reduce((sum, i) => sum + i.lineSale, 0)
+  const rows: { label: string; value: string; muted?: boolean }[] = [
+    { label: t('orders.details.goods'), value: fmt(gross) },
+  ]
+  if (order.discount > 0) {
+    rows.push({
+      label: `${t('orders.edit.discount')} · ${formatPercent(order.discount / 100)}`,
+      value: `− ${fmt(gross - order.saleTotal)}`,
+      muted: true,
+    })
+  }
+  rows.push(
     { label: t('cart.goodsCost'), value: `− ${fmt(order.goodsCost)}`, muted: true },
     { label: t('orders.edit.delivery'), value: `− ${fmt(order.delivery_cost)}`, muted: true },
     { label: t('orders.edit.packaging'), value: `− ${fmt(order.packaging_cost)}`, muted: true },
-  ]
+  )
+  return rows
 })
 </script>
 

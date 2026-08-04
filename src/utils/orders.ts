@@ -13,24 +13,28 @@ type LineLike = Pick<OrderItem, 'qty' | 'unit_price' | 'unit_cost'>
 
 /**
  * Roll up order economics from its line items plus the delivery and
- * packaging expenses. Cost = goods + delivery + packaging; margin is
- * profit over sale (null when nothing was sold).
+ * packaging expenses. Line prices are gross; an order-level `discountPct`
+ * (0..100) reduces the sale total. Cost = goods + delivery + packaging;
+ * margin is profit over the (discounted) sale (null when nothing was sold).
  */
 export function computeOrderTotals(
   items: LineLike[],
   deliveryCost = 0,
   packagingCost = 0,
+  discountPct = 0,
 ): OrderTotals {
   let itemsCount = 0
-  let saleTotal = 0
+  let grossSale = 0
   let goodsCost = 0
 
   for (const item of items) {
     itemsCount += item.qty
-    saleTotal += item.qty * item.unit_price
+    grossSale += item.qty * item.unit_price
     goodsCost += item.qty * item.unit_cost
   }
 
+  const pct = Math.min(100, Math.max(0, discountPct))
+  const saleTotal = grossSale * (1 - pct / 100)
   const costTotal = goodsCost + deliveryCost + packagingCost
   const profit = saleTotal - costTotal
   const margin = saleTotal > 0 ? profit / saleTotal : null

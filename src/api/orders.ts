@@ -43,6 +43,7 @@ export const ordersApi = {
     clientId: string | null
     paymentMethod: string | null
     currency: string
+    discount?: number
     deliveryAddress?: string | null
     items: {
       product_id: string | null
@@ -60,6 +61,7 @@ export const ordersApi = {
       p_currency: input.currency,
       p_items: input.items,
       p_delivery_address: input.deliveryAddress ?? null,
+      p_discount: input.discount ?? 0,
     })
     if (error) throw error
     return data as string

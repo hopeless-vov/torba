@@ -39,10 +39,18 @@ export function useCart() {
   const submitting = ref(false)
   const error = ref<string | null>(null)
 
-  // Agreed discount of the selected client, applied to sale prices.
+  // Discount applied to sale prices: the cart's own override when set,
+  // otherwise the selected client's agreed discount.
   const discountPct = computed(() => {
+    if (cart.discount != null) return cart.discount
     const client = clients.clients.find((c) => c.id === cart.clientId)
     return client?.discount ?? 0
+  })
+
+  // Editable in the drawer; writing pins an override for this order.
+  const discountModel = computed({
+    get: () => discountPct.value,
+    set: (v: number) => (cart.discount = Math.min(100, Math.max(0, v || 0))),
   })
 
   function linePrice(line: CartLine) {
@@ -138,13 +146,16 @@ export function useCart() {
         clientId: cart.clientId,
         paymentMethod: cart.paymentMethod,
         currency: currency.displayCurrency,
+        discount: discountPct.value,
+        // Store gross prices; the order-level discount reduces the total, so
+        // the discount stays visible and editable after the sale.
         items: cart.lines.map((l) => ({
           product_id: l.product.id,
           batch_id: l.batch?.id ?? null,
           product_name: l.product.name,
           sku: l.product.sku,
           qty: l.qty,
-          unit_price: linePrice(l),
+          unit_price: l.unitPrice,
           unit_cost: l.unitCost,
         })),
       })
@@ -166,6 +177,7 @@ export function useCart() {
     cart,
     totals,
     discountPct,
+    discountModel,
     linePrice,
     submitting,
     error,

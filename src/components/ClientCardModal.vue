@@ -43,7 +43,7 @@ const history = computed(() => {
       date: o.created_at,
       status: o.status,
       currency: o.currency,
-      total: computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost).saleTotal,
+      total: computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost, o.discount).saleTotal,
     }))
 })
 </script>

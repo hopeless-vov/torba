@@ -110,6 +110,7 @@ describe('ordersApi.place', () => {
       p_currency: 'UAH',
       p_items: [],
       p_delivery_address: 'Львів, НП №30',
+      p_discount: 0,
     })
   })
 

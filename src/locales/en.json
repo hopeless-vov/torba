@@ -274,6 +274,7 @@
       "addressPlaceholder": "City, branch or parcel locker",
       "delivery": "Delivery",
       "packaging": "Packaging",
+      "discount": "Discount",
       "note": "Note",
       "noPayment": "— no payment —"
     },
@@ -359,7 +360,7 @@
     "fromStock": "From stock",
     "fromCatalog": "From catalog",
     "pickerSearch": "Search product…",
-    "discount": "Client discount",
+    "discount": "Discount",
     "empty": "Cart is empty",
     "emptyHint": "Add products from the catalog or via search",
     "client": "Client",

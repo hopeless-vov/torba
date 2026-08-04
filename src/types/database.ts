@@ -114,6 +114,7 @@ export interface Order {
   status: OrderStatus
   payment_method: string | null
   currency: string
+  discount: number // percent (0..100) applied to the order's sale total
   tracking_number: string | null
   delivery_address: string | null // where this parcel goes; prefilled from the client
   delivery_cost: number

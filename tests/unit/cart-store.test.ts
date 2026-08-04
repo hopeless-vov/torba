@@ -98,14 +98,16 @@ describe('cart store', () => {
     expect(cart.lines[0].qty).toBe(5)
   })
 
-  it('clears lines and selections', () => {
+  it('clears lines, selections and the discount override', () => {
     const cart = useCartStore()
     cart.addLine({ product: productA, brand, unitPrice: 100, unitCost: 60 })
     cart.clientId = 'c1'
     cart.paymentMethod = 'Готівка'
+    cart.discount = 15
     cart.clear()
     expect(cart.isEmpty).toBe(true)
     expect(cart.clientId).toBeNull()
     expect(cart.paymentMethod).toBeNull()
+    expect(cart.discount).toBeNull()
   })
 })

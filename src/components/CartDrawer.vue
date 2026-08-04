@@ -26,6 +26,7 @@ const {
   cart,
   totals,
   discountPct,
+  discountModel,
   linePrice,
   submitting,
   checkout,
@@ -291,6 +292,14 @@ function batchOptions(line: CartLine) {
           :add-label="t('profile.addPayment')"
           clearable
           @add="paymentAddOpen = true"
+        />
+
+        <NumberInput
+          v-model="discountModel"
+          :label="t('cart.discount')"
+          :min="0"
+          :max="100"
+          suffix="%"
         />
 
         <p class="text-xs text-faint">

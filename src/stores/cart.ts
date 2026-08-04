@@ -16,6 +16,9 @@ export const useCartStore = defineStore('cart', () => {
   const open = ref(false)
   const clientId = ref<string | null>(null)
   const paymentMethod = ref<string | null>(null)
+  // Discount override for this order. `null` = follow the selected client's
+  // agreed discount; a number wins over it (a one-off deal for this order).
+  const discount = ref<number | null>(null)
 
   const count = computed(() => lines.value.reduce((sum, l) => sum + l.qty, 0))
   const isEmpty = computed(() => lines.value.length === 0)
@@ -103,6 +106,7 @@ export const useCartStore = defineStore('cart', () => {
     lines.value = []
     clientId.value = null
     paymentMethod.value = null
+    discount.value = null
   }
 
   function toggle(next?: boolean) {
@@ -114,6 +118,7 @@ export const useCartStore = defineStore('cart', () => {
     open,
     clientId,
     paymentMethod,
+    discount,
     count,
     isEmpty,
     hasBackorder,

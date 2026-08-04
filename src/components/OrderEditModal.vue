@@ -34,6 +34,7 @@ const form = reactive({
 })
 const delivery = ref(0)
 const packaging = ref(0)
+const discount = ref(0)
 
 const statusOptions = computed(() =>
   (['new', 'paid', 'sent', 'done'] as OrderStatus[]).map((s) => ({
@@ -66,6 +67,7 @@ watch(
     form.note = props.order.note ?? ''
     delivery.value = props.order.delivery_cost
     packaging.value = props.order.packaging_cost
+    discount.value = props.order.discount
   },
   { immediate: true },
 )
@@ -91,6 +93,7 @@ function submit() {
     delivery_address: form.delivery_address.trim() || null,
     delivery_cost: delivery.value || 0,
     packaging_cost: packaging.value || 0,
+    discount: Math.min(100, Math.max(0, discount.value || 0)),
     note: form.note.trim() || null,
   })
 }
@@ -153,6 +156,14 @@ function submit() {
         :label="t('orders.edit.packaging')"
         :min="0"
         :step="10"
+      />
+      <NumberInput
+        v-model="discount"
+        class="col-span-2"
+        :label="t('orders.edit.discount')"
+        :min="0"
+        :max="100"
+        suffix="%"
       />
       <TextInput
         v-model="form.note"
