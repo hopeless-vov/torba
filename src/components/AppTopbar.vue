@@ -20,7 +20,7 @@ const { isDark, toggle } = useTheme()
 const { code, symbol, options, setCurrency } = useCurrency()
 const { locale, setLocale } = useLocale()
 
-// Built-ins plus whatever the owner added in Profile → Currencies.
+// Built-ins plus whatever the owner added on the Rates page.
 const currencyItems = computed(() =>
   options.value.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.code}` })),
 )
