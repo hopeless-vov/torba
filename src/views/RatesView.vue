@@ -12,7 +12,7 @@ import { BUILT_IN_CODES, BUILT_IN_CURRENCIES, useCurrency } from '@/composables/
 import { useRates } from '@/composables/use-rates'
 import { useReferenceStore } from '@/stores/reference'
 import type { Brand } from '@/types/database'
-import { formatDate, formatMoney, formatNumber } from '@/utils/format'
+import { formatDate, formatNumber } from '@/utils/format'
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -144,12 +144,13 @@ async function saveBrandRate() {
             </p>
           </div>
 
-          <div class="ml-auto flex items-center gap-2">
+          <div class="ml-auto flex items-end gap-2">
             <template v-if="editCode === row.code">
               <div class="w-28">
                 <NumberInput
                   v-model="editRate"
                   size="sm"
+                  :label="t('common.perUsd')"
                   :min="0"
                   :step="0.01"
                 />
@@ -265,7 +266,7 @@ async function saveBrandRate() {
 
         <div class="text-right">
           <p class="font-mono text-2xl font-semibold text-accent tabular-nums">
-            {{ formatMoney(brand.usd_rate, 'UAH', 2) }}
+            {{ formatNumber(brand.usd_rate, 2) }}
           </p>
           <p class="text-xs text-faint">
             {{ t('common.perUsd') }}
@@ -338,7 +339,7 @@ async function saveBrandRate() {
           class="flex items-center justify-between py-2.5"
         >
           <span class="text-sm text-muted tabular-nums">{{ formatDate(entry.created_at) }}</span>
-          <span class="font-mono text-sm text-fg tabular-nums">{{ formatMoney(entry.rate, 'UAH', 2) }}</span>
+          <span class="font-mono text-sm text-fg tabular-nums">{{ formatNumber(entry.rate, 2) }}</span>
         </li>
       </ul>
       <p

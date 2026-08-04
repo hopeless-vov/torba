@@ -11,7 +11,7 @@ import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
-import { formatMoney } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -203,7 +203,7 @@ async function logout() {
             </p>
           </div>
           <Badge tone="accent">
-            {{ formatMoney(b.usd_rate, 'UAH', 2) }}
+            {{ `${formatNumber(b.usd_rate, 2)} ${t('common.perUsd')}` }}
           </Badge>
           <button
             type="button"

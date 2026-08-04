@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { useCsvImport } from '@/composables/use-csv-import'
 import { useReferenceStore } from '@/stores/reference'
-import { formatMoney } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -42,7 +42,7 @@ const displayError = computed(() => {
 })
 
 const rateLabel = computed(() =>
-  parsed.value?.rate != null ? formatMoney(parsed.value.rate, 'UAH', 2) : '',
+  parsed.value?.rate != null ? formatNumber(parsed.value.rate, 2) : '',
 )
 
 watch(open, (isOpen) => {
