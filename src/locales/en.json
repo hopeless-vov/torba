@@ -280,7 +280,9 @@
       "note": "Note",
       "goods": "Goods sale",
       "unitPrice": "Unit price",
-      "lineTotal": "Total"
+      "lineTotal": "Total",
+      "viewProduct": "View product",
+      "productGone": "This product was removed from the catalog — only the order snapshot is available."
     }
   },
   "rates": {

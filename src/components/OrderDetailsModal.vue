@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
+import ProductInfoModal from '@/components/ProductInfoModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useInventoryStore } from '@/stores/inventory'
-import type { OrderView } from '@/types/models'
+import type { OrderItemView, OrderView } from '@/types/models'
 import { formatDate, formatPercent } from '@/utils/format'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 // Everything about one order on a single screen: who and where it went,
@@ -31,6 +32,14 @@ const { t } = useI18n()
 const { format } = useCurrency()
 const inventory = useInventoryStore()
 const open = defineModel<boolean>('open', { default: false })
+
+// Clicking a line opens the product behind it — its brand, prices and stock.
+const productOpen = ref(false)
+const activeItem = ref<OrderItemView | null>(null)
+function openProduct(item: OrderItemView) {
+  activeItem.value = item
+  productOpen.value = true
+}
 
 const facts = computed(() => {
   const order = props.order
@@ -154,15 +163,27 @@ const money = computed(() => {
               class="border-b border-line-soft last:border-0"
             >
               <td class="px-3 py-2.5">
-                <p class="text-sm text-fg">
-                  {{ item.product_name }}
-                </p>
-                <p
-                  v-if="item.sku"
-                  class="font-mono text-xs text-faint"
+                <button
+                  type="button"
+                  class="group flex flex-col items-start gap-0.5 text-left"
+                  :title="t('orders.details.viewProduct')"
+                  @click="openProduct(item)"
                 >
-                  {{ item.sku }}
-                </p>
+                  <span class="flex items-center gap-1.5 text-sm text-fg transition-colors group-hover:text-accent">
+                    {{ item.product_name }}
+                    <Icon
+                      icon="fa-solid fa-circle-info"
+                      size="xs"
+                      class="text-faint transition-colors group-hover:text-accent"
+                    />
+                  </span>
+                  <span
+                    v-if="item.sku"
+                    class="font-mono text-xs text-faint"
+                  >
+                    {{ item.sku }}
+                  </span>
+                </button>
               </td>
               <td class="px-3 py-2.5 font-mono text-sm text-muted tabular-nums">
                 {{ expiryOf(item.batch_id) ? formatDate(expiryOf(item.batch_id)) : t('common.emptyValue') }}
@@ -234,4 +255,11 @@ const money = computed(() => {
       </Button>
     </template>
   </Modal>
+
+  <ProductInfoModal
+    v-model:open="productOpen"
+    :product-id="activeItem?.product_id"
+    :fallback-name="activeItem?.product_name"
+    :fallback-sku="activeItem?.sku"
+  />
 </template>

@@ -191,6 +191,11 @@ Deleting an order goes through `delete_orders`, which **returns the goods to the
 batches** before removing it (capped at what each batch was delivered with). Every
 action — save, delete, import, order placed, rate updated — surfaces a **toast**.
 
+In an order's details, each line is a button: clicking it opens a **product-info
+card** (`ProductInfoModal`) resolving the live catalog product behind the line —
+brand, category, prices in the display currency and current stock — falling back to
+the line's name/SKU snapshot when the product was since deleted.
+
 ## Project Structure
 
 ```

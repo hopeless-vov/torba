@@ -178,6 +178,23 @@ describe('OrdersView', () => {
     expect(document.body.textContent).toContain(uk.orders.details.address)
     expect(document.body.textContent).toContain('Львів, НП №30')
   })
+
+  it('opens the product info card from an order line', async () => {
+    const wrapper = render(OrdersView)
+    await wrapper.find('tbody tr').trigger('click')
+
+    // The line's product button carries the "view product" title.
+    const line = [...document.querySelectorAll('button')].find(
+      (b) => b.getAttribute('title') === uk.orders.details.viewProduct,
+    ) as HTMLButtonElement | undefined
+    expect(line).toBeTruthy()
+    line?.click()
+    await wrapper.vm.$nextTick()
+
+    // The product-info modal resolves the live product: brand + stock.
+    expect(document.body.textContent).toContain('Fairy')
+    expect(document.body.textContent).toContain(uk.catalog.cols.stock)
+  })
 })
 
 describe('CartDrawer', () => {
