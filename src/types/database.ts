@@ -29,7 +29,8 @@ export interface Brand {
   id: string
   company_id: string
   name: string
-  usd_rate: number
+  catalog_currency: string // the currency this supplier prices its goods in
+  supplier_rate: number // functional-currency units per 1 unit of catalog_currency
   rate_updated_at: string
   created_at: string
 }
@@ -56,14 +57,15 @@ export interface PaymentMethod {
   created_at: string
 }
 
-// An extra display currency the owner added. USD (the stored base) and
-// UAH (derived per brand) are built in and never live here.
+// A currency the owner can display amounts in, with its market (bank) rate.
+// usd_rate is a per-USD numeraire — USD is only a rate-table reference point,
+// not the functional currency (that is companies.base_currency, chosen freely).
 export interface Currency {
   id: string
   company_id: string
   code: string
   symbol: string
-  usd_rate: number // units of this currency per 1 USD
+  usd_rate: number // market rate: units of this currency per 1 USD
   created_at: string
 }
 
@@ -75,8 +77,8 @@ export interface Product {
   sku: string
   name: string
   volume: string | null
-  price_usd: number
-  retail_price_usd: number | null
+  cost_amount: number // supplier cost, in the brand's catalog currency
+  retail_amount: number | null // retail price, in the functional currency
   is_active: boolean
   created_at: string
   updated_at: string
@@ -140,7 +142,7 @@ export interface OrderItem {
 
 // ── insert payloads (server fills id / created_at / company via app) ──
 
-export type NewBrand = Pick<Brand, 'company_id' | 'name' | 'usd_rate'>
+export type NewBrand = Pick<Brand, 'company_id' | 'name' | 'catalog_currency' | 'supplier_rate'>
 export type NewCategory = Pick<Category, 'company_id' | 'name'>
 export type NewPaymentMethod = Pick<PaymentMethod, 'company_id' | 'name'>
 export type NewClient = Omit<Client, 'id' | 'created_at'>

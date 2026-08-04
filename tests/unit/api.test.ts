@@ -57,13 +57,13 @@ describe('productsApi', () => {
 
 describe('brandsApi.updateRate', () => {
   it('updates the brand and records history', async () => {
-    const brand = { id: 'b1', company_id: 'c1', name: 'X', usd_rate: 44 } as never
-    mocked.from.mockReturnValue(builder({ data: { ...(brand as object), usd_rate: 45 }, error: null }) as never)
+    const brand = { id: 'b1', company_id: 'c1', name: 'X', catalog_currency: 'USD', supplier_rate: 44 } as never
+    mocked.from.mockReturnValue(builder({ data: { ...(brand as object), supplier_rate: 45 }, error: null }) as never)
     const { brandsApi } = await import('@/api/brands')
     const updated = await brandsApi.updateRate(brand, 45)
     expect(mocked.from).toHaveBeenCalledWith('brands')
     expect(mocked.from).toHaveBeenCalledWith('rate_history')
-    expect((updated as { usd_rate: number }).usd_rate).toBe(45)
+    expect((updated as { supplier_rate: number }).supplier_rate).toBe(45)
   })
 })
 

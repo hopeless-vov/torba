@@ -29,7 +29,7 @@ const props = withDefaults(
 )
 
 const { t } = useI18n()
-const { format, convert } = useCurrency()
+const { format, toDisplay, functionalCost } = useCurrency()
 const inventory = useInventoryStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -43,18 +43,22 @@ const sku = computed(() => product.value?.sku ?? props.fallbackSku ?? '')
 const facts = computed(() => {
   const p = product.value
   if (!p) return []
-  const retailUsd = p.retail_price_usd
+  const cost = functionalCost(p.cost_amount, p.brand)
   const stock = inventory.stockByProduct.get(p.id) ?? 0
   const rows = [
     { label: t('catalog.form.volume'), value: p.volume || t('common.emptyValue') },
-    { label: t('catalog.cols.purchaseUsd'), value: `${formatNumber(p.price_usd, 2)} $`, mono: true },
-    { label: t('catalog.cols.purchase'), value: format(convert(p.price_usd)), mono: true },
     {
-      label: t('catalog.cols.retail'),
-      value: retailUsd != null ? format(convert(retailUsd)) : t('common.emptyValue'),
+      label: t('catalog.cols.supplierCost'),
+      value: `${formatNumber(p.cost_amount, 2)} ${p.brand?.catalog_currency ?? ''}`,
       mono: true,
     },
-    { label: t('catalog.cols.margin'), value: formatPercent(computeMargin(p.price_usd, retailUsd)), mono: true },
+    { label: t('catalog.cols.purchase'), value: format(toDisplay(cost)), mono: true },
+    {
+      label: t('catalog.cols.retail'),
+      value: p.retail_amount != null ? format(toDisplay(p.retail_amount)) : t('common.emptyValue'),
+      mono: true,
+    },
+    { label: t('catalog.cols.margin'), value: formatPercent(computeMargin(cost, p.retail_amount)), mono: true },
     {
       label: t('catalog.cols.stock'),
       value: stock > 0 ? `${stock} ${t('common.pcs')}` : t('common.none'),

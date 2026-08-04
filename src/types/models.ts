@@ -9,8 +9,8 @@ export type BatchStatus = 'expired' | 'critical' | 'ending' | 'almost' | 'ok'
 export interface ProductView extends Product {
   brand: Brand | null
   category: Category | null
-  purchase: number // price_usd converted to display currency
-  retail: number | null // retail_price_usd converted to display currency
+  purchase: number // supplier cost, resolved into the display currency
+  retail: number | null // retail price, resolved into the display currency
   discounted: number | null // retail after applying the active discount
   margin: number | null // 0..1, currency-independent
   inStock: number // sum of remaining_qty across batches

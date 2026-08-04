@@ -203,7 +203,7 @@ async function logout() {
             </p>
           </div>
           <Badge tone="accent">
-            {{ `${formatNumber(b.usd_rate, 2)} ${t('common.perUsd')}` }}
+            {{ `${formatNumber(b.supplier_rate, 2)} ${t('rates.perUnit', { code: b.catalog_currency })}` }}
           </Badge>
           <button
             type="button"

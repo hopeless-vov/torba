@@ -1,19 +1,26 @@
+import { useAuthStore } from '@/stores/auth'
 import { useCurrencyStore } from '@/stores/currency'
 import { useReferenceStore } from '@/stores/reference'
+import type { Brand } from '@/types/database'
 import { CURRENCY_SYMBOLS, formatAmount } from '@/utils/format'
 import { computed } from 'vue'
 
-// USD is the internal storage base — every product price is kept in USD.
-// What the user sees is converted into the *active* currency chosen in the
-// top bar, using one company-wide ("central") rate per currency:
-// `usd_rate` = how many units of that currency make 1 USD.
+// Three distinct rates, kept separate:
 //
-// UAH, USD and EUR are always available; the owner can add more and edit
-// every rate on the /rates page. Per-brand supplier rates still live on
-// the brand (a cost reference), but no longer drive what any screen shows —
-// display is uniform, so switching the currency reconverts the whole app
-// consistently (catalog, warehouse, orders, dashboard).
-export const BASE_CURRENCY = 'USD'
+//   • Market rate — the bank/reference rate, used only to *display* amounts
+//     in a chosen currency. Stored per company in `currencies.usd_rate` as a
+//     per-USD numeraire (units of the currency per 1 USD). USD is only that
+//     numeraire; it is NOT the base currency.
+//   • Functional currency — `company.base_currency`, the currency the books
+//     are kept in. It can be any currency. Product retail and order amounts
+//     are stored in it.
+//   • Supplier rate — each brand's own rate for the currency it prices its
+//     goods in (`brand.supplier_rate`, functional units per catalog unit).
+//     It drives cost and is deliberately independent of the market rate.
+//
+// A value lives in the functional currency; what the user sees is that value
+// re-expressed into the top-bar *display* currency through the market rate.
+export const NUMERAIRE = 'USD'
 
 export const BUILT_IN_CURRENCIES = [
   { code: 'UAH', symbol: CURRENCY_SYMBOLS.UAH, defaultRate: 41 },
@@ -26,6 +33,7 @@ export const BUILT_IN_CODES: string[] = BUILT_IN_CURRENCIES.map((c) => c.code)
 export function useCurrency() {
   const store = useCurrencyStore()
   const reference = useReferenceStore()
+  const auth = useAuthStore()
 
   // Built-ins first, then any custom currency the owner added — de-duped by
   // code so a stored UAH/EUR rate row does not double up the built-in.
@@ -44,24 +52,25 @@ export function useCurrency() {
     return list
   })
 
-  // A currency the user deleted must not strand the UI on an unknown code.
+  // The functional (base) currency: the company's book currency. Everything
+  // is stored/reckoned in it. Falls back to the numeraire if unset.
+  const functionalCode = computed(() => auth.company?.base_currency || NUMERAIRE)
+  const functionalSymbol = computed(
+    () => options.value.find((o) => o.code === functionalCode.value)?.symbol ?? functionalCode.value,
+  )
+
+  // The active display currency (top bar). A deleted currency must not strand
+  // the UI on an unknown code, so it falls back to the functional currency.
   const code = computed(() =>
-    options.value.some((o) => o.code === store.displayCurrency) ? store.displayCurrency : BASE_CURRENCY,
+    options.value.some((o) => o.code === store.displayCurrency) ? store.displayCurrency : functionalCode.value,
   )
   const symbol = computed(() => options.value.find((o) => o.code === code.value)?.symbol ?? code.value)
 
-  // The base (working) currency product prices are entered in. Independent
-  // of the display currency; falls back to the USD storage base if unknown.
-  const baseCode = computed(() =>
-    options.value.some((o) => o.code === store.baseCurrency) ? store.baseCurrency : BASE_CURRENCY,
-  )
-  const baseSymbol = computed(() => options.value.find((o) => o.code === baseCode.value)?.symbol ?? baseCode.value)
-
-  // Central rate: units of `c` per 1 USD. USD is the base (1). A stored rate
-  // wins; a built-in falls back to its default so the app still converts
-  // sensibly before any rate has been set on /rates.
+  // Market rate: units of `c` per 1 USD (numeraire). A stored rate wins; a
+  // built-in falls back to its default so the app converts sensibly before
+  // any rate has been set on /rates.
   function rateOf(c: string): number {
-    if (c === BASE_CURRENCY) return 1
+    if (c === NUMERAIRE) return 1
     const row = reference.currenciesByCode.get(c)
     if (row && row.usd_rate > 0) return row.usd_rate
     const builtIn = BUILT_IN_CURRENCIES.find((b) => b.code === c)
@@ -72,25 +81,29 @@ export function useCurrency() {
     return c === 'USD' || c === 'EUR' ? 2 : 0
   }
 
-  /** A USD amount → the active display currency. */
-  function convert(usd: number): number {
-    return usd * rateOf(code.value)
-  }
-
-  /** An amount typed in `from` (default: the active currency) → USD, for storage. */
-  function toUsd(amount: number, from: string = code.value): number {
-    const r = rateOf(from)
-    return r > 0 ? amount / r : amount
-  }
-
   /**
-   * Re-express an amount held in `from` into `to` (default: the active
-   * currency), via USD. Orders snapshot their totals in the currency they
-   * were sold in, so this is how they follow the active-currency switch.
+   * Re-express an amount held in `from` into `to` (default: the active display
+   * currency), via the USD numeraire. Orders snapshot their totals in the
+   * currency they were sold in, so this is how they follow the display switch.
    */
   function convertBetween(amount: number, from: string, to: string = code.value): number {
     if (from === to) return amount
-    return toUsd(amount, from) * rateOf(to)
+    const rf = rateOf(from)
+    return (rf > 0 ? amount / rf : amount) * rateOf(to)
+  }
+
+  /** A functional-currency amount → the active display currency. */
+  function toDisplay(functionalAmount: number): number {
+    return convertBetween(functionalAmount, functionalCode.value)
+  }
+
+  /**
+   * A product's cost in the functional currency: its catalog-currency cost
+   * multiplied by the brand's supplier rate. Reflows automatically when the
+   * supplier changes their rate.
+   */
+  function functionalCost(costAmount: number, brand: Brand | null | undefined): number {
+    return costAmount * (brand?.supplier_rate ?? 0)
   }
 
   function format(amount: number, digits?: number): string {
@@ -108,33 +121,31 @@ export function useCurrency() {
     return format(convertBetween(amount, from), digits)
   }
 
-  /** A USD amount → the base currency (for editing a stored price). */
-  function toBase(usd: number): number {
-    return usd * rateOf(baseCode.value)
+  /** Format a functional-currency amount in the active display currency. */
+  function formatFunctional(functionalAmount: number, digits?: number): string {
+    return format(toDisplay(functionalAmount), digits)
   }
 
-  /** An amount typed in the base currency → USD, for storage. */
-  function fromBase(amount: number): number {
-    const r = rateOf(baseCode.value)
-    return r > 0 ? amount / r : amount
+  /** Change the functional (base) currency — persisted on the company. */
+  async function setBase(nextCode: string): Promise<void> {
+    await auth.setBaseCurrency(nextCode)
   }
 
   return {
     code,
     symbol,
-    baseCode,
-    baseSymbol,
+    functionalCode,
+    functionalSymbol,
     options,
     rateOf,
-    convert,
-    toUsd,
-    toBase,
-    fromBase,
     convertBetween,
+    toDisplay,
+    functionalCost,
     format,
     formatIn,
     formatFrom,
+    formatFunctional,
     setCurrency: store.setCurrency,
-    setBase: store.setBase,
+    setBase,
   }
 }

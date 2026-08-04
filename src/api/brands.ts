@@ -30,10 +30,13 @@ export const brandsApi = {
   },
 
   // Updating a rate also records a history entry so the trend is auditable.
-  updateRate: async (brand: Brand, rate: number): Promise<Brand> => {
+  // The catalog currency (what the supplier prices in) can change alongside it.
+  updateRate: async (brand: Brand, rate: number, catalogCurrency?: string): Promise<Brand> => {
+    const patch: Partial<Brand> = { supplier_rate: rate, rate_updated_at: new Date().toISOString() }
+    if (catalogCurrency && catalogCurrency !== brand.catalog_currency) patch.catalog_currency = catalogCurrency
     const { data, error } = await supabase
       .from('brands')
-      .update({ usd_rate: rate, rate_updated_at: new Date().toISOString() })
+      .update(patch)
       .eq('id', brand.id)
       .select('*')
       .single()

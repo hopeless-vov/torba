@@ -9,6 +9,7 @@ import { useClientsStore } from '@/stores/clients'
 import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
+import { useReferenceStore } from '@/stores/reference'
 import type { Product } from '@/types/database'
 import type { CartLine, ProductView } from '@/types/models'
 import { compareByExpiry } from '@/utils/batch-status'
@@ -32,7 +33,8 @@ export function useCart() {
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
   const clients = useClientsStore()
-  const { convert } = useCurrency()
+  const reference = useReferenceStore()
+  const { toDisplay, functionalCost } = useCurrency()
   const toast = useToast()
   const { t } = useI18n()
 
@@ -78,10 +80,13 @@ export function useCart() {
     return Math.max(0, line.qty - line.stockQty)
   }
 
-  // Display prices for a product, in the active currency.
+  // Display prices for a product, in the active currency. Cost comes from the
+  // brand's catalog-currency price via its supplier rate; retail is stored in
+  // the functional currency.
   function pricesFor(product: Product) {
-    const purchase = convert(product.price_usd)
-    const retail = product.retail_price_usd != null ? convert(product.retail_price_usd) : purchase
+    const brand = product.brand_id ? (reference.brandsById.get(product.brand_id) ?? null) : null
+    const purchase = toDisplay(functionalCost(product.cost_amount, brand))
+    const retail = product.retail_amount != null ? toDisplay(product.retail_amount) : purchase
     return { purchase, retail }
   }
 

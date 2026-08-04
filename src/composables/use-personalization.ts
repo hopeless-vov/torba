@@ -48,7 +48,13 @@ export function usePersonalization() {
   async function addBrand(name: string) {
     if (!auth.companyId || !name.trim()) return null
     return run(
-      () => brandsApi.create({ company_id: auth.companyId as string, name: name.trim(), usd_rate: 0 }),
+      () =>
+        brandsApi.create({
+          company_id: auth.companyId as string,
+          name: name.trim(),
+          catalog_currency: 'USD',
+          supplier_rate: 0,
+        }),
       'toasts.saved',
       'errors.save',
     )

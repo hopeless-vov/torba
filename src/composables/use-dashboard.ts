@@ -1,6 +1,7 @@
 import { useCurrency } from '@/composables/use-currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
+import { useReferenceStore } from '@/stores/reference'
 import type { BatchStatus } from '@/types/models'
 import { batchStatus, daysUntil } from '@/utils/batch-status'
 import { computeOrderTotals } from '@/utils/orders'
@@ -20,7 +21,8 @@ export interface BurningRow {
 export function useDashboard() {
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
-  const { convert, convertBetween } = useCurrency()
+  const reference = useReferenceStore()
+  const { toDisplay, functionalCost, convertBetween } = useCurrency()
 
   const enriched = computed(() =>
     inventory.batches.map((b) => ({
@@ -38,7 +40,9 @@ export function useDashboard() {
     let stockValue = 0
 
     for (const { batch, status } of enriched.value) {
-      stockValue += batch.remaining_qty * convert(batch.product?.price_usd ?? 0)
+      const brand = reference.brandsById.get(batch.product?.brand_id ?? '') ?? null
+      const unitCost = functionalCost(batch.product?.cost_amount ?? 0, brand)
+      stockValue += batch.remaining_qty * toDisplay(unitCost)
       if (status === 'expired') {
         expired += 1
         expiredUnits += batch.remaining_qty

@@ -75,6 +75,13 @@ export function useCsvImport() {
         categoryIds.set(name, created.id)
       }
 
+      // A price list is in the supplier's catalog currency. Cost is stored
+      // as-is; retail is re-expressed into the functional currency using the
+      // rate that will apply to this brand after the import.
+      const brand = reference.brandsById.get(brandId.value)
+      const willApplyRate = applyRate.value && !!parsed.value.rate
+      const effectiveRate = (willApplyRate ? parsed.value.rate : brand?.supplier_rate) ?? 0
+
       const rows: NewProduct[] = parsed.value.products.map((p) => ({
         company_id: companyId,
         brand_id: brandId.value,
@@ -82,17 +89,14 @@ export function useCsvImport() {
         sku: p.sku,
         name: p.name,
         volume: p.volume,
-        price_usd: p.priceUsd,
-        retail_price_usd: p.retailUsd,
+        cost_amount: p.priceUsd,
+        retail_amount: p.retailUsd != null && effectiveRate > 0 ? Math.round(p.retailUsd * effectiveRate * 100) / 100 : null,
         is_active: true,
       }))
 
       const inserted = await productsApi.bulkUpsert(rows)
 
-      if (applyRate.value && parsed.value.rate) {
-        const brand = reference.brandsById.get(brandId.value)
-        if (brand) await brandsApi.updateRate(brand, parsed.value.rate)
-      }
+      if (willApplyRate && brand) await brandsApi.updateRate(brand, parsed.value.rate as number)
 
       await Promise.all([reference.load(companyId), inventory.load(companyId)])
       importedCount.value = inserted.length

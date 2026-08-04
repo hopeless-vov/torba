@@ -3,7 +3,7 @@ import type { Batch, Brand, Product } from '@/types/database'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-const brand = { id: 'b1', name: 'Colorescience', usd_rate: 44.5 } as Brand
+const brand = { id: 'b1', name: 'Colorescience', catalog_currency: 'USD', supplier_rate: 44.5 } as Brand
 const productA = { id: 'p1', sku: 'A-1', name: 'Alpha' } as Product
 const productB = { id: 'p2', sku: 'B-1', name: 'Beta' } as Product
 const marchBatch = { id: 'batch-march', product_id: 'p1', remaining_qty: 4 } as Batch

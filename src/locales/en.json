@@ -108,7 +108,7 @@
     "cols": {
       "article": "Article",
       "name": "Name",
-      "purchaseUsd": "Purchase USD",
+      "supplierCost": "Supplier cost",
       "purchase": "Purchase",
       "retail": "Retail",
       "discounted": "Discounted",
@@ -135,7 +135,7 @@
       "volume": "Volume",
       "priceUsd": "Purchase",
       "retailUsd": "Retail",
-      "priceHint": "Prices are entered in the base currency (change it on the Rates page) and shown in the selected one.",
+      "priceHint": "Cost is entered in the brand's catalog currency (its supplier rate is on the Rates page); retail in your base currency.",
       "active": "Active"
     }
   },
@@ -293,19 +293,21 @@
   "rates": {
     "subtitle": "Currencies & rates",
     "currenciesTitle": "Currencies",
-    "currenciesHint": "Rate — how many units make 1 USD. Pick the active currency (everything is shown in it) in the top bar; the base is the currency product prices are entered in.",
+    "currenciesHint": "Market rate — how many units make 1 USD. Pick the active currency (everything is shown in it) in the top bar; the base is the currency your books are kept in.",
     "brandsTitle": "Supplier rates",
-    "brandsHint": "Each brand's supplier reference rate.",
+    "brandsHint": "Each brand's own rate for the currency it prices its goods in — used for cost, kept separate from the market rate.",
     "base": "Base",
     "active": "Active",
     "makeBase": "Make base",
+    "catalogCurrency": "Prices in",
+    "perUnit": "per 1 {code}",
     "addCurrency": "Add currency",
     "saveRate": "Save",
     "history": "Rate history",
     "update": "Update rate",
     "updatedAt": "Updated {date}",
     "modalTitle": "Update rate — {brand}",
-    "newRate": "New rate, ₴ per 1 USD",
+    "newRate": "Supplier rate",
     "empty": "No brands yet",
     "emptyHint": "Add a brand in your profile."
   },

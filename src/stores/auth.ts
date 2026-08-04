@@ -72,6 +72,12 @@ export const useAuthStore = defineStore('auth', () => {
     await setSession(null)
   }
 
+  // The functional (base) currency the company keeps its books in.
+  async function setBaseCurrency(code: string) {
+    if (!company.value || company.value.base_currency === code) return
+    company.value = await profileApi.updateCompany(company.value.id, { base_currency: code })
+  }
+
   return {
     session,
     profile,
@@ -84,6 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
     signIn,
     signUp,
     signOut,
+    setBaseCurrency,
     loadContext,
   }
 })

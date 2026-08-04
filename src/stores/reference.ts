@@ -20,9 +20,11 @@ export const useReferenceStore = defineStore('reference', () => {
   const categoriesById = computed(() => new Map(categories.value.map((c) => [c.id, c])))
   const currenciesByCode = computed(() => new Map(currencies.value.map((c) => [c.code, c])))
 
+  // A brand's supplier rate: functional-currency units per 1 unit of the
+  // brand's catalog currency. Drives cost.
   function brandRate(brandId: string | null): number {
     if (!brandId) return 0
-    return brandsById.value.get(brandId)?.usd_rate ?? 0
+    return brandsById.value.get(brandId)?.supplier_rate ?? 0
   }
 
   async function load(companyId: string) {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -18,7 +19,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const reference = useReferenceStore()
-const { code: activeCode, baseCode, rateOf, setBase } = useCurrency()
+const { code: activeCode, functionalCode, options, rateOf, setBase } = useCurrency()
 const { addCurrency, setRate, removeCurrency } = useCurrencies()
 const { updating, history, loadingHistory, updateRate, loadHistory } = useRates()
 
@@ -28,7 +29,7 @@ type CurrencyRow = {
   symbol: string
   rate: number
   id: string | null
-  kind: 'base' | 'builtin' | 'custom'
+  kind: 'anchor' | 'builtin' | 'custom'
 }
 
 const currencyRows = computed<CurrencyRow[]>(() => {
@@ -37,7 +38,7 @@ const currencyRows = computed<CurrencyRow[]>(() => {
     symbol: b.symbol,
     rate: rateOf(b.code),
     id: reference.currenciesByCode.get(b.code)?.id ?? null,
-    kind: (b.code === 'USD' ? 'base' : 'builtin') as CurrencyRow['kind'],
+    kind: (b.code === 'USD' ? 'anchor' : 'builtin') as CurrencyRow['kind'],
   }))
   const custom = reference.currencies
     .filter((c) => !BUILT_IN_CODES.includes(c.code))
@@ -79,10 +80,16 @@ const updateOpen = ref(false)
 const historyOpen = ref(false)
 const active = ref<Brand | null>(null)
 const rateInput = ref(0)
+const catalogInput = ref('USD')
+
+// The currencies a supplier might price in — the display options, so any
+// currency the owner uses is available.
+const catalogOptions = computed(() => options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })))
 
 function openUpdate(brand: Brand) {
   active.value = brand
-  rateInput.value = brand.usd_rate
+  rateInput.value = brand.supplier_rate
+  catalogInput.value = brand.catalog_currency
   updateOpen.value = true
 }
 function openHistory(brand: Brand) {
@@ -92,7 +99,7 @@ function openHistory(brand: Brand) {
 }
 async function saveBrandRate() {
   if (!active.value) return
-  await updateRate(active.value, rateInput.value)
+  await updateRate(active.value, rateInput.value, catalogInput.value)
   updateOpen.value = false
 }
 </script>
@@ -129,7 +136,7 @@ async function saveBrandRate() {
                 {{ t('rates.active') }}
               </Badge>
               <Badge
-                v-if="row.code === baseCode"
+                v-if="row.code === functionalCode"
                 tone="info"
               >
                 {{ t('rates.base') }}
@@ -137,7 +144,7 @@ async function saveBrandRate() {
             </p>
             <p class="text-xs text-faint">
               {{
-                row.kind === 'base'
+                row.kind === 'anchor'
                   ? formatNumber(1, 2)
                   : `${formatNumber(row.rate, 2)} ${t('common.perUsd')}`
               }}
@@ -165,7 +172,7 @@ async function saveBrandRate() {
             </template>
             <template v-else>
               <Button
-                v-if="row.code !== baseCode"
+                v-if="row.code !== functionalCode"
                 size="sm"
                 variant="ghost"
                 @click="setBase(row.code)"
@@ -173,7 +180,7 @@ async function saveBrandRate() {
                 {{ t('rates.makeBase') }}
               </Button>
               <Button
-                v-if="row.kind !== 'base'"
+                v-if="row.kind !== 'anchor'"
                 size="sm"
                 @click="startEdit(row)"
               >
@@ -256,8 +263,11 @@ async function saveBrandRate() {
         class="flex items-center gap-4 rounded-xl border border-line bg-panel px-5 py-4"
       >
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-semibold text-fg">
+          <p class="flex items-center gap-2 text-sm font-semibold text-fg">
             {{ brand.name }}
+            <Badge tone="neutral">
+              {{ brand.catalog_currency }}
+            </Badge>
           </p>
           <p class="text-xs text-faint">
             {{ t('rates.updatedAt', { date: formatDate(brand.rate_updated_at) }) }}
@@ -266,10 +276,10 @@ async function saveBrandRate() {
 
         <div class="text-right">
           <p class="font-mono text-2xl font-semibold text-accent tabular-nums">
-            {{ formatNumber(brand.usd_rate, 2) }}
+            {{ formatNumber(brand.supplier_rate, 2) }}
           </p>
           <p class="text-xs text-faint">
-            {{ t('common.perUsd') }}
+            {{ t('rates.perUnit', { code: brand.catalog_currency }) }}
           </p>
         </div>
 
@@ -293,12 +303,22 @@ async function saveBrandRate() {
       size="sm"
       :title="t('rates.modalTitle', { brand: active?.name ?? '' })"
     >
-      <NumberInput
-        v-model="rateInput"
-        :label="t('rates.newRate')"
-        :min="0"
-        :step="0.1"
-      />
+      <div class="flex flex-col gap-4">
+        <Combobox
+          v-model="catalogInput"
+          :label="t('rates.catalogCurrency')"
+          :placeholder="t('common.search')"
+          :search-placeholder="t('common.search')"
+          :empty-text="t('common.noMatches')"
+          :options="catalogOptions"
+        />
+        <NumberInput
+          v-model="rateInput"
+          :label="t('rates.perUnit', { code: catalogInput })"
+          :min="0"
+          :step="0.1"
+        />
+      </div>
       <template #footer>
         <Button
           variant="ghost"

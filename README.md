@@ -2,7 +2,7 @@
 
 > **torba** (торба) — Ukrainian for *bag* or *sack*. Like the rest of my projects, it carries a Ukrainian name — a small way to bring a piece of my culture along for the ride.
 
-An internal inventory & sales tracker for a small cosmetics distributor: catalog with CSV price-list import, warehouse batches with expiry tracking, clients (add / edit / remove), orders with live profit/margin, and per-brand USD→UAH exchange rates. Built with Vue 3, TypeScript, Tailwind CSS v4 and Supabase.
+An internal inventory & sales tracker for a small cosmetics distributor: catalog with CSV price-list import, warehouse batches with expiry tracking, clients (add / edit / remove), orders with live profit/margin, and separate per-brand supplier and market exchange rates. Built with Vue 3, TypeScript, Tailwind CSS v4 and Supabase.
 
 Dark/light, Supabase-styled, Ukrainian-first (uk) with English (en) available.
 
@@ -44,14 +44,15 @@ Both come from your Supabase project → **Project Settings → API**.
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
 trigger, a self-heal bootstrap RPC, the atomic `create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, user-defined
-currencies and an order-level discount) lives in
+currencies, an order-level discount, and the supplier/market rate split) lives in
 [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
 - **Supabase CLI:** `supabase db push`, or
 - **Dashboard:** run each file in the SQL Editor —
   `0001_init.sql`, `0002_bootstrap_and_orders.sql`, `0003_client_discount.sql`,
-  `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`.
+  `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`,
+  `0006_supplier_rates_functional_currency.sql`.
 
 On first sign-up a company + owner profile are created automatically, along with
 default categories and payment methods. If the sign-up trigger ever fails to run,
@@ -131,36 +132,38 @@ and exposed as Tailwind utilities (`bg-surface`, `text-muted`, `border-line`,
 
 ## Currency
 
-USD is the internal **storage base**: product prices are stored in USD. Everything
-the user sees is converted into the **active currency** — picked from the top-bar
-menu — using one company-wide (**central**) rate per currency, where
-`usd_rate` = units of that currency per 1 USD. Conversion is resolved at render time
-by [`use-currency`](src/composables/use-currency.ts) (`convert` / `convertBetween` /
-`toUsd` / `formatFrom`), so switching the active currency reprices the **whole app**
-consistently — catalog, warehouse, orders, order KPIs, dashboard and per-client spend.
+The app keeps **three exchange rates deliberately separate**, because real
+distribution needs all three:
 
-Three currencies are **built in**: **USD** (the internal storage anchor, rate always
-1), **UAH** and **EUR**. Their rate — and any further currency the owner adds
-(PLN, …) — is managed entirely on the **/rates** page (a built-in ships with a
-sensible default rate until one is set, so the app always converts). There is no
-duplicate currency manager in the profile.
+- **Supplier rate** — each brand's own rate for the currency it prices its goods in
+  (e.g. €1 = ₴52). Suppliers bump it every couple of months to compensate for the
+  market, so it rarely matches the bank rate, and it drives **cost**. Lives on the
+  brand (`brand.supplier_rate` + `brand.catalog_currency`), edited on **/rates**.
+- **Market rate** — the bank/reference rate, used only to **display** amounts in a
+  chosen currency. Stored per company in `currencies.usd_rate` as a per-USD numeraire
+  (units of the currency per 1 USD). USD is only that numeraire — **not** the base.
+- **Functional currency** — `company.base_currency` (₴ by default), the currency the
+  **books are kept in**. It can be any currency, chosen on **/rates** ("Make base").
 
-Two currency settings, both chosen on **/rates** (the base) and the top bar (the
-active): the **active currency** is what every screen is *displayed* in, while the
-**base currency** is what product **purchase & retail prices are entered in** — the
-owner's working currency, which need not be USD. Entered prices are converted to USD
-for storage (`fromBase` / `toBase`), so changing either setting later never rewrites
-stored data.
+**What is stored where.** Product **cost** is stored in the brand's catalog currency
+and resolved to functional via the supplier rate (`functionalCost`), so bumping a
+supplier's rate reflows the whole catalog's cost at once. Product **retail** and
+**order** amounts are stored in the functional currency. Nothing is stored in a
+display-converted form, so switching the display or base currency never rewrites data.
 
-**Orders** snapshot their transacted amounts in the currency they were placed in
-(`order.currency`); they are re-expressed into the active currency via USD
-(`convertBetween`) so the order list, its details, the client card, the per-client
-spend and the KPI totals all read in one currency. **Per-brand supplier rates** still
-live on each brand (a supplier's own USD→UAH rate, which need not match the bank's)
-and are managed on **/rates**, but they are a cost reference and no longer drive
-display — the app shows one consistent, central-rate figure everywhere. A client's
-agreed discount is applied to sale prices in the cart, and can be overridden per
-cart/order. The top bar also carries a UK/EN language toggle.
+Everything the user sees is that functional amount re-expressed into the **active
+display currency** (top-bar menu) through the market rate, resolved at render time by
+[`use-currency`](src/composables/use-currency.ts) (`toDisplay` / `convertBetween` /
+`functionalCost` / `formatFrom`) — so switching the display currency reprices the
+**whole app** consistently (catalog, warehouse, orders, KPIs, dashboard, per-client
+spend). Three currencies are **built in** (UAH, USD, EUR) with sensible default market
+rates until one is set; the owner can add more (PLN, …) on **/rates**.
+
+**Orders** snapshot their amounts in the currency they were placed in
+(`order.currency`) and are re-expressed into the active display currency via
+`convertBetween`, so the order list, details, client card and KPI totals all read in
+one currency. A client's agreed discount is applied to sale prices in the cart and can
+be overridden per cart/order. The top bar also carries a UK/EN language toggle.
 
 ---
 

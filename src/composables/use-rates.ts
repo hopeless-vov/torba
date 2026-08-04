@@ -16,10 +16,10 @@ export function useRates() {
   const history = ref<RateHistoryEntry[]>([])
   const loadingHistory = ref(false)
 
-  async function updateRate(brand: Brand, rate: number) {
+  async function updateRate(brand: Brand, rate: number, catalogCurrency?: string) {
     updating.value = true
     try {
-      await brandsApi.updateRate(brand, rate)
+      await brandsApi.updateRate(brand, rate, catalogCurrency)
       if (auth.companyId) await reference.load(auth.companyId)
       toast.success(t('toasts.rateUpdated'))
     } catch {

@@ -20,7 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewProduct, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { baseCode, toBase, fromBase } = useCurrency()
+const { functionalCode } = useCurrency()
 const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -30,18 +30,19 @@ const form = reactive({
   brand_id: '',
   category_id: '',
   volume: '',
-  price_usd: 0,
-  retail_usd: 0,
   is_active: true,
 })
 
 const isEdit = computed(() => !!props.product)
 
-// Prices are stored in USD but entered in the base currency, so the owner
-// authors prices in the currency they work in.
+// Cost is entered and stored in the brand's catalog currency; retail is
+// entered and stored in the functional currency. No conversion on save.
 const priceModel = ref(0)
 const retailModel = ref(0)
-const round2 = (n: number) => Math.round(n * 100) / 100
+
+// The catalog currency follows the selected brand — that is the currency the
+// supplier prices its goods in.
+const catalogCurrency = computed(() => reference.brandsById.get(form.brand_id)?.catalog_currency ?? 'USD')
 
 const brandOptions = computed(() => reference.brands.map((b) => ({ value: b.id, label: b.name })))
 const categoryOptions = computed(() => reference.categories.map((c) => ({ value: c.id, label: c.name })))
@@ -70,8 +71,8 @@ watch(
     form.brand_id = p?.brand_id ?? ''
     form.category_id = p?.category_id ?? ''
     form.volume = p?.volume ?? ''
-    priceModel.value = p ? round2(toBase(p.price_usd)) : 0
-    retailModel.value = p?.retail_price_usd != null ? round2(toBase(p.retail_price_usd)) : 0
+    priceModel.value = p?.cost_amount ?? 0
+    retailModel.value = p?.retail_amount ?? 0
     form.is_active = p?.is_active ?? true
   },
   { immediate: true },
@@ -85,8 +86,8 @@ function submit() {
     brand_id: form.brand_id || null,
     category_id: form.category_id || null,
     volume: form.volume.trim() || null,
-    price_usd: fromBase(priceModel.value || 0),
-    retail_price_usd: retailModel.value ? fromBase(retailModel.value) : null,
+    cost_amount: priceModel.value || 0,
+    retail_amount: retailModel.value ? retailModel.value : null,
     is_active: form.is_active,
   })
 }
@@ -142,14 +143,14 @@ function submit() {
       <NumberInput
         v-model="priceModel"
         class="col-span-1"
-        :label="`${t('catalog.form.priceUsd')} (${baseCode})`"
+        :label="`${t('catalog.form.priceUsd')} (${catalogCurrency})`"
         :min="0"
         :step="0.5"
       />
       <NumberInput
         v-model="retailModel"
         class="col-span-1"
-        :label="`${t('catalog.form.retailUsd')} (${baseCode})`"
+        :label="`${t('catalog.form.retailUsd')} (${functionalCode})`"
         :min="0"
         :step="0.5"
       />

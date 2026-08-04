@@ -82,7 +82,7 @@ const categoryOptions = computed(() => [
 const columns = computed<Column[]>(() => [
   { key: 'sku', label: t('catalog.cols.article'), width: '9rem', mono: true },
   { key: 'name', label: t('catalog.cols.name') },
-  { key: 'purchaseUsd', label: t('catalog.cols.purchaseUsd'), align: 'right', mono: true },
+  { key: 'supplierCost', label: t('catalog.cols.supplierCost'), align: 'right', mono: true },
   { key: 'purchase', label: `${t('catalog.cols.purchase')} ${code.value}`, align: 'right', mono: true },
   { key: 'retail', label: `${t('catalog.cols.retail')} ${code.value}`, align: 'right', mono: true },
   { key: 'discounted', label: t('catalog.cols.discounted'), align: 'right', mono: true },
@@ -218,8 +218,10 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
           </div>
         </template>
 
-        <template #cell-purchaseUsd="{ row }">
-          <span class="text-muted">{{ formatNumber((row as ProductView).price_usd, 2) }}</span>
+        <template #cell-supplierCost="{ row }">
+          <span class="text-muted">
+            {{ `${formatNumber((row as ProductView).cost_amount, 2)} ${(row as ProductView).brand?.catalog_currency ?? ''}` }}
+          </span>
         </template>
 
         <template #cell-purchase="{ row }">

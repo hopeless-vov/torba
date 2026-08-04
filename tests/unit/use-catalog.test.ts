@@ -1,17 +1,27 @@
 import { useCatalog } from '@/composables/use-catalog'
+import { useAuthStore } from '@/stores/auth'
 import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useUiStore } from '@/stores/ui'
 import type { ProductRow } from '@/api/products'
 import uk from '@/locales/uk.json'
-import type { Batch } from '@/types/database'
+import type { Batch, Company } from '@/types/database'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { describe, expect, it } from 'vitest'
 
-const brand = { id: 'b1', name: 'Colorescience', usd_rate: 44.5, company_id: 'c', rate_updated_at: '', created_at: '' }
+// The supplier prices in USD at ₴44.5 per $; the books are kept in UAH.
+const brand = {
+  id: 'b1',
+  name: 'Colorescience',
+  catalog_currency: 'USD',
+  supplier_rate: 44.5,
+  company_id: 'c',
+  rate_updated_at: '',
+  created_at: '',
+}
 const category = { id: 'cat1', name: 'Тон', company_id: 'c', created_at: '' }
 
 function product(over: Partial<ProductRow> = {}): ProductRow {
@@ -23,8 +33,8 @@ function product(over: Partial<ProductRow> = {}): ProductRow {
     sku: 'A-1',
     name: 'Alpha',
     volume: '12 г',
-    price_usd: 51,
-    retail_price_usd: 77,
+    cost_amount: 51, // $51 in the catalog currency
+    retail_amount: 3400, // ₴3400 in the functional currency
     is_active: true,
     created_at: '',
     updated_at: '',
@@ -49,6 +59,14 @@ function harness() {
     defineComponent({
       setup() {
         useCurrencyStore().setCurrency('UAH')
+        useAuthStore().company = {
+          id: 'c',
+          name: '',
+          owner_id: 'u',
+          base_currency: 'UAH',
+          display_currency: 'UAH',
+          created_at: '',
+        } as Company
         ctx = { inventory: useInventoryStore(), ui: useUiStore(), catalog: useCatalog() }
         return () => null
       },
@@ -68,10 +86,11 @@ describe('useCatalog', () => {
     ]
 
     const view = catalog.filtered.value[0]
-    // Central UAH rate (built-in default 41) — brand rate no longer applies.
-    expect(view.purchase).toBeCloseTo(51 * 41, 4)
-    expect(view.retail).toBeCloseTo(77 * 41, 4)
-    expect(view.margin).toBeCloseTo((77 - 51) / 77, 6)
+    // Cost = $51 × 44.5 supplier rate = ₴2269.5; retail is already ₴3400.
+    // Functional and display are both UAH here, so no further conversion.
+    expect(view.purchase).toBeCloseTo(51 * 44.5, 4)
+    expect(view.retail).toBeCloseTo(3400, 4)
+    expect(view.margin).toBeCloseTo((3400 - 51 * 44.5) / 3400, 6)
     expect(view.inStock).toBe(8)
   })
 
@@ -79,7 +98,7 @@ describe('useCatalog', () => {
     const { inventory, catalog } = harness()
     inventory.products = [product()]
     catalog.discount.value = 10
-    expect(catalog.filtered.value[0].discounted).toBeCloseTo(77 * 41 * 0.9, 4)
+    expect(catalog.filtered.value[0].discounted).toBeCloseTo(3400 * 0.9, 4)
   })
 
   it('hides inactive products unless requested', () => {

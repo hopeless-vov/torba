@@ -16,7 +16,7 @@ export function useCatalog() {
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
-  const { convert } = useCurrency()
+  const { toDisplay, functionalCost } = useCurrency()
 
   const brandFilter = ref('all')
   const categoryFilter = ref('all')
@@ -25,8 +25,11 @@ export function useCatalog() {
 
   const views = computed<ProductView[]>(() =>
     inventory.products.map((p) => {
-      const purchase = convert(p.price_usd)
-      const retail = p.retail_price_usd != null ? convert(p.retail_price_usd) : null
+      // Cost lives in the brand's catalog currency; resolve it to the
+      // functional currency via the supplier rate, then to display.
+      const cost = functionalCost(p.cost_amount, p.brand)
+      const purchase = toDisplay(cost)
+      const retail = p.retail_amount != null ? toDisplay(p.retail_amount) : null
       const discounted = retail != null ? applyDiscount(retail, discount.value) : null
       return {
         ...p,
@@ -35,7 +38,7 @@ export function useCatalog() {
         purchase,
         retail,
         discounted,
-        margin: computeMargin(p.price_usd, p.retail_price_usd),
+        margin: computeMargin(cost, p.retail_amount),
         inStock: inventory.stockByProduct.get(p.id) ?? 0,
       }
     }),
