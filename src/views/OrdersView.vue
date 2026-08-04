@@ -197,7 +197,7 @@ function destination(order: OrderView) {
       />
     </div>
 
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="flex flex-wrap items-end gap-3">
       <Tabs
         v-model="statusFilter"
         :tabs="statusTabs"
