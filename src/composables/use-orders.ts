@@ -87,6 +87,15 @@ export function useOrders() {
     return { revenue, cost, profit, margin: revenue > 0 ? profit / revenue : null }
   })
 
+  // The currency the KPI totals are expressed in. Orders snapshot their
+  // amounts in the currency they were transacted in, so summing across
+  // currencies is only meaningful when the filtered orders share one —
+  // which is the normal single-currency case. Mixed → null (ambiguous).
+  const kpiCurrency = computed<string | null>(() => {
+    const codes = new Set(filtered.value.map((o) => o.currency))
+    return codes.size === 1 ? [...codes][0] : null
+  })
+
   async function setStatus(id: string, status: OrderStatus) {
     try {
       await ordersApi.setStatus(id, status)
@@ -132,6 +141,7 @@ export function useOrders() {
     views,
     filtered,
     kpis,
+    kpiCurrency,
     statusFilter,
     paymentFilter,
     clientFilter,

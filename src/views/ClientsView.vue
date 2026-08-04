@@ -17,8 +17,14 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const { format } = useCurrency()
+const { format, formatIn } = useCurrency()
 const { filtered, createClient, updateClient } = useClients()
+
+// Spend is a snapshot sum — show it in the client's own order currency
+// when they share one, else fall back to the display currency.
+function spent(client: ClientView) {
+  return client.spendCurrency ? formatIn(client.spendCurrency, client.totalSpent) : format(client.totalSpent)
+}
 const { views: orderViews } = useOrders()
 const ui = useUiStore()
 
@@ -172,7 +178,7 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
               {{ t('clients.spent') }}
             </p>
             <p class="font-mono text-sm font-medium text-fg tabular-nums">
-              {{ format(client.totalSpent) }}
+              {{ spent(client) }}
             </p>
           </div>
         </div>

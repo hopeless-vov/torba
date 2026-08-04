@@ -27,7 +27,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const { format } = useCurrency()
+const { format, formatIn } = useCurrency()
 const reference = useReferenceStore()
 const clients = useClientsStore()
 const ordersStore = useOrdersStore()
@@ -40,10 +40,16 @@ const {
   clientFilter,
   fromDate,
   toDate,
+  kpiCurrency,
   setStatus,
   updateOrder,
   removeOrders,
 } = useOrders()
+
+// KPI totals sum snapshots; show them in the shared order currency when
+// there is one, otherwise fall back to the current display currency.
+const kpiMoney = (amount: number) =>
+  kpiCurrency.value ? formatIn(kpiCurrency.value, amount) : format(amount)
 
 const hasDateRange = computed(() => !!fromDate.value || !!toDate.value)
 function clearDateRange() {
@@ -172,17 +178,17 @@ function destination(order: OrderView) {
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard
         :label="t('orders.kpi.revenue')"
-        :value="format(kpis.revenue)"
+        :value="kpiMoney(kpis.revenue)"
         :hint="t('orders.kpi.revenueHint')"
       />
       <StatCard
         :label="t('orders.kpi.cost')"
-        :value="format(kpis.cost)"
+        :value="kpiMoney(kpis.cost)"
         :hint="t('orders.kpi.costHint')"
       />
       <StatCard
         :label="t('orders.kpi.profit')"
-        :value="format(kpis.profit)"
+        :value="kpiMoney(kpis.profit)"
         tone="accent"
         :hint="t('orders.kpi.profitHint')"
       />
@@ -323,13 +329,13 @@ function destination(order: OrderView) {
           >{{ t('common.emptyValue') }}</span>
         </template>
         <template #cell-sale="{ row }">
-          {{ format((row as OrderView).saleTotal) }}
+          {{ formatIn((row as OrderView).currency, (row as OrderView).saleTotal) }}
         </template>
         <template #cell-cost="{ row }">
-          <span class="text-muted">{{ format((row as OrderView).costTotal) }}</span>
+          <span class="text-muted">{{ formatIn((row as OrderView).currency, (row as OrderView).costTotal) }}</span>
         </template>
         <template #cell-profit="{ row }">
-          <span class="text-accent">{{ format((row as OrderView).profit) }}</span>
+          <span class="text-accent">{{ formatIn((row as OrderView).currency, (row as OrderView).profit) }}</span>
         </template>
         <template #cell-margin="{ row }">
           {{ formatPercent((row as OrderView).margin) }}

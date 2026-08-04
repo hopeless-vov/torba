@@ -40,6 +40,21 @@ describe('useCurrency', () => {
     expect(norm(currency.format(51 * 0.92))).toBe('47 €')
   })
 
+  it('formats an order amount in its own transacted currency, not the display one', () => {
+    useReferenceStore().currencies = [euro]
+    const currency = useCurrency()
+    currency.setCurrency('USD') // display currency is USD…
+
+    // …but a UAH order still shows ₴ with no re-conversion of the number.
+    expect(norm(currency.formatIn('UAH', 2047))).toBe('2 047 ₴')
+    expect(norm(currency.formatIn('USD', 46))).toBe('46,00 $')
+    expect(norm(currency.formatIn('EUR', 47))).toBe('47 €')
+  })
+
+  it('falls back to the raw code when the currency is unknown', () => {
+    expect(norm(useCurrency().formatIn('PLN', 100))).toBe('100 PLN')
+  })
+
   it('offers the built-ins plus whatever was added', () => {
     useReferenceStore().currencies = [euro]
     expect(useCurrency().options.value.map((o) => o.code)).toEqual(['UAH', 'USD', 'EUR'])

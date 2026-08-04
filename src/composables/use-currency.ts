@@ -47,6 +47,16 @@ export function useCurrency() {
     return formatAmount(amount, symbol.value, digits ?? defaultDigits())
   }
 
+  // Format an amount that is already denominated in `currencyCode`, using
+  // that currency's own symbol — independent of the current display
+  // selection. Orders snapshot their amounts in the currency they were
+  // transacted in (`order.currency`); they must not be re-labelled just
+  // because the top-bar display currency later changed.
+  function formatIn(currencyCode: string, amount: number, digits?: number): string {
+    const sym = options.value.find((o) => o.code === currencyCode)?.symbol ?? currencyCode
+    return formatAmount(amount, sym, digits ?? (currencyCode === 'USD' ? 2 : 0))
+  }
+
   return {
     code,
     symbol,
@@ -54,6 +64,7 @@ export function useCurrency() {
     isBase,
     convert,
     format,
+    formatIn,
     setCurrency: store.setCurrency,
   }
 }

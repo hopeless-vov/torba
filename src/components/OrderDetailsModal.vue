@@ -29,8 +29,12 @@ const props = withDefaults(
 const emit = defineEmits<{ edit: [order: OrderView]; delete: [order: OrderView] }>()
 
 const { t } = useI18n()
-const { format } = useCurrency()
+const { formatIn } = useCurrency()
 const inventory = useInventoryStore()
+
+// Orders are snapshots in the currency they were transacted in — always
+// show them in that currency, never in the current display selection.
+const fmt = (amount: number) => formatIn(props.order?.currency ?? 'UAH', amount)
 const open = defineModel<boolean>('open', { default: false })
 
 // Clicking a line opens the product behind it — its brand, prices and stock.
@@ -74,10 +78,10 @@ const money = computed(() => {
   const order = props.order
   if (!order) return []
   return [
-    { label: t('orders.details.goods'), value: format(order.saleTotal) },
-    { label: t('cart.goodsCost'), value: `− ${format(order.goodsCost)}`, muted: true },
-    { label: t('orders.edit.delivery'), value: `− ${format(order.delivery_cost)}`, muted: true },
-    { label: t('orders.edit.packaging'), value: `− ${format(order.packaging_cost)}`, muted: true },
+    { label: t('orders.details.goods'), value: fmt(order.saleTotal) },
+    { label: t('cart.goodsCost'), value: `− ${fmt(order.goodsCost)}`, muted: true },
+    { label: t('orders.edit.delivery'), value: `− ${fmt(order.delivery_cost)}`, muted: true },
+    { label: t('orders.edit.packaging'), value: `− ${fmt(order.packaging_cost)}`, muted: true },
   ]
 })
 </script>
@@ -192,10 +196,10 @@ const money = computed(() => {
                 {{ item.qty }}
               </td>
               <td class="px-3 py-2.5 text-right font-mono text-sm text-muted tabular-nums">
-                {{ format(item.unit_price) }}
+                {{ fmt(item.unit_price) }}
               </td>
               <td class="px-3 py-2.5 text-right font-mono text-sm text-fg tabular-nums">
-                {{ format(item.lineSale) }}
+                {{ fmt(item.lineSale) }}
               </td>
             </tr>
           </tbody>
@@ -224,7 +228,7 @@ const money = computed(() => {
             {{ t('orders.cols.profit') }}
           </dt>
           <dd class="font-mono font-semibold text-accent tabular-nums">
-            {{ `${format(order.profit)} · ${formatPercent(order.margin)}` }}
+            {{ `${fmt(order.profit)} · ${formatPercent(order.margin)}` }}
           </dd>
         </div>
       </dl>

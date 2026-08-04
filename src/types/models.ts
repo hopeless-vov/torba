@@ -26,6 +26,9 @@ export interface BatchView extends Batch {
 export interface ClientView extends Client {
   ordersCount: number
   totalSpent: number
+  // Currency the totalSpent sum is in, when the client's orders share one
+  // (null if mixed or none) — order amounts are snapshots per currency.
+  spendCurrency: string | null
 }
 
 export interface OrderItemView extends OrderItem {

@@ -22,7 +22,9 @@ export function useClients() {
     store.clients.map((c) => {
       const own = orders.orders.filter((o) => o.client_id === c.id)
       const totalSpent = own.reduce((sum, o) => sum + computeOrderTotals(o.items).saleTotal, 0)
-      return { ...c, ordersCount: own.length, totalSpent }
+      const codes = new Set(own.map((o) => o.currency))
+      const spendCurrency = codes.size === 1 ? [...codes][0] : null
+      return { ...c, ordersCount: own.length, totalSpent, spendCurrency }
     }),
   )
 

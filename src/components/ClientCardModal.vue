@@ -17,8 +17,16 @@ const props = defineProps<{ client?: ClientView | null }>()
 const emit = defineEmits<{ openOrder: [orderId: string] }>()
 
 const { t } = useI18n()
-const { format } = useCurrency()
+const { format, formatIn } = useCurrency()
 const orders = useOrdersStore()
+
+// Spend is a snapshot sum in the client's own order currency when they
+// share one, else the display currency.
+const totalSpent = computed(() =>
+  props.client?.spendCurrency
+    ? formatIn(props.client.spendCurrency, props.client.totalSpent)
+    : format(props.client?.totalSpent ?? 0),
+)
 const open = defineModel<boolean>('open', { default: false })
 
 const meta = computed(() =>
@@ -34,6 +42,7 @@ const history = computed(() => {
       number: o.number,
       date: o.created_at,
       status: o.status,
+      currency: o.currency,
       total: computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost).saleTotal,
     }))
 })
@@ -93,7 +102,7 @@ const history = computed(() => {
             {{ t('clients.spent') }}
           </p>
           <p class="font-mono text-lg font-medium text-fg tabular-nums">
-            {{ format(client.totalSpent) }}
+            {{ totalSpent }}
           </p>
         </div>
       </div>
@@ -118,7 +127,7 @@ const history = computed(() => {
               <span class="text-xs text-faint">{{ formatDate(order.date) }}</span>
             </div>
             <OrderStatusBadge :status="order.status" />
-            <span class="font-mono text-sm text-fg tabular-nums">{{ format(order.total) }}</span>
+            <span class="font-mono text-sm text-fg tabular-nums">{{ formatIn(order.currency, order.total) }}</span>
             <Icon
               icon="fa-solid fa-chevron-right"
               size="xs"

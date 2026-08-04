@@ -138,11 +138,20 @@ reprices its whole catalog, and the platform can switch display currency without
 touching stored data.
 
 Two currencies are built in: **USD** (the stored base) and **UAH** (converted
-through each brand's own rate). Any other currency is **added by the owner** in
-**Profile → Currencies** with a flat company-wide rate (units per 1 USD) — so EUR,
-PLN or anything else can be displayed without touching the schema. The top bar also
-carries a UK/EN language toggle. Orders snapshot the actually-transacted amounts,
-and a client's agreed discount is applied to sale prices in the cart.
+through each brand's own rate — i.e. the supplier's own exchange rate, which the
+owner keeps up to date per brand and which need not match the official bank rate).
+Any other currency is **added by the owner** in **Profile → Currencies** with a flat
+company-wide rate (units per 1 USD) — so EUR, PLN or anything else can be displayed
+without touching the schema. The top bar also carries a UK/EN language toggle.
+
+Live, USD-based data (catalog and warehouse) reprices into the display currency at
+render time. **Orders are different**: they snapshot the actually-transacted amounts
+in the currency they were placed in (`order.currency`), so they are always shown in
+*that* currency — the order list, its details, the client card and the per-client
+spend never re-label a past amount just because the display currency later changed.
+Aggregates that sum snapshots (the orders KPIs, a client's total spend) are shown in
+the shared currency when the orders agree on one, and fall back to the display
+currency otherwise. A client's agreed discount is applied to sale prices in the cart.
 
 ---
 
