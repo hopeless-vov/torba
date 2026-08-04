@@ -11,6 +11,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
+import { useCart } from '@/composables/use-cart'
 import { useSelection } from '@/composables/use-selection'
 import { useWarehouse, type WarehouseGroup, type WarehouseRow } from '@/composables/use-warehouse'
 import { useInventoryStore } from '@/stores/inventory'
@@ -25,6 +26,7 @@ const { t } = useI18n()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const ui = useUiStore()
+const { addFromBatch } = useCart()
 const {
   filtered,
   grouped,
@@ -97,7 +99,7 @@ const batchColumns = computed<Column[]>(() => [
     hint: t('warehouse.hint.sold'),
   },
   { key: 'status', label: t('warehouse.cols.status') },
-  { key: 'actions', label: '', width: '3rem', align: 'right' },
+  { key: 'actions', label: '', width: '5.5rem', align: 'right' },
 ])
 
 const groupColumns = computed<Column[]>(() => [
@@ -146,6 +148,13 @@ function openEdit(batchId: string) {
 function onMenu(row: WarehouseRow, action: string) {
   if (action === 'edit') openEdit(row.id)
   else if (action === 'delete') void removeBatch(row.id)
+}
+
+// Sell straight from a warehouse batch, like the catalog's add-to-cart —
+// the line is pinned to this exact batch (and therefore its expiry date).
+function addToCart(batchId: string) {
+  const batch = inventory.batches.find((b) => b.id === batchId)
+  if (batch) addFromBatch(batch)
 }
 
 async function onSubmit(payload: Omit<NewBatch, 'company_id'>) {
@@ -268,10 +277,23 @@ async function deleteSelected() {
           />
         </template>
         <template #cell-actions="{ row }">
-          <DropdownMenu
-            :items="rowMenu"
-            @select="onMenu(row as WarehouseRow, $event)"
-          />
+          <div class="flex items-center justify-end gap-1">
+            <button
+              type="button"
+              class="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-accent-line hover:text-accent"
+              :title="t('catalog.addToCart')"
+              @click="addToCart((row as WarehouseRow).id)"
+            >
+              <Icon
+                icon="fa-solid fa-plus"
+                size="sm"
+              />
+            </button>
+            <DropdownMenu
+              :items="rowMenu"
+              @select="onMenu(row as WarehouseRow, $event)"
+            />
+          </div>
         </template>
         <template #empty>
           <EmptyState
@@ -350,6 +372,17 @@ async function deleteSelected() {
               <span class="ml-auto font-mono text-sm text-fg tabular-nums">
                 {{ `${batch.remaining} / ${batch.received} ${t('common.pcs')}` }}
               </span>
+              <button
+                type="button"
+                class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-accent"
+                :title="t('catalog.addToCart')"
+                @click="addToCart(batch.id)"
+              >
+                <Icon
+                  icon="fa-solid fa-plus"
+                  size="xs"
+                />
+              </button>
               <button
                 type="button"
                 class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-fg"

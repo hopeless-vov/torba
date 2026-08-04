@@ -169,7 +169,9 @@ see [`utils/batch-number`](src/utils/batch-number.ts)), so nothing has to be typ
 The warehouse has two views. **За партіями** lists every delivery separately.
 **За товаром** collapses them into one row per product with the total stock, which
 expands to show how much sits under each expiry date — that is how you see both
-"how much do I have" and "which of it expires when".
+"how much do I have" and "which of it expires when". Every batch row carries the
+same **add-to-cart** button as the catalog, so stock can be sold straight from the
+warehouse — the cart line is pinned to that exact batch (and its expiry date).
 
 ## Orders & stock
 
