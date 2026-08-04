@@ -19,6 +19,10 @@ const props = withDefaults(
     size?: 'sm' | 'md' | 'lg'
     disabled?: boolean
     clearable?: boolean
+    /** When set, a footer button with this label appears; picking it emits
+     *  `add` — used to add a missing option (e.g. a Personalization item)
+     *  without leaving the current screen. */
+    addLabel?: string
   }>(),
   {
     label: undefined,
@@ -28,8 +32,11 @@ const props = withDefaults(
     size: 'md',
     disabled: false,
     clearable: false,
+    addLabel: undefined,
   },
 )
+
+const emit = defineEmits<{ add: [] }>()
 
 const model = defineModel<string>({ default: '' })
 const fieldId = useId()
@@ -88,6 +95,11 @@ function pick(option: SelectOption) {
 function clear() {
   model.value = ''
   close()
+}
+
+function onAdd() {
+  close()
+  emit('add')
 }
 
 function move(delta: number) {
@@ -223,6 +235,19 @@ const trigger = tv({
               {{ emptyText || '' }}
             </li>
           </ul>
+
+          <button
+            v-if="addLabel"
+            type="button"
+            class="flex w-full cursor-pointer items-center gap-2 border-t border-line-soft px-3 py-2.5 text-sm text-accent transition-colors hover:bg-hover"
+            @click="onAdd"
+          >
+            <Icon
+              icon="fa-solid fa-plus"
+              size="xs"
+            />
+            <span class="min-w-0 flex-1 truncate text-left">{{ addLabel }}</span>
+          </button>
         </Motion>
       </AnimatePresence>
     </Teleport>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import QuickAddModal from '@/components/QuickAddModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
@@ -55,6 +56,12 @@ const paymentMethod = computed({
 
 const clientOptions = computed(() => clients.clients.map((c) => ({ value: c.id, label: c.name })))
 const paymentOptions = computed(() => reference.paymentMethods.map((p) => ({ value: p.name, label: p.name })))
+
+// Add a missing payment method inline, without leaving the cart.
+const paymentAddOpen = ref(false)
+function onPaymentAdded(value: string) {
+  paymentMethod.value = value
+}
 
 // ── add-items picker ──
 const pickerTab = ref<'stock' | 'catalog'>('catalog')
@@ -281,7 +288,9 @@ function batchOptions(line: CartLine) {
           :search-placeholder="t('common.search')"
           :empty-text="t('common.noMatches')"
           :options="paymentOptions"
+          :add-label="t('profile.addPayment')"
           clearable
+          @add="paymentAddOpen = true"
         />
 
         <p class="text-xs text-faint">
@@ -350,4 +359,11 @@ function batchOptions(line: CartLine) {
       </div>
     </template>
   </Drawer>
+
+  <QuickAddModal
+    kind="payment"
+    :open="paymentAddOpen"
+    @update:open="paymentAddOpen = $event"
+    @added="onPaymentAdded"
+  />
 </template>

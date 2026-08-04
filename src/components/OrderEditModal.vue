@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import QuickAddModal from '@/components/QuickAddModal.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -42,6 +43,9 @@ const statusOptions = computed(() =>
 )
 const paymentOptions = computed(() => reference.paymentMethods.map((p) => ({ value: p.name, label: p.name })))
 const clientOptions = computed(() => clients.clients.map((c) => ({ value: c.id, label: c.name })))
+
+// Add a missing payment method inline, without leaving the order form.
+const paymentAddOpen = ref(false)
 
 /** The client's usual destination — the default this parcel starts from. */
 function defaultAddress(clientId: string) {
@@ -113,7 +117,9 @@ function submit() {
         :search-placeholder="t('common.search')"
         :empty-text="t('common.noMatches')"
         :options="paymentOptions"
+        :add-label="t('profile.addPayment')"
         clearable
+        @add="paymentAddOpen = true"
       />
       <Combobox
         v-model="form.client_id"
@@ -171,4 +177,10 @@ function submit() {
       </Button>
     </template>
   </Modal>
+
+  <QuickAddModal
+    v-model:open="paymentAddOpen"
+    kind="payment"
+    @added="form.payment_method = $event"
+  />
 </template>

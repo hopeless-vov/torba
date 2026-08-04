@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import QuickAddModal from '@/components/QuickAddModal.vue'
 import Button from '@/components/ui/Button.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import Combobox from '@/components/ui/Combobox.vue'
@@ -38,6 +39,18 @@ const retailModel = ref(0)
 
 const brandOptions = computed(() => reference.brands.map((b) => ({ value: b.id, label: b.name })))
 const categoryOptions = computed(() => reference.categories.map((c) => ({ value: c.id, label: c.name })))
+
+// Add a missing brand/category inline, without leaving the product form.
+const quickAdd = ref<'brand' | 'category'>('brand')
+const quickAddOpen = ref(false)
+function openQuickAdd(kind: 'brand' | 'category') {
+  quickAdd.value = kind
+  quickAddOpen.value = true
+}
+function onQuickAdded(value: string) {
+  if (quickAdd.value === 'brand') form.brand_id = value
+  else form.category_id = value
+}
 
 const canSave = computed(() => !!form.sku.trim() && !!form.name.trim() && !!form.brand_id)
 
@@ -105,6 +118,8 @@ function submit() {
         :search-placeholder="t('common.search')"
         :empty-text="t('common.noMatches')"
         :options="brandOptions"
+        :add-label="t('profile.addBrand')"
+        @add="openQuickAdd('brand')"
       />
       <Combobox
         v-model="form.category_id"
@@ -114,7 +129,9 @@ function submit() {
         :search-placeholder="t('common.search')"
         :empty-text="t('common.noMatches')"
         :options="categoryOptions"
+        :add-label="t('profile.addCategory')"
         clearable
+        @add="openQuickAdd('category')"
       />
       <NumberInput
         v-model="priceModel"
@@ -155,4 +172,10 @@ function submit() {
       </Button>
     </template>
   </Modal>
+
+  <QuickAddModal
+    v-model:open="quickAddOpen"
+    :kind="quickAdd"
+    @added="onQuickAdded"
+  />
 </template>

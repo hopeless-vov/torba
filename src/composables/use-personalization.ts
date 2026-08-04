@@ -27,19 +27,27 @@ export function usePersonalization() {
     return { products: owned.length, categories: categories.size }
   }
 
-  async function run(action: () => Promise<unknown>, successKey: string, errorKey: string) {
+  // Returns the action's result on success (so the caller can select a
+  // freshly-created item), or null on failure.
+  async function run<T>(
+    action: () => Promise<T>,
+    successKey: string,
+    errorKey: string,
+  ): Promise<T | null> {
     try {
-      await action()
+      const result = await action()
       await reload()
       toast.success(t(successKey))
+      return result
     } catch {
       toast.error(t(errorKey))
+      return null
     }
   }
 
   async function addBrand(name: string) {
-    if (!auth.companyId || !name.trim()) return
-    await run(
+    if (!auth.companyId || !name.trim()) return null
+    return run(
       () => brandsApi.create({ company_id: auth.companyId as string, name: name.trim(), usd_rate: 0 }),
       'toasts.saved',
       'errors.save',
@@ -51,8 +59,8 @@ export function usePersonalization() {
   }
 
   async function addCategory(name: string) {
-    if (!auth.companyId || !name.trim()) return
-    await run(
+    if (!auth.companyId || !name.trim()) return null
+    return run(
       () => categoriesApi.create({ company_id: auth.companyId as string, name: name.trim() }),
       'toasts.saved',
       'errors.save',
@@ -64,8 +72,8 @@ export function usePersonalization() {
   }
 
   async function addPayment(name: string) {
-    if (!auth.companyId || !name.trim()) return
-    await run(
+    if (!auth.companyId || !name.trim()) return null
+    return run(
       () => paymentMethodsApi.create({ company_id: auth.companyId as string, name: name.trim() }),
       'toasts.saved',
       'errors.save',

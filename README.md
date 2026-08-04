@@ -264,7 +264,10 @@ Two of them carry most of the interaction weight:
 - **`Combobox`** — a `Select` with a filter box and keyboard navigation, and the same
   `v-model` contract, so the two are interchangeable. Every dropdown fed by
   user-defined data (clients, brands, categories, products, payment methods) uses it;
-  plain `Select` is left for short fixed lists like order status.
+  plain `Select` is left for short fixed lists like order status. Passing an
+  `addLabel` adds a footer button that emits `add` — the forms use it to drop a
+  `QuickAddModal` in place so a missing **Personalization** item (brand, category or
+  payment method) can be created inline and auto-selected, without a trip to Profile.
 - **`DataTable`** — columns in, rows in, one slot per cell. `selectable` adds a
   leading checkbox column with a select-all header (wired to
   [`use-selection`](src/composables/use-selection.ts) and a bulk delete bar),
