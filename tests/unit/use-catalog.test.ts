@@ -68,8 +68,9 @@ describe('useCatalog', () => {
     ]
 
     const view = catalog.filtered.value[0]
-    expect(view.purchase).toBeCloseTo(51 * 44.5, 4) // UAH
-    expect(view.retail).toBeCloseTo(77 * 44.5, 4)
+    // Central UAH rate (built-in default 41) — brand rate no longer applies.
+    expect(view.purchase).toBeCloseTo(51 * 41, 4)
+    expect(view.retail).toBeCloseTo(77 * 41, 4)
     expect(view.margin).toBeCloseTo((77 - 51) / 77, 6)
     expect(view.inStock).toBe(8)
   })
@@ -78,7 +79,7 @@ describe('useCatalog', () => {
     const { inventory, catalog } = harness()
     inventory.products = [product()]
     catalog.discount.value = 10
-    expect(catalog.filtered.value[0].discounted).toBeCloseTo(77 * 44.5 * 0.9, 4)
+    expect(catalog.filtered.value[0].discounted).toBeCloseTo(77 * 41 * 0.9, 4)
   })
 
   it('hides inactive products unless requested', () => {

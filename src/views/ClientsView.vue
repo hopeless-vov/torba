@@ -18,13 +18,12 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const { format, formatIn } = useCurrency()
+const { format } = useCurrency()
 const { filtered, createClient, updateClient, removeClient } = useClients()
 
-// Spend is a snapshot sum — show it in the client's own order currency
-// when they share one, else fall back to the display currency.
+// Spend is already converted into the active currency by useClients.
 function spent(client: ClientView) {
-  return client.spendCurrency ? formatIn(client.spendCurrency, client.totalSpent) : format(client.totalSpent)
+  return format(client.totalSpent)
 }
 const { views: orderViews } = useOrders()
 const ui = useUiStore()

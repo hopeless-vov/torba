@@ -4,9 +4,10 @@ import type { Currency } from '@/types/database'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-const BRAND_RATE = 41.5
-
+// Central rates: usd_rate = units of the currency per 1 USD.
+const uah = { id: 'c-uah', company_id: 'c', code: 'UAH', symbol: '₴', usd_rate: 40 } as Currency
 const euro = { id: 'cur1', company_id: 'c', code: 'EUR', symbol: '€', usd_rate: 0.92 } as Currency
+const pln = { id: 'c-pln', company_id: 'c', code: 'PLN', symbol: 'zł', usd_rate: 4 } as Currency
 
 // uk-UA groups with a non-breaking space; normalise for stable assertions.
 const norm = (s: string) => s.replace(/\s/g, ' ')
@@ -16,54 +17,75 @@ describe('useCurrency', () => {
     setActivePinia(createPinia())
   })
 
-  it('keeps USD amounts as stored', () => {
-    const currency = useCurrency()
-    currency.setCurrency('USD')
-    expect(currency.convert(51, BRAND_RATE)).toBe(51)
-    expect(norm(currency.format(51))).toBe('51,00 $')
+  it('keeps USD amounts as stored (base rate 1)', () => {
+    const c = useCurrency()
+    c.setCurrency('USD')
+    expect(c.convert(51)).toBe(51)
+    expect(norm(c.format(51))).toBe('51,00 $')
   })
 
-  it('converts UAH through the brand rate', () => {
-    const currency = useCurrency()
-    currency.setCurrency('UAH')
-    expect(currency.convert(51, BRAND_RATE)).toBeCloseTo(51 * BRAND_RATE, 4)
-    expect(currency.symbol.value).toBe('₴')
+  it('converts a USD amount through the central rate', () => {
+    useReferenceStore().currencies = [uah]
+    const c = useCurrency()
+    c.setCurrency('UAH')
+    expect(c.convert(51)).toBeCloseTo(51 * 40, 4)
+    expect(c.symbol.value).toBe('₴')
+    expect(norm(c.format(51 * 40))).toBe('2 040 ₴')
   })
 
-  it('converts a user-added currency through its own flat rate', () => {
+  it('uses a built-in default rate before one has been set', () => {
+    const c = useCurrency()
+    c.setCurrency('EUR') // built-in, defaults to 0.92
+    expect(c.code.value).toBe('EUR')
+    expect(c.convert(51)).toBeCloseTo(51 * 0.92, 4)
+    expect(norm(c.format(51 * 0.92))).toBe('46,92 €')
+  })
+
+  it('lets a stored rate override the built-in default', () => {
+    useReferenceStore().currencies = [{ ...euro, usd_rate: 0.9 } as Currency]
+    const c = useCurrency()
+    c.setCurrency('EUR')
+    expect(c.rateOf('EUR')).toBe(0.9)
+    expect(c.convert(100)).toBeCloseTo(90, 4)
+  })
+
+  it('re-expresses an amount from its own currency into the active one', () => {
+    useReferenceStore().currencies = [uah] // 40 ₴ per USD
+    const c = useCurrency()
+    c.setCurrency('USD')
+    // 2000 ₴ ÷ 40 = 50 USD
+    expect(c.convertBetween(2000, 'UAH')).toBeCloseTo(50, 4)
+    expect(norm(c.formatFrom('UAH', 2000))).toBe('50,00 $')
+  })
+
+  it('toUsd inverts the active rate', () => {
+    useReferenceStore().currencies = [uah]
+    const c = useCurrency()
+    c.setCurrency('UAH')
+    expect(c.toUsd(2000)).toBeCloseTo(50, 4) // 2000 ÷ 40
+  })
+
+  it('formats an amount in a specific currency with its own symbol', () => {
     useReferenceStore().currencies = [euro]
-    const currency = useCurrency()
-    currency.setCurrency('EUR')
-
-    expect(currency.code.value).toBe('EUR')
-    expect(currency.convert(51, BRAND_RATE)).toBeCloseTo(51 * 0.92, 4)
-    expect(norm(currency.format(51 * 0.92))).toBe('47 €')
-  })
-
-  it('formats an order amount in its own transacted currency, not the display one', () => {
-    useReferenceStore().currencies = [euro]
-    const currency = useCurrency()
-    currency.setCurrency('USD') // display currency is USD…
-
-    // …but a UAH order still shows ₴ with no re-conversion of the number.
-    expect(norm(currency.formatIn('UAH', 2047))).toBe('2 047 ₴')
-    expect(norm(currency.formatIn('USD', 46))).toBe('46,00 $')
-    expect(norm(currency.formatIn('EUR', 47))).toBe('47 €')
+    const c = useCurrency()
+    expect(norm(c.formatIn('UAH', 2047))).toBe('2 047 ₴')
+    expect(norm(c.formatIn('USD', 46))).toBe('46,00 $')
+    expect(norm(c.formatIn('EUR', 47))).toBe('47,00 €')
   })
 
   it('falls back to the raw code when the currency is unknown', () => {
-    expect(norm(useCurrency().formatIn('PLN', 100))).toBe('100 PLN')
+    expect(norm(useCurrency().formatIn('XYZ', 100))).toBe('100 XYZ')
   })
 
-  it('offers the built-ins plus whatever was added', () => {
-    useReferenceStore().currencies = [euro]
-    expect(useCurrency().options.value.map((o) => o.code)).toEqual(['UAH', 'USD', 'EUR'])
+  it('offers the built-ins plus whatever was added, de-duped by code', () => {
+    useReferenceStore().currencies = [euro, pln] // EUR is built-in → not doubled
+    expect(useCurrency().options.value.map((o) => o.code)).toEqual(['UAH', 'USD', 'EUR', 'PLN'])
   })
 
-  it('falls back to UAH when the saved currency no longer exists', () => {
-    const currency = useCurrency()
-    currency.setCurrency('EUR') // never added, or since deleted
-    expect(currency.code.value).toBe('UAH')
-    expect(currency.convert(51, BRAND_RATE)).toBeCloseTo(51 * BRAND_RATE, 4)
+  it('falls back to the base currency when the saved one no longer exists', () => {
+    const c = useCurrency()
+    c.setCurrency('PLN') // never added, or since deleted
+    expect(c.code.value).toBe('USD')
+    expect(c.convert(51)).toBe(51)
   })
 })

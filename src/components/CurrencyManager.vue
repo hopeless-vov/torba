@@ -5,15 +5,20 @@ import Icon from '@/components/ui/Icon.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrencies } from '@/composables/use-currencies'
-import { BUILT_IN_CURRENCIES } from '@/composables/use-currency'
+import { BUILT_IN_CODES, BUILT_IN_CURRENCIES } from '@/composables/use-currency'
 import { formatNumber } from '@/utils/format'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-// Adds display currencies beyond the built-in USD base and UAH brand
-// rates — e.g. EUR at a flat company-wide rate.
+// Adds display currencies beyond the built-in ones (UAH, USD, EUR). Rates
+// for every currency are edited on the Rates page; this is a shortcut to
+// register a new one.
 const { t } = useI18n()
 const { currencies, addCurrency, updateCurrency, removeCurrency } = useCurrencies()
+
+// Built-in codes have their own row above, so keep the editable list to the
+// custom currencies the owner added.
+const customCurrencies = computed(() => currencies.value.filter((c) => !BUILT_IN_CODES.includes(c.code)))
 
 const form = reactive({ code: '', symbol: '' })
 const rate = ref(0)
@@ -101,7 +106,7 @@ async function saveRate(id: string) {
       </li>
 
       <li
-        v-for="currency in currencies"
+        v-for="currency in customCurrencies"
         :key="currency.id"
         class="flex items-center gap-3 rounded-lg border border-line-soft bg-surface px-3 py-2.5"
       >

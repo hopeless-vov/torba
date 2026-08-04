@@ -1,70 +1,117 @@
 import { useCurrencyStore } from '@/stores/currency'
 import { useReferenceStore } from '@/stores/reference'
 import { CURRENCY_SYMBOLS, formatAmount } from '@/utils/format'
-import { convertPrice } from '@/utils/pricing'
 import { computed } from 'vue'
 
-// The two currencies the app always understands: USD is the stored base,
-// and UAH is derived from each brand's own rate. Anything else is added
-// by the owner (see `currencies` in migration 0004) and converts with one
-// flat company-wide rate.
+// USD is the internal storage base — every product price is kept in USD.
+// What the user sees is converted into the *active* currency chosen in the
+// top bar, using one company-wide ("central") rate per currency:
+// `usd_rate` = how many units of that currency make 1 USD.
+//
+// UAH, USD and EUR are always available; the owner can add more and edit
+// every rate on the /rates page. Per-brand supplier rates still live on
+// the brand (a cost reference), but no longer drive what any screen shows —
+// display is uniform, so switching the currency reconverts the whole app
+// consistently (catalog, warehouse, orders, dashboard).
+export const BASE_CURRENCY = 'USD'
+
 export const BUILT_IN_CURRENCIES = [
-  { code: 'UAH', symbol: CURRENCY_SYMBOLS.UAH },
-  { code: 'USD', symbol: CURRENCY_SYMBOLS.USD },
+  { code: 'UAH', symbol: CURRENCY_SYMBOLS.UAH, defaultRate: 41 },
+  { code: 'USD', symbol: CURRENCY_SYMBOLS.USD, defaultRate: 1 },
+  { code: 'EUR', symbol: CURRENCY_SYMBOLS.EUR, defaultRate: 0.92 },
 ] as const
 
-// Bridges the display-currency setting with the pure pricing/format
-// helpers. USD is the stored base (rate is skipped); other currencies
-// convert through the brand's rate (UAH) or their own rate.
+export const BUILT_IN_CODES: string[] = BUILT_IN_CURRENCIES.map((c) => c.code)
+
 export function useCurrency() {
   const store = useCurrencyStore()
   const reference = useReferenceStore()
 
-  const options = computed(() => [
-    ...BUILT_IN_CURRENCIES.map((c) => ({ code: c.code, symbol: c.symbol })),
-    ...reference.currencies.map((c) => ({ code: c.code, symbol: c.symbol || c.code })),
-  ])
+  // Built-ins first, then any custom currency the owner added — de-duped by
+  // code so a stored UAH/EUR rate row does not double up the built-in.
+  const options = computed(() => {
+    const seen = new Set<string>()
+    const list: { code: string; symbol: string }[] = []
+    for (const b of BUILT_IN_CURRENCIES) {
+      list.push({ code: b.code, symbol: b.symbol })
+      seen.add(b.code)
+    }
+    for (const c of reference.currencies) {
+      if (seen.has(c.code)) continue
+      list.push({ code: c.code, symbol: c.symbol || c.code })
+      seen.add(c.code)
+    }
+    return list
+  })
 
-  // A currency the user deleted must not strand the whole UI on an
-  // unknown code.
+  // A currency the user deleted must not strand the UI on an unknown code.
   const code = computed(() =>
-    options.value.some((o) => o.code === store.displayCurrency) ? store.displayCurrency : 'UAH',
+    options.value.some((o) => o.code === store.displayCurrency) ? store.displayCurrency : BASE_CURRENCY,
   )
-  const isBase = computed(() => code.value === 'USD')
   const symbol = computed(() => options.value.find((o) => o.code === code.value)?.symbol ?? code.value)
 
-  function defaultDigits() {
-    return code.value === 'USD' ? 2 : 0
+  // Central rate: units of `c` per 1 USD. USD is the base (1). A stored rate
+  // wins; a built-in falls back to its default so the app still converts
+  // sensibly before any rate has been set on /rates.
+  function rateOf(c: string): number {
+    if (c === BASE_CURRENCY) return 1
+    const row = reference.currenciesByCode.get(c)
+    if (row && row.usd_rate > 0) return row.usd_rate
+    const builtIn = BUILT_IN_CURRENCIES.find((b) => b.code === c)
+    return builtIn?.defaultRate ?? row?.usd_rate ?? 0
   }
 
-  function convert(usd: number, brandRate: number): number {
-    if (isBase.value) return usd
-    if (code.value === 'UAH') return convertPrice(usd, brandRate)
-    return convertPrice(usd, reference.currenciesByCode.get(code.value)?.usd_rate ?? 0)
+  function digitsFor(c: string) {
+    return c === 'USD' || c === 'EUR' ? 2 : 0
+  }
+
+  /** A USD amount → the active display currency. */
+  function convert(usd: number): number {
+    return usd * rateOf(code.value)
+  }
+
+  /** An amount typed in `from` (default: the active currency) → USD, for storage. */
+  function toUsd(amount: number, from: string = code.value): number {
+    const r = rateOf(from)
+    return r > 0 ? amount / r : amount
+  }
+
+  /**
+   * Re-express an amount held in `from` into `to` (default: the active
+   * currency), via USD. Orders snapshot their totals in the currency they
+   * were sold in, so this is how they follow the active-currency switch.
+   */
+  function convertBetween(amount: number, from: string, to: string = code.value): number {
+    if (from === to) return amount
+    return toUsd(amount, from) * rateOf(to)
   }
 
   function format(amount: number, digits?: number): string {
-    return formatAmount(amount, symbol.value, digits ?? defaultDigits())
+    return formatAmount(amount, symbol.value, digits ?? digitsFor(code.value))
   }
 
-  // Format an amount that is already denominated in `currencyCode`, using
-  // that currency's own symbol — independent of the current display
-  // selection. Orders snapshot their amounts in the currency they were
-  // transacted in (`order.currency`); they must not be re-labelled just
-  // because the top-bar display currency later changed.
+  /** Format an amount already denominated in `currencyCode`, with its own symbol. */
   function formatIn(currencyCode: string, amount: number, digits?: number): string {
     const sym = options.value.find((o) => o.code === currencyCode)?.symbol ?? currencyCode
-    return formatAmount(amount, sym, digits ?? (currencyCode === 'USD' ? 2 : 0))
+    return formatAmount(amount, sym, digits ?? digitsFor(currencyCode))
+  }
+
+  /** An amount snapshotted in `from`, converted into and shown in the active currency. */
+  function formatFrom(from: string, amount: number, digits?: number): string {
+    return format(convertBetween(amount, from), digits)
   }
 
   return {
     code,
     symbol,
     options,
-    isBase,
+    rateOf,
     convert,
+    toUsd,
+    convertBetween,
     format,
     formatIn,
+    formatFrom,
     setCurrency: store.setCurrency,
   }
 }

@@ -6,6 +6,7 @@ import Combobox from '@/components/ui/Combobox.vue'
 import Modal from '@/components/ui/Modal.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
 import TextInput from '@/components/ui/TextInput.vue'
+import { useCurrency } from '@/composables/use-currency'
 import { useReferenceStore } from '@/stores/reference'
 import type { NewProduct, Product } from '@/types/database'
 import { computed, reactive, ref, watch } from 'vue'
@@ -19,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewProduct, 'company_id'>] }>()
 
 const { t } = useI18n()
+const { code, convert, toUsd } = useCurrency()
 const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -34,8 +36,12 @@ const form = reactive({
 })
 
 const isEdit = computed(() => !!props.product)
+
+// Prices are stored in USD but entered and shown in the active currency,
+// so the owner works in whatever currency they think in.
 const priceModel = ref(0)
 const retailModel = ref(0)
+const round2 = (n: number) => Math.round(n * 100) / 100
 
 const brandOptions = computed(() => reference.brands.map((b) => ({ value: b.id, label: b.name })))
 const categoryOptions = computed(() => reference.categories.map((c) => ({ value: c.id, label: c.name })))
@@ -64,8 +70,8 @@ watch(
     form.brand_id = p?.brand_id ?? ''
     form.category_id = p?.category_id ?? ''
     form.volume = p?.volume ?? ''
-    priceModel.value = p?.price_usd ?? 0
-    retailModel.value = p?.retail_price_usd ?? 0
+    priceModel.value = p ? round2(convert(p.price_usd)) : 0
+    retailModel.value = p?.retail_price_usd != null ? round2(convert(p.retail_price_usd)) : 0
     form.is_active = p?.is_active ?? true
   },
   { immediate: true },
@@ -79,8 +85,8 @@ function submit() {
     brand_id: form.brand_id || null,
     category_id: form.category_id || null,
     volume: form.volume.trim() || null,
-    price_usd: priceModel.value || 0,
-    retail_price_usd: retailModel.value || null,
+    price_usd: toUsd(priceModel.value || 0),
+    retail_price_usd: retailModel.value ? toUsd(retailModel.value) : null,
     is_active: form.is_active,
   })
 }
@@ -136,17 +142,20 @@ function submit() {
       <NumberInput
         v-model="priceModel"
         class="col-span-1"
-        :label="t('catalog.form.priceUsd')"
+        :label="`${t('catalog.form.priceUsd')} (${code})`"
         :min="0"
         :step="0.5"
       />
       <NumberInput
         v-model="retailModel"
         class="col-span-1"
-        :label="t('catalog.form.retailUsd')"
+        :label="`${t('catalog.form.retailUsd')} (${code})`"
         :min="0"
         :step="0.5"
       />
+      <p class="col-span-2 -mt-1 text-xs text-faint">
+        {{ t('catalog.form.priceHint') }}
+      </p>
       <div class="col-span-2">
         <Checkbox
           v-model="form.is_active"

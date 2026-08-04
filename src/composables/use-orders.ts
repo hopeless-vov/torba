@@ -1,4 +1,5 @@
 import { ordersApi } from '@/api/orders'
+import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
@@ -17,6 +18,7 @@ export function useOrders() {
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
+  const { convertBetween } = useCurrency()
 
   const statusFilter = ref<'all' | OrderStatus>('all')
   const paymentFilter = ref('all')
@@ -75,25 +77,19 @@ export function useOrders() {
     })
   })
 
+  // Orders snapshot their amounts in the currency they were sold in, so
+  // convert each into the active display currency before summing — the
+  // totals stay coherent even across a mix of order currencies.
   const kpis = computed(() => {
     let revenue = 0
     let cost = 0
     let profit = 0
     for (const o of filtered.value) {
-      revenue += o.saleTotal
-      cost += o.costTotal
-      profit += o.profit
+      revenue += convertBetween(o.saleTotal, o.currency)
+      cost += convertBetween(o.costTotal, o.currency)
+      profit += convertBetween(o.profit, o.currency)
     }
     return { revenue, cost, profit, margin: revenue > 0 ? profit / revenue : null }
-  })
-
-  // The currency the KPI totals are expressed in. Orders snapshot their
-  // amounts in the currency they were transacted in, so summing across
-  // currencies is only meaningful when the filtered orders share one —
-  // which is the normal single-currency case. Mixed → null (ambiguous).
-  const kpiCurrency = computed<string | null>(() => {
-    const codes = new Set(filtered.value.map((o) => o.currency))
-    return codes.size === 1 ? [...codes][0] : null
   })
 
   async function setStatus(id: string, status: OrderStatus) {
@@ -141,7 +137,6 @@ export function useOrders() {
     views,
     filtered,
     kpis,
-    kpiCurrency,
     statusFilter,
     paymentFilter,
     clientFilter,

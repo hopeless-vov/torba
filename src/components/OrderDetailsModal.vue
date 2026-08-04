@@ -29,12 +29,12 @@ const props = withDefaults(
 const emit = defineEmits<{ edit: [order: OrderView]; delete: [order: OrderView] }>()
 
 const { t } = useI18n()
-const { formatIn } = useCurrency()
+const { formatFrom } = useCurrency()
 const inventory = useInventoryStore()
 
-// Orders are snapshots in the currency they were transacted in — always
-// show them in that currency, never in the current display selection.
-const fmt = (amount: number) => formatIn(props.order?.currency ?? 'UAH', amount)
+// Orders are snapshots in the currency they were sold in; convert them into
+// the active display currency so the whole app reads in one currency.
+const fmt = (amount: number) => formatFrom(props.order?.currency ?? 'UAH', amount)
 const open = defineModel<boolean>('open', { default: false })
 
 // Clicking a line opens the product behind it — its brand, prices and stock.

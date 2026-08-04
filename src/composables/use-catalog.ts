@@ -25,9 +25,8 @@ export function useCatalog() {
 
   const views = computed<ProductView[]>(() =>
     inventory.products.map((p) => {
-      const rate = p.brand?.usd_rate ?? 0
-      const purchase = convert(p.price_usd, rate)
-      const retail = p.retail_price_usd != null ? convert(p.retail_price_usd, rate) : null
+      const purchase = convert(p.price_usd)
+      const retail = p.retail_price_usd != null ? convert(p.retail_price_usd) : null
       const discounted = retail != null ? applyDiscount(retail, discount.value) : null
       return {
         ...p,

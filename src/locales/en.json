@@ -133,8 +133,9 @@
       "brand": "Brand",
       "category": "Category",
       "volume": "Volume",
-      "priceUsd": "Purchase, USD",
-      "retailUsd": "Retail, USD",
+      "priceUsd": "Purchase",
+      "retailUsd": "Retail",
+      "priceHint": "Prices are stored in USD and shown in the selected currency.",
       "active": "Active"
     }
   },
@@ -289,7 +290,16 @@
     }
   },
   "rates": {
-    "subtitle": "By brand",
+    "subtitle": "Currencies & rates",
+    "currenciesTitle": "Currencies",
+    "currenciesHint": "Rate — how many units make 1 USD. Pick the active currency in the top bar; every amount is shown in it.",
+    "brandsTitle": "Supplier rates",
+    "brandsHint": "Each brand's supplier reference rate.",
+    "base": "Base",
+    "active": "Active",
+    "makeActive": "Make active",
+    "addCurrency": "Add currency",
+    "saveRate": "Save",
     "history": "Rate history",
     "update": "Update rate",
     "updatedAt": "Updated {date}",
@@ -337,7 +347,7 @@
       "add": "Add currency",
       "builtIn": "built in",
       "baseHint": "base currency — prices are stored in it",
-      "brandRateHint": "the rate is kept per brand",
+      "brandRateHint": "set the rate on the Rates page",
       "errorCode": "A currency code is three letters, e.g. EUR.",
       "errorBuiltIn": "This currency is already built in.",
       "errorExists": "This currency has already been added."

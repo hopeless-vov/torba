@@ -1,7 +1,6 @@
 import { useCurrency } from '@/composables/use-currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
-import { useReferenceStore } from '@/stores/reference'
 import type { BatchStatus } from '@/types/models'
 import { batchStatus, daysUntil } from '@/utils/batch-status'
 import { computeOrderTotals } from '@/utils/orders'
@@ -21,8 +20,7 @@ export interface BurningRow {
 export function useDashboard() {
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
-  const reference = useReferenceStore()
-  const { convert } = useCurrency()
+  const { convert, convertBetween } = useCurrency()
 
   const enriched = computed(() =>
     inventory.batches.map((b) => ({
@@ -40,8 +38,7 @@ export function useDashboard() {
     let stockValue = 0
 
     for (const { batch, status } of enriched.value) {
-      const rate = reference.brandRate(batch.product?.brand_id ?? null)
-      stockValue += batch.remaining_qty * convert(batch.product?.price_usd ?? 0, rate)
+      stockValue += batch.remaining_qty * convert(batch.product?.price_usd ?? 0)
       if (status === 'expired') {
         expired += 1
         expiredUnits += batch.remaining_qty
@@ -51,9 +48,15 @@ export function useDashboard() {
       }
     }
 
+    // Each order's profit is snapshotted in its own currency; convert to
+    // the active one before summing so the figure is coherent.
     const profit = orders.orders.reduce(
       (sum, o) =>
-        sum + computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost).profit,
+        sum +
+        convertBetween(
+          computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost).profit,
+          o.currency,
+        ),
       0,
     )
 

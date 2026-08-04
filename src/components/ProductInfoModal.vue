@@ -43,16 +43,15 @@ const sku = computed(() => product.value?.sku ?? props.fallbackSku ?? '')
 const facts = computed(() => {
   const p = product.value
   if (!p) return []
-  const rate = p.brand?.usd_rate ?? 0
   const retailUsd = p.retail_price_usd
   const stock = inventory.stockByProduct.get(p.id) ?? 0
   const rows = [
     { label: t('catalog.form.volume'), value: p.volume || t('common.emptyValue') },
     { label: t('catalog.cols.purchaseUsd'), value: `${formatNumber(p.price_usd, 2)} $`, mono: true },
-    { label: t('catalog.cols.purchase'), value: format(convert(p.price_usd, rate)), mono: true },
+    { label: t('catalog.cols.purchase'), value: format(convert(p.price_usd)), mono: true },
     {
       label: t('catalog.cols.retail'),
-      value: retailUsd != null ? format(convert(retailUsd, rate)) : t('common.emptyValue'),
+      value: retailUsd != null ? format(convert(retailUsd)) : t('common.emptyValue'),
       mono: true,
     },
     { label: t('catalog.cols.margin'), value: formatPercent(computeMargin(p.price_usd, retailUsd)), mono: true },

@@ -130,28 +130,30 @@ and exposed as Tailwind utilities (`bg-surface`, `text-muted`, `border-line`,
 
 ## Currency
 
-USD is the **canonical** currency: product prices are stored in USD. Each **brand**
-carries its own USD→UAH exchange rate. The **display currency** (₴ by default,
-picked from the top-bar currency menu) is resolved at render time by
-[`use-currency`](src/composables/use-currency.ts) — so updating a brand's rate
-reprices its whole catalog, and the platform can switch display currency without
-touching stored data.
+USD is the internal **storage base**: product prices are stored in USD. Everything
+the user sees is converted into the **active currency** — picked from the top-bar
+menu — using one company-wide (**central**) rate per currency, where
+`usd_rate` = units of that currency per 1 USD. Conversion is resolved at render time
+by [`use-currency`](src/composables/use-currency.ts) (`convert` / `convertBetween` /
+`toUsd` / `formatFrom`), so switching the active currency reprices the **whole app**
+consistently — catalog, warehouse, orders, order KPIs, dashboard and per-client spend.
 
-Two currencies are built in: **USD** (the stored base) and **UAH** (converted
-through each brand's own rate — i.e. the supplier's own exchange rate, which the
-owner keeps up to date per brand and which need not match the official bank rate).
-Any other currency is **added by the owner** in **Profile → Currencies** with a flat
-company-wide rate (units per 1 USD) — so EUR, PLN or anything else can be displayed
-without touching the schema. The top bar also carries a UK/EN language toggle.
+Three currencies are **built in**: **USD** (the base, rate always 1), **UAH** and
+**EUR**. Their rate — and any further currency the owner adds (PLN, …) — is edited on
+the **/rates** page (or registered in **Profile → Currencies**); a built-in ships with
+a sensible default rate until one is set, so the app always converts. Product
+**purchase & retail prices are entered in the active currency** and converted to USD
+for storage, so changing the active currency later never rewrites stored data.
 
-Live, USD-based data (catalog and warehouse) reprices into the display currency at
-render time. **Orders are different**: they snapshot the actually-transacted amounts
-in the currency they were placed in (`order.currency`), so they are always shown in
-*that* currency — the order list, its details, the client card and the per-client
-spend never re-label a past amount just because the display currency later changed.
-Aggregates that sum snapshots (the orders KPIs, a client's total spend) are shown in
-the shared currency when the orders agree on one, and fall back to the display
-currency otherwise. A client's agreed discount is applied to sale prices in the cart.
+**Orders** snapshot their transacted amounts in the currency they were placed in
+(`order.currency`); they are re-expressed into the active currency via USD
+(`convertBetween`) so the order list, its details, the client card, the per-client
+spend and the KPI totals all read in one currency. **Per-brand supplier rates** still
+live on each brand (a supplier's own USD→UAH rate, which need not match the bank's)
+and are managed on **/rates**, but they are a cost reference and no longer drive
+display — the app shows one consistent, central-rate figure everywhere. A client's
+agreed discount is applied to sale prices in the cart, and can be overridden per
+cart/order. The top bar also carries a UK/EN language toggle.
 
 ---
 

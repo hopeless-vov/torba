@@ -9,7 +9,6 @@ import { useClientsStore } from '@/stores/clients'
 import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
-import { useReferenceStore } from '@/stores/reference'
 import type { Product } from '@/types/database'
 import type { CartLine, ProductView } from '@/types/models'
 import { compareByExpiry } from '@/utils/batch-status'
@@ -33,7 +32,6 @@ export function useCart() {
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
   const clients = useClientsStore()
-  const reference = useReferenceStore()
   const { convert } = useCurrency()
   const toast = useToast()
   const { t } = useI18n()
@@ -72,11 +70,10 @@ export function useCart() {
     return Math.max(0, line.qty - line.stockQty)
   }
 
-  // Display prices for a product, resolved through its brand's rate.
-  function pricesFor(product: Product, brandId: string | null) {
-    const rate = reference.brandRate(brandId)
-    const purchase = convert(product.price_usd, rate)
-    const retail = product.retail_price_usd != null ? convert(product.retail_price_usd, rate) : purchase
+  // Display prices for a product, in the active currency.
+  function pricesFor(product: Product) {
+    const purchase = convert(product.price_usd)
+    const retail = product.retail_price_usd != null ? convert(product.retail_price_usd) : purchase
     return { purchase, retail }
   }
 
@@ -96,7 +93,7 @@ export function useCart() {
   // Used by the in-drawer "from catalog" picker, where prices still need
   // to be resolved from the brand rate.
   function addProduct(product: ProductRow) {
-    const { purchase, retail } = pricesFor(product, product.brand_id)
+    const { purchase, retail } = pricesFor(product)
     const batch = fifoBatch(product.id)
     cart.addLine({
       product,
@@ -113,7 +110,7 @@ export function useCart() {
   function addFromBatch(batch: BatchRow) {
     const product = batch.product
     if (!product) return
-    const { purchase, retail } = pricesFor(product, product.brand_id)
+    const { purchase, retail } = pricesFor(product)
     cart.addLine({
       product,
       brand: null,
