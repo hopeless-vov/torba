@@ -291,7 +291,23 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
             icon="fa-solid fa-box-open"
             :title="t('catalog.empty')"
             :hint="t('catalog.emptyHint')"
-          />
+          >
+            <div class="flex flex-wrap items-center justify-center gap-2">
+              <Button
+                icon="fa-solid fa-file-arrow-up"
+                @click="importOpen = true"
+              >
+                {{ t('catalog.importCsv') }}
+              </Button>
+              <Button
+                variant="primary"
+                icon="fa-solid fa-plus"
+                @click="openNew"
+              >
+                {{ t('catalog.newProduct') }}
+              </Button>
+            </div>
+          </EmptyState>
         </template>
       </DataTable>
     </div>

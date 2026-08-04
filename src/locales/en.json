@@ -256,6 +256,7 @@
       "details": "Details"
     },
     "empty": "No orders yet",
+    "openCart": "Open the cart",
     "emptyRange": "No orders in this range",
     "emptyRangeHint": "Try another date range or clear it.",
     "deleteTitle": "Delete orders?",

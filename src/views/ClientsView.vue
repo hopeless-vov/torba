@@ -109,7 +109,15 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
         icon="fa-solid fa-users"
         :title="t('clients.empty')"
         :hint="t('clients.emptyHint')"
-      />
+      >
+        <Button
+          variant="primary"
+          icon="fa-solid fa-plus"
+          @click="openNew"
+        >
+          {{ t('clients.newClient') }}
+        </Button>
+      </EmptyState>
     </div>
 
     <div

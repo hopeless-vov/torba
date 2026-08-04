@@ -300,7 +300,15 @@ async function deleteSelected() {
             icon="fa-solid fa-warehouse"
             :title="t('warehouse.empty')"
             :hint="t('warehouse.emptyHint')"
-          />
+          >
+            <Button
+              variant="primary"
+              icon="fa-solid fa-plus"
+              @click="openNew"
+            >
+              {{ t('warehouse.newBatch') }}
+            </Button>
+          </EmptyState>
         </template>
       </DataTable>
     </div>
@@ -414,7 +422,15 @@ async function deleteSelected() {
             icon="fa-solid fa-warehouse"
             :title="t('warehouse.empty')"
             :hint="t('warehouse.emptyHint')"
-          />
+          >
+            <Button
+              variant="primary"
+              icon="fa-solid fa-plus"
+              @click="openNew"
+            >
+              {{ t('warehouse.newBatch') }}
+            </Button>
+          </EmptyState>
         </template>
       </DataTable>
     </div>

@@ -4,6 +4,7 @@ import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import OrderEditModal from '@/components/OrderEditModal.vue'
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
@@ -16,6 +17,7 @@ import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useOrders } from '@/composables/use-orders'
 import { useSelection } from '@/composables/use-selection'
+import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
@@ -31,6 +33,7 @@ const { format, formatIn } = useCurrency()
 const reference = useReferenceStore()
 const clients = useClientsStore()
 const ordersStore = useOrdersStore()
+const cart = useCartStore()
 const ui = useUiStore()
 const {
   filtered,
@@ -387,7 +390,23 @@ function destination(order: OrderView) {
             icon="fa-solid fa-arrow-right-arrow-left"
             :title="hasDateRange ? t('orders.emptyRange') : t('orders.empty')"
             :hint="hasDateRange ? t('orders.emptyRangeHint') : undefined"
-          />
+          >
+            <Button
+              v-if="hasDateRange"
+              icon="fa-solid fa-xmark"
+              @click="clearDateRange"
+            >
+              {{ t('orders.clearDates') }}
+            </Button>
+            <Button
+              v-else
+              variant="primary"
+              icon="fa-solid fa-basket-shopping"
+              @click="cart.toggle(true)"
+            >
+              {{ t('orders.openCart') }}
+            </Button>
+          </EmptyState>
         </template>
       </DataTable>
     </div>

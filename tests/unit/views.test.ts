@@ -179,6 +179,20 @@ describe('OrdersView', () => {
     expect(document.body.textContent).toContain('Львів, НП №30')
   })
 
+  it('offers an open-cart action when there are no orders', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
+    useOrdersStore().orders = []
+    const cart = useCartStore()
+
+    const wrapper = mount(OrdersView, { global: { plugins: [pinia, i18n] } })
+    const openCart = wrapper.findAll('button').find((b) => b.text() === uk.orders.openCart)
+    expect(openCart).toBeTruthy()
+    await openCart?.trigger('click')
+    expect(cart.open).toBe(true)
+  })
+
   it('opens the product info card from an order line', async () => {
     const wrapper = render(OrdersView)
     await wrapper.find('tbody tr').trigger('click')
