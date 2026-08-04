@@ -88,4 +88,14 @@ describe('useCurrency', () => {
     expect(c.code.value).toBe('USD')
     expect(c.convert(51)).toBe(51)
   })
+
+  it('enters product prices in the base currency and stores them in USD', () => {
+    useReferenceStore().currencies = [uah] // 40 ₴ per USD
+    const c = useCurrency()
+    c.setBase('UAH')
+    expect(c.baseCode.value).toBe('UAH')
+    // 2000 ₴ entered → 50 USD stored; 50 USD stored → 2000 ₴ shown.
+    expect(c.fromBase(2000)).toBeCloseTo(50, 4)
+    expect(c.toBase(50)).toBeCloseTo(2000, 4)
+  })
 })

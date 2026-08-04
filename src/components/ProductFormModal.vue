@@ -20,7 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewProduct, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { code, convert, toUsd } = useCurrency()
+const { baseCode, toBase, fromBase } = useCurrency()
 const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -37,8 +37,8 @@ const form = reactive({
 
 const isEdit = computed(() => !!props.product)
 
-// Prices are stored in USD but entered and shown in the active currency,
-// so the owner works in whatever currency they think in.
+// Prices are stored in USD but entered in the base currency, so the owner
+// authors prices in the currency they work in.
 const priceModel = ref(0)
 const retailModel = ref(0)
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -70,8 +70,8 @@ watch(
     form.brand_id = p?.brand_id ?? ''
     form.category_id = p?.category_id ?? ''
     form.volume = p?.volume ?? ''
-    priceModel.value = p ? round2(convert(p.price_usd)) : 0
-    retailModel.value = p?.retail_price_usd != null ? round2(convert(p.retail_price_usd)) : 0
+    priceModel.value = p ? round2(toBase(p.price_usd)) : 0
+    retailModel.value = p?.retail_price_usd != null ? round2(toBase(p.retail_price_usd)) : 0
     form.is_active = p?.is_active ?? true
   },
   { immediate: true },
@@ -85,8 +85,8 @@ function submit() {
     brand_id: form.brand_id || null,
     category_id: form.category_id || null,
     volume: form.volume.trim() || null,
-    price_usd: toUsd(priceModel.value || 0),
-    retail_price_usd: retailModel.value ? toUsd(retailModel.value) : null,
+    price_usd: fromBase(priceModel.value || 0),
+    retail_price_usd: retailModel.value ? fromBase(retailModel.value) : null,
     is_active: form.is_active,
   })
 }
@@ -142,14 +142,14 @@ function submit() {
       <NumberInput
         v-model="priceModel"
         class="col-span-1"
-        :label="`${t('catalog.form.priceUsd')} (${code})`"
+        :label="`${t('catalog.form.priceUsd')} (${baseCode})`"
         :min="0"
         :step="0.5"
       />
       <NumberInput
         v-model="retailModel"
         class="col-span-1"
-        :label="`${t('catalog.form.retailUsd')} (${code})`"
+        :label="`${t('catalog.form.retailUsd')} (${baseCode})`"
         :min="0"
         :step="0.5"
       />

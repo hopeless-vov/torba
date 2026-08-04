@@ -50,6 +50,13 @@ export function useCurrency() {
   )
   const symbol = computed(() => options.value.find((o) => o.code === code.value)?.symbol ?? code.value)
 
+  // The base (working) currency product prices are entered in. Independent
+  // of the display currency; falls back to the USD storage base if unknown.
+  const baseCode = computed(() =>
+    options.value.some((o) => o.code === store.baseCurrency) ? store.baseCurrency : BASE_CURRENCY,
+  )
+  const baseSymbol = computed(() => options.value.find((o) => o.code === baseCode.value)?.symbol ?? baseCode.value)
+
   // Central rate: units of `c` per 1 USD. USD is the base (1). A stored rate
   // wins; a built-in falls back to its default so the app still converts
   // sensibly before any rate has been set on /rates.
@@ -101,17 +108,33 @@ export function useCurrency() {
     return format(convertBetween(amount, from), digits)
   }
 
+  /** A USD amount → the base currency (for editing a stored price). */
+  function toBase(usd: number): number {
+    return usd * rateOf(baseCode.value)
+  }
+
+  /** An amount typed in the base currency → USD, for storage. */
+  function fromBase(amount: number): number {
+    const r = rateOf(baseCode.value)
+    return r > 0 ? amount / r : amount
+  }
+
   return {
     code,
     symbol,
+    baseCode,
+    baseSymbol,
     options,
     rateOf,
     convert,
     toUsd,
+    toBase,
+    fromBase,
     convertBetween,
     format,
     formatIn,
     formatFrom,
     setCurrency: store.setCurrency,
+    setBase: store.setBase,
   }
 }

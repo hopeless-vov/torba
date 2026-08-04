@@ -17,4 +17,11 @@ describe('currency store', () => {
     store.setCurrency('USD')
     expect(store.displayCurrency).toBe('USD')
   })
+
+  it('defaults the base currency to USD and updates it', () => {
+    const store = useCurrencyStore()
+    expect(store.baseCurrency).toBe('USD')
+    store.setBase('UAH')
+    expect(store.baseCurrency).toBe('UAH')
+  })
 })

@@ -139,12 +139,18 @@ by [`use-currency`](src/composables/use-currency.ts) (`convert` / `convertBetwee
 `toUsd` / `formatFrom`), so switching the active currency reprices the **whole app**
 consistently — catalog, warehouse, orders, order KPIs, dashboard and per-client spend.
 
-Three currencies are **built in**: **USD** (the base, rate always 1), **UAH** and
-**EUR**. Their rate — and any further currency the owner adds (PLN, …) — is edited on
-the **/rates** page (or registered in **Profile → Currencies**); a built-in ships with
-a sensible default rate until one is set, so the app always converts. Product
-**purchase & retail prices are entered in the active currency** and converted to USD
-for storage, so changing the active currency later never rewrites stored data.
+Three currencies are **built in**: **USD** (the internal storage anchor, rate always
+1), **UAH** and **EUR**. Their rate — and any further currency the owner adds
+(PLN, …) — is managed entirely on the **/rates** page (a built-in ships with a
+sensible default rate until one is set, so the app always converts). There is no
+duplicate currency manager in the profile.
+
+Two currency settings, both chosen on **/rates** (the base) and the top bar (the
+active): the **active currency** is what every screen is *displayed* in, while the
+**base currency** is what product **purchase & retail prices are entered in** — the
+owner's working currency, which need not be USD. Entered prices are converted to USD
+for storage (`fromBase` / `toBase`), so changing either setting later never rewrites
+stored data.
 
 **Orders** snapshot their transacted amounts in the currency they were placed in
 (`order.currency`); they are re-expressed into the active currency via USD

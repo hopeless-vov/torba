@@ -18,7 +18,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const reference = useReferenceStore()
-const { code: activeCode, rateOf, setCurrency } = useCurrency()
+const { code: activeCode, baseCode, rateOf, setCurrency, setBase } = useCurrency()
 const { addCurrency, setRate, removeCurrency } = useCurrencies()
 const { updating, history, loadingHistory, updateRate, loadHistory } = useRates()
 
@@ -129,8 +129,8 @@ async function saveBrandRate() {
                 {{ t('rates.active') }}
               </Badge>
               <Badge
-                v-else-if="row.kind === 'base'"
-                tone="neutral"
+                v-if="row.code === baseCode"
+                tone="info"
               >
                 {{ t('rates.base') }}
               </Badge>
@@ -138,7 +138,7 @@ async function saveBrandRate() {
             <p class="text-xs text-faint">
               {{
                 row.kind === 'base'
-                  ? `1.00 · ${t('rates.base')}`
+                  ? formatNumber(1, 2)
                   : `${formatNumber(row.rate, 2)} ${t('common.perUsd')}`
               }}
             </p>
@@ -163,6 +163,14 @@ async function saveBrandRate() {
               </Button>
             </template>
             <template v-else>
+              <Button
+                v-if="row.code !== baseCode"
+                size="sm"
+                variant="ghost"
+                @click="setBase(row.code)"
+              >
+                {{ t('rates.makeBase') }}
+              </Button>
               <Button
                 v-if="row.code !== activeCode"
                 size="sm"

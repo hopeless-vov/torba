@@ -135,7 +135,7 @@
       "volume": "Volume",
       "priceUsd": "Purchase",
       "retailUsd": "Retail",
-      "priceHint": "Prices are stored in USD and shown in the selected currency.",
+      "priceHint": "Prices are entered in the base currency (change it on the Rates page) and shown in the selected one.",
       "active": "Active"
     }
   },
@@ -293,12 +293,13 @@
   "rates": {
     "subtitle": "Currencies & rates",
     "currenciesTitle": "Currencies",
-    "currenciesHint": "Rate — how many units make 1 USD. Pick the active currency in the top bar; every amount is shown in it.",
+    "currenciesHint": "Rate — how many units make 1 USD. Pick the active currency (everything is shown in it) in the top bar; the base is the currency product prices are entered in.",
     "brandsTitle": "Supplier rates",
     "brandsHint": "Each brand's supplier reference rate.",
     "base": "Base",
     "active": "Active",
     "makeActive": "Make active",
+    "makeBase": "Make base",
     "addCurrency": "Add currency",
     "saveRate": "Save",
     "history": "Rate history",
