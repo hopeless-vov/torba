@@ -223,26 +223,26 @@ function destination(order: OrderView) {
         :empty-text="t('common.noMatches')"
         class="w-44"
       />
-      <div class="flex items-center gap-1.5">
+      <div class="flex flex-wrap items-end gap-1.5">
         <div class="w-40">
           <TextInput
             v-model="fromDate"
             type="date"
-            :aria-label="t('orders.dateFrom')"
-            :placeholder="t('orders.dateFrom')"
+            :label="t('orders.dateFrom')"
           />
         </div>
-        <Icon
-          icon="fa-solid fa-minus"
-          size="xs"
-          class="text-faint"
-        />
+        <span class="flex h-9 items-center">
+          <Icon
+            icon="fa-solid fa-minus"
+            size="xs"
+            class="text-faint"
+          />
+        </span>
         <div class="w-40">
           <TextInput
             v-model="toDate"
             type="date"
-            :aria-label="t('orders.dateTo')"
-            :placeholder="t('orders.dateTo')"
+            :label="t('orders.dateTo')"
           />
         </div>
         <button
