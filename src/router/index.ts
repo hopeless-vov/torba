@@ -26,12 +26,12 @@ const routes: RouteRecordRaw[] = [
       { path: 'orders', name: 'orders', component: () => import('@/views/OrdersView.vue') },
       { path: 'rates', name: 'rates', component: () => import('@/views/RatesView.vue') },
       { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue') },
+      {
+        path: ':pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('@/views/NotFoundView.vue'),
+      },
     ],
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
-    redirect: '/',
   },
 ]
 

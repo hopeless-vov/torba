@@ -1,0 +1,30 @@
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table width="440" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:14px;padding:36px;border:1px solid #e4e4e7;">
+        <tr>
+          <td style="font-size:18px;font-weight:600;color:#18181b;padding-bottom:20px;">torba</td>
+        </tr>
+        <tr>
+          <td style="font-size:22px;font-weight:700;color:#18181b;padding-bottom:10px;">Підтвердіть реєстрацію</td>
+        </tr>
+        <tr>
+          <td style="font-size:14px;line-height:22px;color:#52525b;padding-bottom:28px;">
+            Дякуємо за реєстрацію. Натисніть кнопку нижче, щоб підтвердити адресу
+            <strong>{{ .Email }}</strong> та увійти у свій робочий простір.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom:28px;">
+            <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#4f46e5;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:10px;">Підтвердити пошту</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:12px;line-height:20px;color:#a1a1aa;">
+            Якщо ви не реєструвалися в torba, просто проігноруйте цей лист.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

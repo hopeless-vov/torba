@@ -68,6 +68,11 @@
     "errorInvalid": "Invalid email or password.",
     "errorGeneric": "Something went wrong. Please try again."
   },
+  "notFound": {
+    "title": "Page not found",
+    "subtitle": "The page you're looking for doesn't exist or has moved.",
+    "back": "Back to dashboard"
+  },
   "dashboard": {
     "subtitle": "Overview",
     "kpi": {

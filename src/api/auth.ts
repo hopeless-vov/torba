@@ -27,6 +27,11 @@ export const authApi = {
       email,
       password,
       options: {
+        // Send the confirmation link back to wherever the app is served
+        // from, instead of Supabase's project-wide Site URL (which is
+        // localhost in dev). The prod origin must be in the Auth
+        // "Redirect URLs" allow-list for this to be honoured.
+        emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined,
         data: {
           full_name: details.fullName ?? '',
           company_name: details.companyName ?? '',

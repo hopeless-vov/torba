@@ -68,6 +68,16 @@ This is an internal, invite-by-owner tool, so disable email confirmation:
 `signUp` returns no session (and no confirmation email is sent without SMTP), so
 new users can't proceed. With it off, sign-up logs the user straight in.
 
+If you *do* keep confirmation on (or use password reset / invites), the email
+links resolve against **Authentication → URL Configuration**: set **Site URL**
+to the deployed origin and add every app origin plus `.../login` and
+`.../reset-password` to **Redirect URLs** — otherwise links fall back to
+localhost. Ready-to-paste HTML for the confirmation, reset, invite and
+magic-link emails lives in [`supabase/email-templates/`](supabase/email-templates)
+(see its README for where each one goes). The app hands Supabase an explicit
+`emailRedirectTo` on sign-up and password reset so links return to whatever
+origin served the app.
+
 ---
 
 ## Scripts
