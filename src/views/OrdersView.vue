@@ -38,10 +38,18 @@ const {
   statusFilter,
   paymentFilter,
   clientFilter,
+  fromDate,
+  toDate,
   setStatus,
   updateOrder,
   removeOrders,
 } = useOrders()
+
+const hasDateRange = computed(() => !!fromDate.value || !!toDate.value)
+function clearDateRange() {
+  fromDate.value = ''
+  toDate.value = ''
+}
 
 const editing = ref<Order | null>(null)
 const editOpen = ref(false)
@@ -206,6 +214,41 @@ function destination(order: OrderView) {
         :empty-text="t('common.noMatches')"
         class="w-44"
       />
+      <div class="flex items-center gap-1.5">
+        <div class="w-40">
+          <TextInput
+            v-model="fromDate"
+            type="date"
+            :aria-label="t('orders.dateFrom')"
+            :placeholder="t('orders.dateFrom')"
+          />
+        </div>
+        <Icon
+          icon="fa-solid fa-minus"
+          size="xs"
+          class="text-faint"
+        />
+        <div class="w-40">
+          <TextInput
+            v-model="toDate"
+            type="date"
+            :aria-label="t('orders.dateTo')"
+            :placeholder="t('orders.dateTo')"
+          />
+        </div>
+        <button
+          v-if="hasDateRange"
+          type="button"
+          class="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-line text-faint transition-colors hover:border-line-hover hover:text-fg"
+          :title="t('orders.clearDates')"
+          @click="clearDateRange"
+        >
+          <Icon
+            icon="fa-solid fa-xmark"
+            size="sm"
+          />
+        </button>
+      </div>
       <div class="w-72">
         <TextInput
           v-model="search"
@@ -336,7 +379,8 @@ function destination(order: OrderView) {
         <template #empty>
           <EmptyState
             icon="fa-solid fa-arrow-right-arrow-left"
-            :title="t('orders.empty')"
+            :title="hasDateRange ? t('orders.emptyRange') : t('orders.empty')"
+            :hint="hasDateRange ? t('orders.emptyRangeHint') : undefined"
           />
         </template>
       </DataTable>

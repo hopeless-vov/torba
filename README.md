@@ -261,7 +261,9 @@ Search is **per page**, in each toolbar next to that page's filters, with a
 placeholder naming what it matches (orders, for instance, search by number, client,
 waybill or address). There is deliberately no single global search box — it could
 never say what it was searching. The query is held in the `ui` store and cleared on
-navigation.
+navigation. The orders toolbar also carries a **date-range filter** (inclusive
+from/to, either side optional) that narrows the list — and the KPI cards — to the
+selected period; when nothing falls in the range the table says so.
 
 ---
 

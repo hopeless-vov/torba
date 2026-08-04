@@ -235,6 +235,9 @@
     },
     "anyPayment": "Any payment",
     "allClients": "All clients",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "clearDates": "Clear range",
     "count": "{count} orders",
     "changeStatus": "Change status",
     "cols": {
@@ -253,6 +256,8 @@
       "details": "Details"
     },
     "empty": "No orders yet",
+    "emptyRange": "No orders in this range",
+    "emptyRangeHint": "Try another date range or clear it.",
     "deleteTitle": "Delete orders?",
     "deleteMessage": "{count} orders will be deleted. Goods taken from batches go back to the warehouse. This cannot be undone.",
     "edit": {

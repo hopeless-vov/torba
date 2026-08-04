@@ -21,6 +21,9 @@ export function useOrders() {
   const statusFilter = ref<'all' | OrderStatus>('all')
   const paymentFilter = ref('all')
   const clientFilter = ref('all')
+  // Inclusive 'YYYY-MM-DD' bounds; either side may be left blank (open-ended).
+  const fromDate = ref('')
+  const toDate = ref('')
 
   const views = computed<OrderView[]>(() =>
     store.orders.map((o) => {
@@ -52,6 +55,9 @@ export function useOrders() {
       if (statusFilter.value !== 'all' && o.status !== statusFilter.value) return false
       if (paymentFilter.value !== 'all' && o.payment_method !== paymentFilter.value) return false
       if (clientFilter.value !== 'all' && o.client_id !== clientFilter.value) return false
+      const day = o.created_at.slice(0, 10)
+      if (fromDate.value && day < fromDate.value) return false
+      if (toDate.value && day > toDate.value) return false
       if (q) {
         const haystack = [
           o.number,
@@ -129,6 +135,8 @@ export function useOrders() {
     statusFilter,
     paymentFilter,
     clientFilter,
+    fromDate,
+    toDate,
     setStatus,
     updateOrder,
     removeOrder,
