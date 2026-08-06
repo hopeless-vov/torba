@@ -30,6 +30,18 @@ The links in these emails resolve against **Authentication → URL Configuration
   (`src/composables/use-auth.ts`); those targets must be on this list or Supabase
   silently falls back to the Site URL.
 
+## Branding
+
+The button matches the platform's primary button — accent `#17935e`, white
+text, `8px` radius, weight 500 (the light-theme `--accent` from
+`src/styles/main.css`). The header is a logo lockup: an accent rounded tile +
+the `torba` wordmark.
+
+The tile uses a 🛍️ emoji rather than the app's Font Awesome bag icon, because
+email clients don't render Font Awesome or (reliably) inline SVG. For a
+pixel-perfect brand mark, host a small PNG of the logo at an absolute URL and
+replace the emoji cell with `<img src="…" width="40" height="40" alt="torba">`.
+
 ## Template variables
 
 Supabase substitutes these at send time — do not hard-code URLs:

@@ -34,6 +34,7 @@
     "orders": "Orders",
     "rates": "Exchange rates",
     "profile": "Profile",
+    "not-found": "Not found",
     "logout": "Log out",
     "cart": "Cart",
     "currency": "Display currency",
@@ -49,6 +50,7 @@
     "fullName": "Your name",
     "companyName": "Company name",
     "forgot": "Forgot password?",
+    "enterEmailFirst": "Enter your email above, then tap “Forgot password?”.",
     "signIn": "Sign in",
     "signingIn": "Signing in…",
     "noAccount": "No account?",
@@ -68,9 +70,10 @@
     "errorInvalid": "Invalid email or password.",
     "errorGeneric": "Something went wrong. Please try again."
   },
-  "notFound": {
+  "not-found": {
+    "subtitle": "Error 404",
     "title": "Page not found",
-    "subtitle": "The page you're looking for doesn't exist or has moved.",
+    "body": "The page you're looking for doesn't exist or has moved.",
     "back": "Back to dashboard"
   },
   "dashboard": {

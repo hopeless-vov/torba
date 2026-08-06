@@ -26,7 +26,12 @@ function submit() {
 }
 
 function forgot() {
-  if (email.value) resetPassword(email.value)
+  if (!email.value) {
+    info.value = null
+    error.value = t('auth.enterEmailFirst')
+    return
+  }
+  resetPassword(email.value)
 }
 
 function switchMode() {

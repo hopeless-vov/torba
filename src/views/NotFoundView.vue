@@ -18,17 +18,17 @@ const code = '404'
       {{ code }}
     </p>
     <h1 class="mt-3 text-xl font-semibold text-fg">
-      {{ t('notFound.title') }}
+      {{ t('not-found.title') }}
     </h1>
     <p class="mt-2 max-w-sm text-sm text-muted">
-      {{ t('notFound.subtitle') }}
+      {{ t('not-found.body') }}
     </p>
     <Button
       class="mt-8"
       variant="primary"
       @click="router.push('/')"
     >
-      {{ t('notFound.back') }}
+      {{ t('not-found.back') }}
     </Button>
   </div>
 </template>

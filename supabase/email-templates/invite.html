@@ -1,15 +1,22 @@
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f4f6f7;padding:32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <tr>
     <td align="center">
-      <table width="440" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:14px;padding:36px;border:1px solid #e4e4e7;">
+      <table width="440" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff;border-radius:14px;padding:36px;border:1px solid #e4e7ea;">
         <tr>
-          <td style="font-size:18px;font-weight:600;color:#18181b;padding-bottom:20px;">torba</td>
+          <td style="padding-bottom:24px;">
+            <table cellpadding="0" cellspacing="0" role="presentation">
+              <tr>
+                <td style="width:40px;height:40px;background:#17935e;border-radius:10px;text-align:center;vertical-align:middle;font-size:20px;line-height:40px;">🛍️</td>
+                <td style="padding-left:12px;font-size:18px;font-weight:700;color:#16191c;">torba</td>
+              </tr>
+            </table>
+          </td>
         </tr>
         <tr>
-          <td style="font-size:22px;font-weight:700;color:#18181b;padding-bottom:10px;">Вас запросили до робочого простору</td>
+          <td style="font-size:22px;font-weight:700;color:#16191c;padding-bottom:10px;">Вас запросили до робочого простору</td>
         </tr>
         <tr>
-          <td style="font-size:14px;line-height:22px;color:#52525b;padding-bottom:28px;">
+          <td style="font-size:14px;line-height:22px;color:#5b6570;padding-bottom:28px;">
             Адресу <strong>{{ .Email }}</strong> запросили приєднатися до
             команди в torba. Натисніть кнопку нижче, щоб прийняти запрошення й
             задати пароль.
@@ -17,11 +24,11 @@
         </tr>
         <tr>
           <td style="padding-bottom:28px;">
-            <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#4f46e5;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:10px;">Прийняти запрошення</a>
+            <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#17935e;color:#ffffff;font-size:14px;font-weight:500;text-decoration:none;padding:13px 20px;border-radius:8px;">Прийняти запрошення</a>
           </td>
         </tr>
         <tr>
-          <td style="font-size:12px;line-height:20px;color:#a1a1aa;">
+          <td style="font-size:12px;line-height:20px;color:#8b95a1;">
             Якщо ви не очікували цього запрошення, просто проігноруйте лист.
           </td>
         </tr>
