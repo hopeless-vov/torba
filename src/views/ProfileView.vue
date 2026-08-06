@@ -2,8 +2,10 @@
 import Avatar from '@/components/ui/Avatar.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Tabs from '@/components/ui/Tabs.vue'
+import Tag from '@/components/ui/Tag.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { usePersonalization } from '@/composables/use-personalization'
 import { useAuthStore } from '@/stores/auth'
@@ -23,8 +25,17 @@ const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const clients = useClientsStore()
 const orders = useOrdersStore()
-const { brandStats, addBrand, removeBrand, addCategory, removeCategory, addPayment, removePayment } =
-  usePersonalization()
+const {
+  brandStats,
+  addBrand,
+  removeBrand,
+  addCategory,
+  removeCategory,
+  linkCategory,
+  unlinkCategory,
+  addPayment,
+  removePayment,
+} = usePersonalization()
 
 const tab = ref<'brands' | 'categories' | 'payment'>('brands')
 const newValue = ref('')
@@ -74,6 +85,17 @@ async function add() {
   else if (tab.value === 'categories') await addCategory(value)
   else await addPayment(value)
   newValue.value = ''
+}
+
+// Categories are many-to-many with brands: each category lists the brands it
+// is offered for, and can be linked to any brand not yet attached.
+function linkedBrands(categoryId: string) {
+  const ids = new Set(reference.brandIdsForCategory(categoryId))
+  return reference.brands.filter((b) => ids.has(b.id))
+}
+function addableBrandItems(categoryId: string) {
+  const ids = new Set(reference.brandIdsForCategory(categoryId))
+  return reference.brands.filter((b) => !ids.has(b.id)).map((b) => ({ value: b.id, label: b.name }))
 }
 
 async function logout() {
@@ -218,27 +240,62 @@ async function logout() {
         </li>
       </ul>
 
-      <!-- Categories -->
+      <!-- Categories (each offered for one or more brands) -->
       <ul
         v-else-if="tab === 'categories'"
-        class="flex flex-wrap gap-2"
+        class="flex flex-col gap-2"
       >
         <li
           v-for="c in reference.categories"
           :key="c.id"
-          class="flex items-center gap-2 rounded-lg border border-line-soft bg-surface py-1.5 pr-1.5 pl-3"
+          class="flex flex-col gap-2.5 rounded-lg border border-line-soft bg-surface p-3"
         >
-          <span class="text-sm text-fg">{{ c.name }}</span>
-          <button
-            type="button"
-            class="flex size-6 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
-            @click="removeCategory(c.id)"
-          >
-            <Icon
-              icon="fa-solid fa-xmark"
-              size="xs"
-            />
-          </button>
+          <div class="flex items-center gap-2">
+            <span class="flex-1 text-sm font-medium text-fg">{{ c.name }}</span>
+            <button
+              type="button"
+              class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
+              :title="t('common.delete')"
+              @click="removeCategory(c.id)"
+            >
+              <Icon
+                icon="fa-solid fa-xmark"
+                size="sm"
+              />
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <Tag
+              v-for="b in linkedBrands(c.id)"
+              :key="b.id"
+              removable
+              @remove="unlinkCategory(b.id, c.id)"
+            >
+              {{ b.name }}
+            </Tag>
+            <span
+              v-if="linkedBrands(c.id).length === 0"
+              class="text-xs text-faint"
+            >
+              {{ t('profile.categoryNoBrands') }}
+            </span>
+            <DropdownMenu
+              v-if="addableBrandItems(c.id).length > 0"
+              :items="addableBrandItems(c.id)"
+              @select="linkCategory($event, c.id)"
+            >
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded-md border border-dashed border-line px-2 py-1 text-xs text-muted transition-colors hover:border-accent-line hover:text-accent"
+              >
+                <Icon
+                  icon="fa-solid fa-plus"
+                  size="xs"
+                />
+                {{ t('profile.linkBrand') }}
+              </button>
+            </DropdownMenu>
+          </div>
         </li>
       </ul>
 

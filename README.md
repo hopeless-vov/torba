@@ -44,7 +44,8 @@ Both come from your Supabase project → **Project Settings → API**.
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
 trigger, a self-heal bootstrap RPC, the atomic `create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, user-defined
-currencies, an order-level discount, and the supplier/market rate split) lives in
+currencies, an order-level discount, the supplier/market rate split, and the
+brand↔category links) lives in
 [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
@@ -52,7 +53,15 @@ Apply **all files, in order**:
 - **Dashboard:** run each file in the SQL Editor —
   `0001_init.sql`, `0002_bootstrap_and_orders.sql`, `0003_client_discount.sql`,
   `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`,
-  `0006_supplier_rates_functional_currency.sql`.
+  `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`.
+
+**Categories depend on brands.** `brand_categories` is a many-to-many link: each
+brand exposes its own set of categories, so the product form and the catalog filter
+only offer the categories linked to the chosen brand (the category picker stays
+disabled until a brand is selected). A product still stores a single `category_id`;
+the link table only decides what the pickers show. Manage the links per category in
+**Profile → Categories** (`0007` backfills them from how existing products already
+pair brands and categories).
 
 On first sign-up a company + owner profile are created automatically, along with
 default categories and payment methods. If the sign-up trigger ever fails to run,

@@ -13,7 +13,9 @@ import { useI18n } from 'vue-i18n'
 // payment methods (that is what the payment dropdowns are keyed by).
 type Kind = 'brand' | 'category' | 'payment'
 
-const props = defineProps<{ kind: Kind }>()
+// `brandId` links a freshly-added category to the brand chosen in the calling
+// form, so the new category is immediately offered for that brand.
+const props = defineProps<{ kind: Kind; brandId?: string }>()
 const emit = defineEmits<{ added: [value: string] }>()
 
 const { t } = useI18n()
@@ -48,7 +50,7 @@ async function submit() {
       const created = await addBrand(value)
       if (created) emit('added', created.id)
     } else if (props.kind === 'category') {
-      const created = await addCategory(value)
+      const created = await addCategory(value, props.brandId)
       if (created) emit('added', created.id)
     } else {
       const created = await addPayment(value)

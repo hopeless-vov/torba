@@ -64,10 +64,19 @@ export function usePersonalization() {
     await run(() => brandsApi.remove(id), 'toasts.deleted', 'errors.delete')
   }
 
-  async function addCategory(name: string) {
+  // Creating a category can immediately link it to a brand — used when the
+  // category is added from inside the product form, where a brand is chosen.
+  async function addCategory(name: string, brandId?: string) {
     if (!auth.companyId || !name.trim()) return null
+    const companyId = auth.companyId
     return run(
-      () => categoriesApi.create({ company_id: auth.companyId as string, name: name.trim() }),
+      async () => {
+        const created = await categoriesApi.create({ company_id: companyId, name: name.trim() })
+        if (brandId) {
+          await categoriesApi.link({ company_id: companyId, brand_id: brandId, category_id: created.id })
+        }
+        return created
+      },
       'toasts.saved',
       'errors.save',
     )
@@ -75,6 +84,19 @@ export function usePersonalization() {
 
   async function removeCategory(id: string) {
     await run(() => categoriesApi.remove(id), 'toasts.deleted', 'errors.delete')
+  }
+
+  async function linkCategory(brandId: string, categoryId: string) {
+    if (!auth.companyId) return
+    await run(
+      () => categoriesApi.link({ company_id: auth.companyId as string, brand_id: brandId, category_id: categoryId }),
+      'toasts.saved',
+      'errors.save',
+    )
+  }
+
+  async function unlinkCategory(brandId: string, categoryId: string) {
+    await run(() => categoriesApi.unlink(brandId, categoryId), 'toasts.deleted', 'errors.delete')
   }
 
   async function addPayment(name: string) {
@@ -96,6 +118,8 @@ export function usePersonalization() {
     removeBrand,
     addCategory,
     removeCategory,
+    linkCategory,
+    unlinkCategory,
     addPayment,
     removePayment,
   }

@@ -45,7 +45,25 @@ const retailModel = ref(0)
 const catalogCurrency = computed(() => reference.brandsById.get(form.brand_id)?.catalog_currency ?? 'USD')
 
 const brandOptions = computed(() => reference.brands.map((b) => ({ value: b.id, label: b.name })))
-const categoryOptions = computed(() => reference.categories.map((c) => ({ value: c.id, label: c.name })))
+
+// Categories depend on the chosen brand. Editing keeps the product's current
+// category available even if it was since unlinked, so it is never silently lost.
+const categoryOptions = computed(() => {
+  const list = reference.categoriesForBrand(form.brand_id).map((c) => ({ value: c.id, label: c.name }))
+  const current = form.category_id ? reference.categoriesById.get(form.category_id) : null
+  if (current && !list.some((o) => o.value === current.id)) list.push({ value: current.id, label: current.name })
+  return list
+})
+
+// Switching brand drops a category that the new brand does not offer.
+watch(
+  () => form.brand_id,
+  (brandId) => {
+    if (!form.category_id) return
+    const offered = reference.categoriesForBrand(brandId).some((c) => c.id === form.category_id)
+    if (!offered && form.category_id !== props.product?.category_id) form.category_id = ''
+  },
+)
 
 // Add a missing brand/category inline, without leaving the product form.
 const quickAdd = ref<'brand' | 'category'>('brand')
@@ -132,11 +150,12 @@ function submit() {
         v-model="form.category_id"
         class="col-span-1"
         :label="t('catalog.form.category')"
-        :placeholder="t('catalog.chooseCategory')"
+        :placeholder="form.brand_id ? t('catalog.chooseCategory') : t('catalog.form.categoryPickBrand')"
         :search-placeholder="t('common.search')"
-        :empty-text="t('common.noMatches')"
+        :empty-text="t('catalog.form.categoryEmpty')"
         :options="categoryOptions"
         :add-label="t('profile.addCategory')"
+        :disabled="!form.brand_id"
         clearable
         @add="openQuickAdd('category')"
       />
@@ -186,6 +205,7 @@ function submit() {
   <QuickAddModal
     v-model:open="quickAddOpen"
     :kind="quickAdd"
+    :brand-id="quickAdd === 'category' ? form.brand_id : undefined"
     @added="onQuickAdded"
   />
 </template>

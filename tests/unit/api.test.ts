@@ -145,6 +145,39 @@ describe('ordersApi deletion', () => {
   })
 })
 
+describe('categoriesApi links', () => {
+  it('lists brand↔category links for a company', async () => {
+    const chain = builder({ data: [{ brand_id: 'b1', category_id: 'c1' }], error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { categoriesApi } = await import('@/api/categories')
+    const result = await categoriesApi.listLinks('co1')
+    expect(mocked.from).toHaveBeenCalledWith('brand_categories')
+    expect(chain.eq).toHaveBeenCalledWith('company_id', 'co1')
+    expect(result).toEqual([{ brand_id: 'b1', category_id: 'c1' }])
+  })
+
+  it('links a category to a brand, ignoring an existing pair', async () => {
+    const chain = builder({ data: null, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { categoriesApi } = await import('@/api/categories')
+    await categoriesApi.link({ company_id: 'co1', brand_id: 'b1', category_id: 'c1' })
+    expect(mocked.from).toHaveBeenCalledWith('brand_categories')
+    expect(chain.upsert).toHaveBeenCalledWith(
+      { company_id: 'co1', brand_id: 'b1', category_id: 'c1' },
+      { onConflict: 'brand_id,category_id', ignoreDuplicates: true },
+    )
+  })
+
+  it('unlinks a category from a brand by both ids', async () => {
+    const chain = builder({ data: null, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { categoriesApi } = await import('@/api/categories')
+    await categoriesApi.unlink('b1', 'c1')
+    expect(chain.eq).toHaveBeenCalledWith('brand_id', 'b1')
+    expect(chain.eq).toHaveBeenCalledWith('category_id', 'c1')
+  })
+})
+
 describe('currenciesApi', () => {
   it('lists the company currencies by code', async () => {
     const chain = builder({ data: [{ id: 'cur1', code: 'EUR' }], error: null })

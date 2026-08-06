@@ -50,6 +50,16 @@ export interface Category {
   created_at: string
 }
 
+// Which categories a brand offers. Many-to-many: a category can belong to
+// several brands, a brand exposes several categories. Products still carry a
+// single category_id; this table only decides what the pickers offer.
+export interface BrandCategory {
+  company_id: string
+  brand_id: string
+  category_id: string
+  created_at: string
+}
+
 export interface PaymentMethod {
   id: string
   company_id: string
@@ -144,6 +154,7 @@ export interface OrderItem {
 
 export type NewBrand = Pick<Brand, 'company_id' | 'name' | 'catalog_currency' | 'supplier_rate'>
 export type NewCategory = Pick<Category, 'company_id' | 'name'>
+export type NewBrandCategory = Pick<BrandCategory, 'company_id' | 'brand_id' | 'category_id'>
 export type NewPaymentMethod = Pick<PaymentMethod, 'company_id' | 'name'>
 export type NewClient = Omit<Client, 'id' | 'created_at'>
 

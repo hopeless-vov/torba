@@ -144,6 +144,8 @@
       "priceUsd": "Purchase",
       "retailUsd": "Retail",
       "priceHint": "Cost is entered in the brand's catalog currency (its supplier rate is on the Rates page); retail in your base currency.",
+      "categoryPickBrand": "Select a brand first",
+      "categoryEmpty": "No categories for this brand yet",
       "active": "Active"
     }
   },
@@ -347,6 +349,8 @@
     "brandPlaceholder": "Brand name, e.g. Colorescience",
     "categoryPlaceholder": "Category name, e.g. Serums",
     "paymentPlaceholder": "Payment method, e.g. Cash",
+    "categoryNoBrands": "Not linked to any brand yet",
+    "linkBrand": "Link brand",
     "brandMeta": "{products} products · {categories} categories",
     "currency": {
       "hint": "Prices are stored in USD. Add a currency to also see amounts in it — you set the rate yourself, as units per 1 USD.",

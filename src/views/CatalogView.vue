@@ -24,7 +24,7 @@ import { useUiStore } from '@/stores/ui'
 import type { NewProduct, Product } from '@/types/database'
 import type { ProductView } from '@/types/models'
 import { formatNumber, formatPercent } from '@/utils/format'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -74,10 +74,17 @@ const brandOptions = computed(() => [
   { value: 'all', label: t('catalog.allBrands') },
   ...reference.brands.map((b) => ({ value: b.id, label: b.name })),
 ])
-const categoryOptions = computed(() => [
-  { value: 'all', label: t('catalog.allCategories') },
-  ...reference.categories.map((c) => ({ value: c.id, label: c.name })),
-])
+// With a brand chosen, the category filter narrows to that brand's categories.
+const categoryOptions = computed(() => {
+  const source = brandFilter.value === 'all' ? reference.categories : reference.categoriesForBrand(brandFilter.value)
+  return [{ value: 'all', label: t('catalog.allCategories') }, ...source.map((c) => ({ value: c.id, label: c.name }))]
+})
+
+// Narrowing the brand drops a category filter the new brand does not offer.
+watch(brandFilter, (brand) => {
+  if (categoryFilter.value === 'all' || brand === 'all') return
+  if (!reference.categoriesForBrand(brand).some((c) => c.id === categoryFilter.value)) categoryFilter.value = 'all'
+})
 
 const columns = computed<Column[]>(() => [
   { key: 'sku', label: t('catalog.cols.article'), width: '9rem', mono: true },
