@@ -50,6 +50,20 @@ export const brandsApi = {
     return data as Brand
   },
 
+  // Re-express a supplier rate without recording history — used when the base
+  // currency changes and every brand rate is converted into the new base, which
+  // is a bookkeeping re-expression, not a real supplier rate change.
+  setSupplierRate: async (id: string, rate: number): Promise<Brand> => {
+    const { data, error } = await supabase
+      .from('brands')
+      .update({ supplier_rate: rate })
+      .eq('id', id)
+      .select('*')
+      .single()
+    if (error) throw error
+    return data as Brand
+  },
+
   rateHistory: async (brandId: string): Promise<RateHistoryEntry[]> => {
     const { data, error } = await supabase
       .from('rate_history')

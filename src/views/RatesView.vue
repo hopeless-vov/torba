@@ -2,6 +2,7 @@
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -19,9 +20,35 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const reference = useReferenceStore()
-const { code: activeCode, functionalCode, options, rateOf, setBase } = useCurrency()
+const { code: activeCode, functionalCode, options, rateOf, convertBetween, formatIn, setBase } = useCurrency()
 const { addCurrency, setRate, removeCurrency } = useCurrencies()
 const { updating, history, loadingHistory, updateRate, loadHistory } = useRates()
+
+// What 1 unit of `codeStr` is worth in the base currency — the readable,
+// USD-free way to show a market rate.
+function baseEquiv(codeStr: string): number {
+  return convertBetween(1, codeStr, functionalCode.value)
+}
+
+// Switching the base re-expresses every brand supplier rate, so it is gated.
+const baseConfirmOpen = ref(false)
+const pendingBase = ref<string | null>(null)
+const switchingBase = ref(false)
+function askBase(codeStr: string) {
+  pendingBase.value = codeStr
+  baseConfirmOpen.value = true
+}
+async function confirmBase() {
+  if (!pendingBase.value) return
+  switchingBase.value = true
+  try {
+    await setBase(pendingBase.value)
+    baseConfirmOpen.value = false
+  } finally {
+    switchingBase.value = false
+    pendingBase.value = null
+  }
+}
 
 // ── currencies ───────────────────────────────────────────────
 type CurrencyRow = {
@@ -52,15 +79,21 @@ const currencyRows = computed<CurrencyRow[]>(() => {
   return [...builtin, ...custom]
 })
 
-// One row is rate-edited at a time.
+// One row is rate-edited at a time. Rates are entered the readable way — the
+// base row as "how many base per 1 USD" (its stored per-USD rate), every other
+// row as "1 unit = ? base" — and converted to the stored per-USD numeraire on
+// save, so USD never surfaces as a unit the user has to reason about.
 const editCode = ref<string | null>(null)
 const editRate = ref(0)
 function startEdit(row: CurrencyRow) {
   editCode.value = row.code
-  editRate.value = row.rate
+  editRate.value = row.code === functionalCode.value ? row.rate : baseEquiv(row.code)
 }
 async function saveEdit(code: string) {
-  await setRate(code, editRate.value || 0)
+  const entered = editRate.value || 0
+  const usdRate =
+    code === functionalCode.value ? entered : entered > 0 ? rateOf(functionalCode.value) / entered : 0
+  await setRate(code, usdRate)
   editCode.value = null
 }
 
@@ -144,23 +177,30 @@ async function saveBrandRate() {
             </p>
             <p class="text-xs text-faint">
               {{
-                row.kind === 'anchor'
-                  ? formatNumber(1, 2)
-                  : `${formatNumber(row.rate, 2)} ${t('common.perUsd')}`
+                row.code === functionalCode
+                  ? t('rates.isBase')
+                  : t('rates.oneEquals', { code: row.code, amount: formatIn(functionalCode, baseEquiv(row.code), 2) })
               }}
             </p>
           </div>
 
           <div class="ml-auto flex items-end gap-2">
             <template v-if="editCode === row.code">
-              <div class="w-28">
+              <div class="w-36">
                 <NumberInput
                   v-model="editRate"
                   size="sm"
-                  :label="t('common.perUsd')"
+                  :label="t('rates.marketRate')"
                   :min="0"
                   :step="0.01"
                 />
+                <p class="mt-1 text-xs text-faint">
+                  {{
+                    row.code === functionalCode
+                      ? t('rates.oneUsdEquals', { amount: formatIn(functionalCode, editRate, 2) })
+                      : t('rates.oneEquals', { code: row.code, amount: formatIn(functionalCode, editRate, 2) })
+                  }}
+                </p>
               </div>
               <Button
                 size="sm"
@@ -175,7 +215,7 @@ async function saveBrandRate() {
                 v-if="row.code !== functionalCode"
                 size="sm"
                 variant="ghost"
-                @click="setBase(row.code)"
+                @click="askBase(row.code)"
               >
                 {{ t('rates.makeBase') }}
               </Button>
@@ -369,5 +409,17 @@ async function saveBrandRate() {
         {{ t('rates.emptyHint') }}
       </p>
     </Modal>
+
+    <!-- Switch base currency -->
+    <ConfirmDialog
+      v-model:open="baseConfirmOpen"
+      tone="accent"
+      :title="t('rates.baseConfirmTitle', { code: pendingBase ?? '' })"
+      :message="t('rates.baseConfirmMessage')"
+      :confirm-label="t('rates.makeBase')"
+      :cancel-label="t('common.cancel')"
+      :loading="switchingBase"
+      @confirm="confirmBase"
+    />
   </div>
 </template>

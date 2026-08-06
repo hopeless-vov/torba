@@ -1,3 +1,4 @@
+import { brandsApi } from '@/api/brands'
 import { useAuthStore } from '@/stores/auth'
 import { useCurrencyStore } from '@/stores/currency'
 import { useReferenceStore } from '@/stores/reference'
@@ -145,9 +146,23 @@ export function useCurrency() {
     return format(toDisplay(functionalAmount), digits)
   }
 
-  /** Change the functional (base) currency — persisted on the company. */
+  /**
+   * Change the functional (base) currency. Because a brand's supplier rate is
+   * held in base-currency units per catalog unit, every brand rate is
+   * re-expressed into the new base first, so product costs stay the same amount
+   * of money. Product/order amounts carry their own currency and are untouched.
+   */
   async function setBase(nextCode: string): Promise<void> {
+    const prev = functionalCode.value
+    if (nextCode === prev) return
+    for (const b of reference.brands) {
+      if (b.supplier_rate > 0) {
+        const next = Math.round(convertBetween(b.supplier_rate, prev, nextCode) * 10000) / 10000
+        await brandsApi.setSupplierRate(b.id, next)
+      }
+    }
     await auth.setBaseCurrency(nextCode)
+    if (auth.companyId) await reference.load(auth.companyId)
   }
 
   return {

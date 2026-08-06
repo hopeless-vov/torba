@@ -23,7 +23,6 @@
     "clearSelection": "Clear selection",
     "none": "none",
     "pcs": "pcs",
-    "perUsd": "per 1 USD",
     "emptyValue": "—"
   },
   "nav": {
@@ -304,10 +303,16 @@
   "rates": {
     "subtitle": "Currencies & rates",
     "currenciesTitle": "Currencies",
-    "currenciesHint": "Market rate — how many units make 1 USD. Pick the active currency (everything is shown in it) in the top bar; the base is the currency your books are kept in.",
+    "currenciesHint": "Market rates, shown as what 1 unit is worth in your base currency. The base is the currency prices and rates are anchored to; pick the active currency (everything is shown in it) in the top bar.",
     "brandsTitle": "Supplier rates",
     "brandsHint": "Each brand's own rate for the currency it prices its goods in — used for cost, kept separate from the market rate.",
     "base": "Base",
+    "isBase": "Your base currency",
+    "marketRate": "Market rate",
+    "oneEquals": "1 {code} = {amount}",
+    "oneUsdEquals": "1 USD = {amount}",
+    "baseConfirmTitle": "Make {code} the base currency?",
+    "baseConfirmMessage": "Prices and orders keep their own currencies and their amounts, so nothing is rewritten. Brand supplier rates are re-expressed into the new base so costs stay the same.",
     "active": "Active",
     "makeBase": "Make base",
     "catalogCurrency": "Prices in",

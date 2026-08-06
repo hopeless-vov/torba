@@ -161,9 +161,14 @@ distribution needs all three:
   brand (`brand.supplier_rate` + `brand.catalog_currency`), edited on **/rates**.
 - **Market rate** — the bank/reference rate, used only to **display** amounts in a
   chosen currency. Stored per company in `currencies.usd_rate` as a per-USD numeraire
-  (units of the currency per 1 USD). USD is only that numeraire — **not** the base.
-- **Functional currency** — `company.base_currency` (₴ by default), the currency the
-  **books are kept in**. It can be any currency, chosen on **/rates** ("Make base").
+  (units of the currency per 1 USD). USD is only that stored numeraire — it is never
+  shown as a unit: **/rates** presents every rate as *"1 {code} = n {base}"* and takes
+  edits that way too, converting to the stored per-USD value on save.
+- **Base currency** — `company.base_currency` (₴ by default): the default display
+  currency and the anchor rates are entered against. Since every stored amount carries
+  its own currency, switching the base is a display concern and never rewrites data —
+  it only re-expresses each **brand supplier rate** into the new base (so costs stay
+  the same amount of money). Change it with **"Make base"** on **/rates** (confirmed).
 
 **What is stored where.** Every product price carries **its own currency**:
 `cost_amount` + `cost_currency` and `retail_amount` + `retail_currency` (chosen in the
