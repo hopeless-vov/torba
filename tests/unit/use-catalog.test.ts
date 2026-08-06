@@ -34,7 +34,9 @@ function product(over: Partial<ProductRow> = {}): ProductRow {
     name: 'Alpha',
     volume: '12 г',
     cost_amount: 51, // $51 in the catalog currency
+    cost_currency: 'USD', // matches the brand → supplier rate applies
     retail_amount: 3400, // ₴3400 in the functional currency
+    retail_currency: 'UAH',
     is_active: true,
     created_at: '',
     updated_at: '',

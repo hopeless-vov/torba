@@ -23,7 +23,7 @@ import { useReferenceStore } from '@/stores/reference'
 import { useUiStore } from '@/stores/ui'
 import type { NewProduct, Product } from '@/types/database'
 import type { ProductView } from '@/types/models'
-import { formatNumber, formatPercent } from '@/utils/format'
+import { formatPercent } from '@/utils/format'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -31,7 +31,7 @@ const { t } = useI18n()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const ui = useUiStore()
-const { code, format } = useCurrency()
+const { code, format, formatIn } = useCurrency()
 const { addFromCatalog } = useCart()
 const {
   filtered,
@@ -227,7 +227,7 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
 
         <template #cell-supplierCost="{ row }">
           <span class="text-muted">
-            {{ `${formatNumber((row as ProductView).cost_amount, 2)} ${(row as ProductView).brand?.catalog_currency ?? ''}` }}
+            {{ formatIn((row as ProductView).cost_currency, (row as ProductView).cost_amount, 2) }}
           </span>
         </template>
 
@@ -237,7 +237,13 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
 
         <template #cell-retail="{ row }">
           <template v-if="(row as ProductView).retail != null">
-            {{ format((row as ProductView).retail as number) }}
+            <div class="flex flex-col leading-tight">
+              <span>{{ format((row as ProductView).retail as number) }}</span>
+              <span
+                v-if="(row as ProductView).retail_currency !== code"
+                class="text-xs text-faint tabular-nums"
+              >{{ formatIn((row as ProductView).retail_currency, (row as ProductView).retail_amount as number) }}</span>
+            </div>
           </template>
           <span
             v-else

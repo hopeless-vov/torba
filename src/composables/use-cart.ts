@@ -34,7 +34,7 @@ export function useCart() {
   const orders = useOrdersStore()
   const clients = useClientsStore()
   const reference = useReferenceStore()
-  const { toDisplay, functionalCost } = useCurrency()
+  const { convertBetween, costToDisplay } = useCurrency()
   const toast = useToast()
   const { t } = useI18n()
 
@@ -80,13 +80,14 @@ export function useCart() {
     return Math.max(0, line.qty - line.stockQty)
   }
 
-  // Display prices for a product, in the active currency. Cost comes from the
-  // brand's catalog-currency price via its supplier rate; retail is stored in
-  // the functional currency.
+  // Display prices for a product, in the active currency. Cost and retail each
+  // carry their own currency; the brand supplier rate still overrides the table
+  // for a cost in the brand's catalog currency.
   function pricesFor(product: Product) {
     const brand = product.brand_id ? (reference.brandsById.get(product.brand_id) ?? null) : null
-    const purchase = toDisplay(functionalCost(product.cost_amount, brand))
-    const retail = product.retail_amount != null ? toDisplay(product.retail_amount) : purchase
+    const purchase = costToDisplay(product.cost_amount, product.cost_currency, brand)
+    const retail =
+      product.retail_amount != null ? convertBetween(product.retail_amount, product.retail_currency) : purchase
     return { purchase, retail }
   }
 

@@ -87,8 +87,10 @@ export interface Product {
   sku: string
   name: string
   volume: string | null
-  cost_amount: number // supplier cost, in the brand's catalog currency
-  retail_amount: number | null // retail price, in the functional currency
+  cost_amount: number // supplier cost, in cost_currency
+  cost_currency: string // the currency the cost was entered in
+  retail_amount: number | null // retail price, in retail_currency
+  retail_currency: string // the currency the retail price was entered in
   is_active: boolean
   created_at: string
   updated_at: string

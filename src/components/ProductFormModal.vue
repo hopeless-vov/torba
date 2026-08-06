@@ -20,7 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewProduct, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { functionalCode } = useCurrency()
+const { functionalCode, options } = useCurrency()
 const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -35,14 +35,24 @@ const form = reactive({
 
 const isEdit = computed(() => !!props.product)
 
-// Cost is entered and stored in the brand's catalog currency; retail is
-// entered and stored in the functional currency. No conversion on save.
+// Cost and retail each carry the currency they were entered in; no conversion
+// on save. Cost defaults to the brand's catalog currency, retail to the base.
 const priceModel = ref(0)
+const costCurrency = ref('USD')
 const retailModel = ref(0)
+const retailCurrency = ref(functionalCode.value)
 
 // The catalog currency follows the selected brand — that is the currency the
-// supplier prices its goods in.
+// supplier prices its goods in, and the default for a new product's cost.
 const catalogCurrency = computed(() => reference.brandsById.get(form.brand_id)?.catalog_currency ?? 'USD')
+
+const currencyOptions = computed(() => options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })))
+
+// For a new product, cost currency tracks the chosen brand's catalog currency;
+// editing keeps whatever currency the product was saved with.
+watch(catalogCurrency, (cur) => {
+  if (!isEdit.value) costCurrency.value = cur
+})
 
 const brandOptions = computed(() => reference.brands.map((b) => ({ value: b.id, label: b.name })))
 
@@ -90,7 +100,9 @@ watch(
     form.category_id = p?.category_id ?? ''
     form.volume = p?.volume ?? ''
     priceModel.value = p?.cost_amount ?? 0
+    costCurrency.value = p?.cost_currency ?? catalogCurrency.value
     retailModel.value = p?.retail_amount ?? 0
+    retailCurrency.value = p?.retail_currency ?? functionalCode.value
     form.is_active = p?.is_active ?? true
   },
   { immediate: true },
@@ -105,7 +117,9 @@ function submit() {
     category_id: form.category_id || null,
     volume: form.volume.trim() || null,
     cost_amount: priceModel.value || 0,
+    cost_currency: costCurrency.value,
     retail_amount: retailModel.value ? retailModel.value : null,
+    retail_currency: retailCurrency.value,
     is_active: form.is_active,
   })
 }
@@ -159,20 +173,42 @@ function submit() {
         clearable
         @add="openQuickAdd('category')"
       />
-      <NumberInput
-        v-model="priceModel"
-        class="col-span-1"
-        :label="`${t('catalog.form.priceUsd')} (${catalogCurrency})`"
-        :min="0"
-        :step="0.5"
-      />
-      <NumberInput
-        v-model="retailModel"
-        class="col-span-1"
-        :label="`${t('catalog.form.retailUsd')} (${functionalCode})`"
-        :min="0"
-        :step="0.5"
-      />
+      <div class="col-span-1 flex items-end gap-2">
+        <NumberInput
+          v-model="priceModel"
+          class="flex-1"
+          :label="t('catalog.form.priceUsd')"
+          :min="0"
+          :step="0.5"
+        />
+        <div class="w-28">
+          <Combobox
+            v-model="costCurrency"
+            :label="t('catalog.form.currency')"
+            :search-placeholder="t('common.search')"
+            :empty-text="t('common.noMatches')"
+            :options="currencyOptions"
+          />
+        </div>
+      </div>
+      <div class="col-span-1 flex items-end gap-2">
+        <NumberInput
+          v-model="retailModel"
+          class="flex-1"
+          :label="t('catalog.form.retailUsd')"
+          :min="0"
+          :step="0.5"
+        />
+        <div class="w-28">
+          <Combobox
+            v-model="retailCurrency"
+            :label="t('catalog.form.currency')"
+            :search-placeholder="t('common.search')"
+            :empty-text="t('common.noMatches')"
+            :options="currencyOptions"
+          />
+        </div>
+      </div>
       <p class="col-span-2 -mt-1 text-xs text-faint">
         {{ t('catalog.form.priceHint') }}
       </p>

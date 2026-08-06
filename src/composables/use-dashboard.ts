@@ -22,7 +22,7 @@ export function useDashboard() {
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
   const reference = useReferenceStore()
-  const { toDisplay, functionalCost, convertBetween } = useCurrency()
+  const { convertBetween, costToDisplay } = useCurrency()
 
   const enriched = computed(() =>
     inventory.batches.map((b) => ({
@@ -41,8 +41,8 @@ export function useDashboard() {
 
     for (const { batch, status } of enriched.value) {
       const brand = reference.brandsById.get(batch.product?.brand_id ?? '') ?? null
-      const unitCost = functionalCost(batch.product?.cost_amount ?? 0, brand)
-      stockValue += batch.remaining_qty * toDisplay(unitCost)
+      const unitCost = costToDisplay(batch.product?.cost_amount ?? 0, batch.product?.cost_currency ?? 'USD', brand)
+      stockValue += batch.remaining_qty * unitCost
       if (status === 'expired') {
         expired += 1
         expiredUnits += batch.remaining_qty

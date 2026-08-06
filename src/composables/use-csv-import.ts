@@ -75,10 +75,12 @@ export function useCsvImport() {
         categoryIds.set(name, created.id)
       }
 
-      // A price list is in the supplier's catalog currency. Cost is stored
-      // as-is; retail is re-expressed into the functional currency using the
-      // rate that will apply to this brand after the import.
+      // A price list is in the supplier's catalog currency. Cost is stored in
+      // it as-is; retail is re-expressed into the base currency using the rate
+      // that will apply to this brand after the import.
       const brand = reference.brandsById.get(brandId.value)
+      const costCurrency = brand?.catalog_currency ?? 'USD'
+      const baseCurrency = auth.company?.base_currency ?? 'UAH'
       const willApplyRate = applyRate.value && !!parsed.value.rate
       const effectiveRate = (willApplyRate ? parsed.value.rate : brand?.supplier_rate) ?? 0
 
@@ -90,11 +92,21 @@ export function useCsvImport() {
         name: p.name,
         volume: p.volume,
         cost_amount: p.priceUsd,
+        cost_currency: costCurrency,
         retail_amount: p.retailUsd != null && effectiveRate > 0 ? Math.round(p.retailUsd * effectiveRate * 100) / 100 : null,
+        retail_currency: baseCurrency,
         is_active: true,
       }))
 
       const inserted = await productsApi.bulkUpsert(rows)
+
+      // Every category the file uses must be offered for the import brand.
+      const usedCategoryIds = new Set(rows.map((r) => r.category_id).filter((id): id is string => !!id))
+      await Promise.all(
+        [...usedCategoryIds].map((categoryId) =>
+          categoriesApi.link({ company_id: companyId, brand_id: brandId.value, category_id: categoryId }),
+        ),
+      )
 
       if (willApplyRate && brand) await brandsApi.updateRate(brand, parsed.value.rate as number)
 

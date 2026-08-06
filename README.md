@@ -44,8 +44,8 @@ Both come from your Supabase project → **Project Settings → API**.
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
 trigger, a self-heal bootstrap RPC, the atomic `create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, user-defined
-currencies, an order-level discount, the supplier/market rate split, and the
-brand↔category links) lives in
+currencies, an order-level discount, the supplier/market rate split, per-product
+price currencies, and the brand↔category links) lives in
 [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
@@ -53,7 +53,8 @@ Apply **all files, in order**:
 - **Dashboard:** run each file in the SQL Editor —
   `0001_init.sql`, `0002_bootstrap_and_orders.sql`, `0003_client_discount.sql`,
   `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`,
-  `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`.
+  `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`,
+  `0008_product_currency.sql`.
 
 **Categories depend on brands.** `brand_categories` is a many-to-many link: each
 brand exposes its own set of categories, so the product form and the catalog filter
@@ -164,19 +165,24 @@ distribution needs all three:
 - **Functional currency** — `company.base_currency` (₴ by default), the currency the
   **books are kept in**. It can be any currency, chosen on **/rates** ("Make base").
 
-**What is stored where.** Product **cost** is stored in the brand's catalog currency
-and resolved to functional via the supplier rate (`functionalCost`), so bumping a
-supplier's rate reflows the whole catalog's cost at once. Product **retail** and
-**order** amounts are stored in the functional currency. Nothing is stored in a
-display-converted form, so switching the display or base currency never rewrites data.
+**What is stored where.** Every product price carries **its own currency**:
+`cost_amount` + `cost_currency` and `retail_amount` + `retail_currency` (chosen in the
+product form; cost defaults to the brand's catalog currency, retail to the base). A
+cost in the brand's catalog currency is still resolved through the **supplier rate**
+(`costToDisplay` → `functionalCost`), so bumping a supplier's rate reflows that brand's
+cost; a cost in any other currency goes through the market table instead. **Order**
+amounts snapshot in the order's currency. Nothing is stored in a display-converted
+form, so switching the display or base currency never rewrites data.
 
-Everything the user sees is that functional amount re-expressed into the **active
-display currency** (top-bar menu) through the market rate, resolved at render time by
-[`use-currency`](src/composables/use-currency.ts) (`toDisplay` / `convertBetween` /
-`functionalCost` / `formatFrom`) — so switching the display currency reprices the
+Everything the user sees is each amount re-expressed from its own currency into the
+**active display currency** (top-bar menu) through the market table, resolved at render
+time by [`use-currency`](src/composables/use-currency.ts) (`convertBetween` /
+`costToDisplay` / `formatFrom`) — so switching the display currency reprices the
 **whole app** consistently (catalog, warehouse, orders, KPIs, dashboard, per-client
-spend). Three currencies are **built in** (UAH, USD, EUR) with sensible default market
-rates until one is set; the owner can add more (PLN, …) on **/rates**.
+spend). The catalog shows each price in the active currency with the **raw entered
+amount** underneath in muted type when the two currencies differ. Three currencies are
+**built in** (UAH, USD, EUR) with sensible default market rates until one is set; the
+owner can add more (PLN, …) on **/rates**.
 
 **Orders** snapshot their amounts in the currency they were placed in
 (`order.currency`) and are re-expressed into the active display currency via

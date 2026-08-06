@@ -5,7 +5,7 @@ import Modal from '@/components/ui/Modal.vue'
 import Tag from '@/components/ui/Tag.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useInventoryStore } from '@/stores/inventory'
-import { formatNumber, formatPercent } from '@/utils/format'
+import { formatPercent } from '@/utils/format'
 import { computeMargin } from '@/utils/pricing'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -29,7 +29,7 @@ const props = withDefaults(
 )
 
 const { t } = useI18n()
-const { format, toDisplay, functionalCost } = useCurrency()
+const { format, formatIn, functionalCode, convertBetween, costToDisplay } = useCurrency()
 const inventory = useInventoryStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -43,22 +43,24 @@ const sku = computed(() => product.value?.sku ?? props.fallbackSku ?? '')
 const facts = computed(() => {
   const p = product.value
   if (!p) return []
-  const cost = functionalCost(p.cost_amount, p.brand)
+  const base = functionalCode.value
+  const costBase = costToDisplay(p.cost_amount, p.cost_currency, p.brand, base)
+  const retailBase = p.retail_amount != null ? convertBetween(p.retail_amount, p.retail_currency, base) : null
   const stock = inventory.stockByProduct.get(p.id) ?? 0
   const rows = [
     { label: t('catalog.form.volume'), value: p.volume || t('common.emptyValue') },
     {
       label: t('catalog.cols.supplierCost'),
-      value: `${formatNumber(p.cost_amount, 2)} ${p.brand?.catalog_currency ?? ''}`,
+      value: formatIn(p.cost_currency, p.cost_amount, 2),
       mono: true,
     },
-    { label: t('catalog.cols.purchase'), value: format(toDisplay(cost)), mono: true },
+    { label: t('catalog.cols.purchase'), value: format(costToDisplay(p.cost_amount, p.cost_currency, p.brand)), mono: true },
     {
       label: t('catalog.cols.retail'),
-      value: p.retail_amount != null ? format(toDisplay(p.retail_amount)) : t('common.emptyValue'),
+      value: p.retail_amount != null ? format(convertBetween(p.retail_amount, p.retail_currency)) : t('common.emptyValue'),
       mono: true,
     },
-    { label: t('catalog.cols.margin'), value: formatPercent(computeMargin(cost, p.retail_amount)), mono: true },
+    { label: t('catalog.cols.margin'), value: formatPercent(computeMargin(costBase, retailBase)), mono: true },
     {
       label: t('catalog.cols.stock'),
       value: stock > 0 ? `${stock} ${t('common.pcs')}` : t('common.none'),

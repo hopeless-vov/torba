@@ -71,6 +71,25 @@ describe('useCurrency', () => {
     expect(c.functionalCost(10, null)).toBe(0)
   })
 
+  it('resolves a cost via the supplier rate when it is in the brand catalog currency', () => {
+    useReferenceStore().currencies = [uah]
+    setFunctional('UAH')
+    const c = useCurrency()
+    const brand = { supplier_rate: 52, catalog_currency: 'EUR' } as Brand
+    // €10 × 52 = ₴520 (base); to base is unchanged, to USD divides by the rate.
+    expect(c.costToDisplay(10, 'EUR', brand, 'UAH')).toBeCloseTo(520, 4)
+    expect(c.costToDisplay(10, 'EUR', brand, 'USD')).toBeCloseTo(13, 4) // 520 ÷ 40
+  })
+
+  it('falls back to the market table when the cost currency is not the brand catalog one', () => {
+    useReferenceStore().currencies = [uah]
+    setFunctional('UAH')
+    const c = useCurrency()
+    const brand = { supplier_rate: 52, catalog_currency: 'EUR' } as Brand
+    expect(c.costToDisplay(10, 'USD', brand, 'UAH')).toBeCloseTo(400, 4) // 10 × 40, rate ignored
+    expect(c.costToDisplay(10, 'USD', null, 'UAH')).toBeCloseTo(400, 4)
+  })
+
   it('re-expresses an order amount from its own currency into the active one', () => {
     useReferenceStore().currencies = [uah]
     const c = useCurrency()

@@ -143,7 +143,8 @@
       "volume": "Volume",
       "priceUsd": "Purchase",
       "retailUsd": "Retail",
-      "priceHint": "Cost is entered in the brand's catalog currency (its supplier rate is on the Rates page); retail in your base currency.",
+      "currency": "Currency",
+      "priceHint": "Cost and retail are each entered in their own currency; everything is converted for display through the rate table. A brand's supplier rate still overrides the table for its own catalog currency.",
       "categoryPickBrand": "Select a brand first",
       "categoryEmpty": "No categories for this brand yet",
       "active": "Active"

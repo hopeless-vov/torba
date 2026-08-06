@@ -106,6 +106,25 @@ export function useCurrency() {
     return costAmount * (brand?.supplier_rate ?? 0)
   }
 
+  /**
+   * A product's cost, held in `costCurrency`, resolved into `to` (default: the
+   * active display currency). When the cost is in the brand's own catalog
+   * currency and that brand has a supplier rate, the supplier rate wins over
+   * the market table — it converts to the functional currency, which is then
+   * shown in `to`. Otherwise the shared market table converts directly.
+   */
+  function costToDisplay(
+    costAmount: number,
+    costCurrency: string,
+    brand: Brand | null | undefined,
+    to: string = code.value,
+  ): number {
+    if (brand?.supplier_rate && brand.supplier_rate > 0 && costCurrency === brand.catalog_currency) {
+      return convertBetween(functionalCost(costAmount, brand), functionalCode.value, to)
+    }
+    return convertBetween(costAmount, costCurrency, to)
+  }
+
   function format(amount: number, digits?: number): string {
     return formatAmount(amount, symbol.value, digits ?? digitsFor(code.value))
   }
@@ -141,6 +160,7 @@ export function useCurrency() {
     convertBetween,
     toDisplay,
     functionalCost,
+    costToDisplay,
     format,
     formatIn,
     formatFrom,
