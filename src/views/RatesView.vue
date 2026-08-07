@@ -10,7 +10,7 @@ import NumberInput from '@/components/ui/NumberInput.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrencies } from '@/composables/use-currencies'
-import { BUILT_IN_CODES, BUILT_IN_CURRENCIES, useCurrency } from '@/composables/use-currency'
+import { BUILT_IN_CODES, BUILT_IN_CURRENCIES, NUMERAIRE, useCurrency } from '@/composables/use-currency'
 import { useRates } from '@/composables/use-rates'
 import { useReferenceStore } from '@/stores/reference'
 import type { Brand } from '@/types/database'
@@ -79,21 +79,27 @@ const currencyRows = computed<CurrencyRow[]>(() => {
   return [...builtin, ...custom]
 })
 
-// One row is rate-edited at a time. Rates are entered the readable way — the
-// base row as "how many base per 1 USD" (its stored per-USD rate), every other
-// row as "1 unit = ? base" — and converted to the stored per-USD numeraire on
-// save, so USD never surfaces as a unit the user has to reason about.
+// One row is rate-edited at a time, always the readable way: "1 unit = ? base".
+// The base currency itself is the pivot (its value in itself is 1), so it has
+// no editable rate; every other row — USD included — is entered against the
+// base and converted to the stored per-USD numeraire on save.
 const editCode = ref<string | null>(null)
 const editRate = ref(0)
 function startEdit(row: CurrencyRow) {
   editCode.value = row.code
-  editRate.value = row.code === functionalCode.value ? row.rate : baseEquiv(row.code)
+  editRate.value = baseEquiv(row.code)
 }
 async function saveEdit(code: string) {
   const entered = editRate.value || 0
-  const usdRate =
-    code === functionalCode.value ? entered : entered > 0 ? rateOf(functionalCode.value) / entered : 0
-  await setRate(code, usdRate)
+  if (code === NUMERAIRE) {
+    // The USD row reads "1 USD = X base" — that number *is* the base currency's
+    // own per-USD market rate. USD stays the numeraire (rate 1); we store the
+    // rate on the base currency instead.
+    await setRate(functionalCode.value, entered)
+  } else {
+    const usdRate = entered > 0 ? rateOf(functionalCode.value) / entered : 0
+    await setRate(code, usdRate)
+  }
   editCode.value = null
 }
 
@@ -202,11 +208,7 @@ async function saveBrandRate() {
                   :step="0.01"
                 />
                 <p class="mt-1 text-xs text-faint">
-                  {{
-                    row.code === functionalCode
-                      ? t('rates.oneUsdEquals', { amount: formatIn(functionalCode, editRate, 2) })
-                      : t('rates.oneEquals', { code: row.code, amount: formatIn(functionalCode, editRate, 2) })
-                  }}
+                  {{ t('rates.oneEquals', { code: row.code, amount: formatIn(functionalCode, editRate, 2) }) }}
                 </p>
               </div>
               <Button
@@ -227,7 +229,7 @@ async function saveBrandRate() {
                 {{ t('rates.makeBase') }}
               </Button>
               <Button
-                v-if="row.kind !== 'anchor'"
+                v-if="row.code !== functionalCode"
                 size="sm"
                 @click="startEdit(row)"
               >

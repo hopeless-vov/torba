@@ -312,7 +312,6 @@
     "marketRate": "Ринковий курс",
     "addRate": "Курс — 1 од. у {base}",
     "oneEquals": "1 {code} = {amount}",
-    "oneUsdEquals": "1 USD = {amount}",
     "perUnitInBase": "{base} за 1 {code}",
     "catalogIsBase": "Ціни в базовій валюті",
     "catalogIsBaseHint": "Без конверсії",

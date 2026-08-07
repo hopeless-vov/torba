@@ -312,7 +312,6 @@
     "marketRate": "Market rate",
     "addRate": "Rate — 1 unit in {base}",
     "oneEquals": "1 {code} = {amount}",
-    "oneUsdEquals": "1 USD = {amount}",
     "perUnitInBase": "{base} per 1 {code}",
     "catalogIsBase": "Priced in base currency",
     "catalogIsBaseHint": "No conversion",
