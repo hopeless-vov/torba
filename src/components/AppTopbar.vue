@@ -6,6 +6,7 @@ import { useCurrency } from '@/composables/use-currency'
 import { useLocale } from '@/composables/use-locale'
 import { useTheme } from '@/composables/use-theme'
 import { useCartStore } from '@/stores/cart'
+import { useUiStore } from '@/stores/ui'
 import { formatDate } from '@/utils/format'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -16,6 +17,7 @@ import { useRoute } from 'vue-router'
 const { t } = useI18n()
 const route = useRoute()
 const cart = useCartStore()
+const ui = useUiStore()
 const { isDark, toggle } = useTheme()
 const { code, symbol, options, setCurrency } = useCurrency()
 const { locale, setLocale } = useLocale()
@@ -41,8 +43,20 @@ const today = formatDate(new Date())
 
 <template>
   <header
-    class="sticky top-0 z-20 flex items-center gap-4 border-b border-line bg-panel/80 px-6 py-3 backdrop-blur"
+    class="sticky top-0 z-20 flex items-center gap-4 border-b border-line bg-panel/80 px-4 py-3 backdrop-blur sm:px-6"
   >
+    <button
+      type="button"
+      :title="t('nav.menu')"
+      class="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-line text-muted transition-colors hover:bg-hover hover:text-fg lg:hidden"
+      @click="ui.toggleSidebar()"
+    >
+      <Icon
+        icon="fa-solid fa-bars"
+        size="sm"
+      />
+    </button>
+
     <div class="flex min-w-0 flex-1 items-baseline gap-2">
       <h1 class="text-base font-semibold text-fg">
         {{ title }}

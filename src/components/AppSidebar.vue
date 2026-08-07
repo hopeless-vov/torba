@@ -3,8 +3,11 @@ import Avatar from '@/components/ui/Avatar.vue'
 import Icon from '@/components/ui/Icon.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
+import { useUiStore } from '@/stores/ui'
 import { batchStatus } from '@/utils/batch-status'
-import { computed } from 'vue'
+import { useEventListener } from '@vueuse/core'
+import { AnimatePresence, Motion } from 'motion-v'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -13,6 +16,14 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const inventory = useInventoryStore()
+const ui = useUiStore()
+
+// The off-canvas nav (below `lg`) closes on navigation and on Escape — above
+// `lg` the sidebar is always visible and this state has no visual effect.
+watch(() => route.name, () => ui.closeSidebar())
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && ui.sidebarOpen) ui.closeSidebar()
+})
 
 const warehouseWarnings = computed(
   () =>
@@ -49,15 +60,41 @@ async function logout() {
 </script>
 
 <template>
-  <aside class="flex w-64 shrink-0 flex-col border-r border-line bg-panel">
+  <AnimatePresence>
+    <Motion
+      v-if="ui.sidebarOpen"
+      class="fixed inset-0 z-40 bg-black/60 lg:hidden"
+      :initial="{ opacity: 0 }"
+      :animate="{ opacity: 1 }"
+      :exit="{ opacity: 0 }"
+      :transition="{ duration: 0.15 }"
+      @click="ui.closeSidebar()"
+    />
+  </AnimatePresence>
+
+  <aside
+    class="fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 -translate-x-full flex-col border-r border-line bg-panel transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0"
+    :class="ui.sidebarOpen && 'translate-x-0'"
+  >
     <div class="flex items-center gap-2.5 px-5 py-5">
-      <span class="flex size-8 items-center justify-center rounded-lg bg-accent text-on-accent">
+      <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-on-accent">
         <Icon
           icon="fa-solid fa-bag-shopping"
           size="sm"
         />
       </span>
-      <span class="truncate text-sm font-semibold text-fg">{{ companyName }}</span>
+      <span class="min-w-0 flex-1 truncate text-sm font-semibold text-fg">{{ companyName }}</span>
+      <button
+        type="button"
+        :title="t('common.close')"
+        class="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-fg lg:hidden"
+        @click="ui.closeSidebar()"
+      >
+        <Icon
+          icon="fa-solid fa-xmark"
+          size="sm"
+        />
+      </button>
     </div>
 
     <nav class="flex flex-1 flex-col gap-1 px-3 py-2">

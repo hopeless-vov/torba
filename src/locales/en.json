@@ -38,7 +38,8 @@
     "logout": "Log out",
     "cart": "Cart",
     "currency": "Display currency",
-    "theme": "Theme"
+    "theme": "Theme",
+    "menu": "Menu"
   },
   "auth": {
     "loginTitle": "Sign in",
