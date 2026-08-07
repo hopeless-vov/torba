@@ -270,7 +270,7 @@ src/
                            use-currency, use-currencies, use-cart, use-orders,
                            use-warehouse, use-clients, use-rates, use-selection,
                            use-personalization, use-dashboard, use-theme,
-                           use-locale, use-toast)
+                           use-locale, use-toast, use-popover-position)
   locales/               → uk.json (default) + en.json
   router/                → routes + auth guard
   stores/                → Pinia state (auth, reference, inventory, clients,
@@ -325,7 +325,11 @@ Two of them carry most of the interaction weight:
   leading checkbox column with a select-all header (wired to
   [`use-selection`](src/composables/use-selection.ts) and a bulk delete bar),
   `expandable` adds a chevron that reveals an `#expanded` row, and a column's
-  `hint` renders an info tooltip explaining what it means.
+  `hint` renders an info tooltip explaining what it means. Below `md` it renders
+  as a card list instead of a table, reusing the exact same `cell-*` slots — no
+  per-view duplication. One column opts into the card heading via `card: 'title'`
+  (falls back to the first column); the conventional `actions` column moves into
+  the card's header instead of listing as a row.
 
 Search is **per page**, in each toolbar next to that page's filters, with a
 placeholder naming what it matches (orders, for instance, search by number, client,
@@ -334,6 +338,32 @@ never say what it was searching. The query is held in the `ui` store and cleared
 navigation. The orders toolbar also carries a **date-range filter** (inclusive
 from/to, either side optional) that narrows the list — and the KPI cards — to the
 selected period; when nothing falls in the range the table says so.
+
+---
+
+## Responsive layout
+
+Two breakpoints carry the whole app down to a phone:
+
+- **`lg` (1024px)** — below it, `AppSidebar` becomes an off-canvas panel (built
+  on plain Tailwind responsive classes + a CSS transform, not the `Drawer`
+  component, since it needs to stay permanently mounted for the `lg:static`
+  override to work) opened from a hamburger button in `AppTopbar`. Its open state
+  is `ui.sidebarOpen` — the one piece of cross-page UI state both components
+  share — and it closes on navigation, `Escape`, or a backdrop click.
+- **`md` (768px)** — below it, every `DataTable` (Catalog, Orders, Warehouse,
+  Dashboard) switches from the table to a card list (see the UI Kit section
+  above). `ClientsView` was already a responsive card grid and needed nothing.
+
+Floating panels (`Combobox`, `DropdownMenu`) use
+[`use-popover-position`](src/composables/use-popover-position.ts) to flip
+upward when there isn't enough room below the trigger — otherwise a panel
+opened near the bottom of a phone screen would render off-screen instead of
+just opening the other way.
+
+Two-column form modals (`ProductFormModal`, `OrderEditModal`, `BatchModal`,
+`ClientModal`) stack to one column below `sm` (640px); `OrderDetailsModal` and
+`LinksView`'s two-panel layout were already responsive.
 
 ---
 
