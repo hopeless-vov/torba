@@ -97,12 +97,16 @@ async function saveEdit(code: string) {
   editCode.value = null
 }
 
-// Add a custom currency.
+// Add a custom currency. The rate is entered the same base-centric way as the
+// rows above — "1 unit = ? base" — and converted to the stored per-USD
+// numeraire on save, so USD never surfaces here either.
 const addForm = reactive({ code: '', symbol: '' })
 const addRate = ref(0)
 async function addCustom() {
   if (!addForm.code.trim()) return
-  await addCurrency({ code: addForm.code, symbol: addForm.symbol, usdRate: addRate.value })
+  const entered = addRate.value || 0
+  const usdRate = entered > 0 ? rateOf(functionalCode.value) / entered : 0
+  await addCurrency({ code: addForm.code, symbol: addForm.symbol, usdRate })
   addForm.code = ''
   addForm.symbol = ''
   addRate.value = 0
@@ -130,9 +134,12 @@ function openHistory(brand: Brand) {
   historyOpen.value = true
   void loadHistory(brand.id)
 }
+// When a supplier prices in the base currency there is nothing to convert, so
+// the rate is pinned to 1 rather than left as a meaningless free number.
+const catalogIsBase = computed(() => catalogInput.value === functionalCode.value)
 async function saveBrandRate() {
   if (!active.value) return
-  await updateRate(active.value, rateInput.value, catalogInput.value)
+  await updateRate(active.value, catalogIsBase.value ? 1 : rateInput.value, catalogInput.value)
   updateOpen.value = false
 }
 </script>
@@ -259,7 +266,7 @@ async function saveBrandRate() {
           />
           <NumberInput
             v-model="addRate"
-            :label="t('profile.currency.rate')"
+            :label="t('rates.addRate', { base: functionalCode })"
             :min="0"
             :step="0.01"
           />
@@ -315,12 +322,22 @@ async function saveBrandRate() {
         </div>
 
         <div class="text-right">
-          <p class="font-mono text-2xl font-semibold text-accent tabular-nums">
-            {{ formatNumber(brand.supplier_rate, 2) }}
-          </p>
-          <p class="text-xs text-faint">
-            {{ t('rates.perUnit', { code: brand.catalog_currency }) }}
-          </p>
+          <template v-if="brand.catalog_currency === functionalCode">
+            <p class="text-sm font-medium text-muted">
+              {{ t('rates.catalogIsBase') }}
+            </p>
+            <p class="text-xs text-faint">
+              {{ t('rates.catalogIsBaseHint') }}
+            </p>
+          </template>
+          <template v-else>
+            <p class="font-mono text-2xl font-semibold text-accent tabular-nums">
+              {{ formatIn(functionalCode, brand.supplier_rate, 2) }}
+            </p>
+            <p class="text-xs text-faint">
+              {{ t('rates.perUnit', { code: brand.catalog_currency }) }}
+            </p>
+          </template>
         </div>
 
         <div class="flex items-center gap-2">
@@ -352,9 +369,16 @@ async function saveBrandRate() {
           :empty-text="t('common.noMatches')"
           :options="catalogOptions"
         />
+        <p
+          v-if="catalogIsBase"
+          class="rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-muted"
+        >
+          {{ t('rates.catalogIsBaseNote', { base: functionalCode }) }}
+        </p>
         <NumberInput
+          v-else
           v-model="rateInput"
-          :label="t('rates.perUnit', { code: catalogInput })"
+          :label="t('rates.perUnitInBase', { base: functionalCode, code: catalogInput })"
           :min="0"
           :step="0.1"
         />

@@ -7,13 +7,13 @@ import Icon from '@/components/ui/Icon.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import Tag from '@/components/ui/Tag.vue'
 import TextInput from '@/components/ui/TextInput.vue'
+import { useCurrency } from '@/composables/use-currency'
 import { usePersonalization } from '@/composables/use-personalization'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
-import { formatNumber } from '@/utils/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -22,6 +22,7 @@ const { t } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 const reference = useReferenceStore()
+const { functionalCode, formatIn } = useCurrency()
 const inventory = useInventoryStore()
 const clients = useClientsStore()
 const orders = useOrdersStore()
@@ -224,8 +225,12 @@ async function logout() {
               {{ t('profile.brandMeta', brandStats(b.id)) }}
             </p>
           </div>
-          <Badge tone="accent">
-            {{ `${formatNumber(b.supplier_rate, 2)} ${t('rates.perUnit', { code: b.catalog_currency })}` }}
+          <Badge :tone="b.catalog_currency === functionalCode ? 'neutral' : 'accent'">
+            {{
+              b.catalog_currency === functionalCode
+                ? t('rates.catalogIsBase')
+                : `${formatIn(functionalCode, b.supplier_rate, 2)} ${t('rates.perUnit', { code: b.catalog_currency })}`
+            }}
           </Badge>
           <button
             type="button"

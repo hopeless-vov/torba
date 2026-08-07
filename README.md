@@ -158,7 +158,10 @@ distribution needs all three:
 - **Supplier rate** — each brand's own rate for the currency it prices its goods in
   (e.g. €1 = ₴52). Suppliers bump it every couple of months to compensate for the
   market, so it rarely matches the bank rate, and it drives **cost**. Lives on the
-  brand (`brand.supplier_rate` + `brand.catalog_currency`), edited on **/rates**.
+  brand (`brand.supplier_rate` + `brand.catalog_currency`), edited on **/rates** and
+  shown in the base currency (*"₴n per 1 {catalog}"*). When a supplier prices in the
+  base currency itself there is nothing to convert, so the rate is pinned to 1 and the
+  card reads *"priced in base currency"* instead of a meaningless *"per 1 ₴"*.
 - **Market rate** — the bank/reference rate, used only to **display** amounts in a
   chosen currency. Stored per company in `currencies.usd_rate` as a per-USD numeraire
   (units of the currency per 1 USD). USD is only that stored numeraire — it is never
