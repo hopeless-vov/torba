@@ -32,6 +32,7 @@
     "clients": "Clients",
     "orders": "Orders",
     "rates": "Exchange rates",
+    "links": "Links",
     "profile": "Profile",
     "not-found": "Not found",
     "logout": "Log out",
@@ -330,7 +331,29 @@
     "modalTitle": "Update rate — {brand}",
     "newRate": "Supplier rate",
     "empty": "No brands yet",
-    "emptyHint": "Add a brand in your profile."
+    "emptyHint": "Add a brand on the Links page."
+  },
+  "links": {
+    "title": "Brands & categories",
+    "subtitle": "Links",
+    "hint": "A category depends on its brand: the product form and the catalog filter only offer a brand's own categories.",
+    "brands": "Brands",
+    "brandMeta": "{n} categories",
+    "categoryMeta": "{products} products",
+    "categoriesFor": "{brand} categories",
+    "categoriesForHint": "Ticked categories are offered in the product form and filter for this brand",
+    "markAll": "Select all",
+    "clear": "Clear",
+    "selectedOf": "Selected",
+    "savedImmediately": "Changes are saved instantly",
+    "noBrands": "No brands yet",
+    "noBrandsHint": "Add your first brand on the left.",
+    "noCategories": "No categories yet",
+    "noCategoriesHint": "Add a category for this brand above.",
+    "deleteBrandTitle": "Delete brand “{name}”?",
+    "deleteBrandMessage": "The brand and all its category links are removed. Its products stay, but without a brand.",
+    "deleteCategoryTitle": "Delete category “{name}”?",
+    "deleteCategoryMessage": "The category and all its brand links are removed. Existing products keep their category_id."
   },
   "profile": {
     "subtitle": "Account",
@@ -344,25 +367,15 @@
       "orders": "Orders"
     },
     "logout": "Log out",
-    "personalization": {
-      "title": "Personalization",
-      "hint": "Only you see these — they fill the dropdowns in catalog, rates and orders"
-    },
-    "tabs": {
-      "brands": "Brands",
-      "categories": "Categories",
-      "payment": "Payment",
-      "currencies": "Currencies"
-    },
+    "paymentTitle": "Payment methods",
+    "paymentHint": "They fill the payment dropdown in orders. Brands and categories live on the Links page.",
+    "paymentEmpty": "No payment methods yet.",
     "addBrand": "Add brand",
     "addCategory": "Add category",
     "addPayment": "Add method",
     "brandPlaceholder": "Brand name, e.g. Colorescience",
     "categoryPlaceholder": "Category name, e.g. Serums",
     "paymentPlaceholder": "Payment method, e.g. Cash",
-    "categoryNoBrands": "Not linked to any brand yet",
-    "linkBrand": "Link brand",
-    "brandMeta": "{products} products · {categories} categories",
     "currency": {
       "hint": "Each price is stored in its own currency. Add a currency to also see amounts in it — you set the rate yourself, as what it's worth in your base currency.",
       "code": "Code",

@@ -27,6 +27,10 @@ export function usePersonalization() {
     return { products: owned.length, categories: categories.size }
   }
 
+  function categoryStats(categoryId: string) {
+    return { products: inventory.products.filter((p) => p.category_id === categoryId).length }
+  }
+
   // Returns the action's result on success (so the caller can select a
   // freshly-created item), or null on failure.
   async function run<T>(
@@ -99,6 +103,27 @@ export function usePersonalization() {
     await run(() => categoriesApi.unlink(brandId, categoryId), 'toasts.deleted', 'errors.delete')
   }
 
+  // Replace a brand's whole set of category links in one shot — used by the
+  // "mark all" / "clear" bulk actions so they cost a single reload and toast.
+  async function setBrandCategories(brandId: string, categoryIds: string[]) {
+    if (!auth.companyId) return
+    const companyId = auth.companyId
+    await run(
+      async () => {
+        await categoriesApi.unlinkAllForBrand(brandId)
+        await categoriesApi.linkMany(
+          categoryIds.map((categoryId) => ({
+            company_id: companyId,
+            brand_id: brandId,
+            category_id: categoryId,
+          })),
+        )
+      },
+      'toasts.saved',
+      'errors.save',
+    )
+  }
+
   async function addPayment(name: string) {
     if (!auth.companyId || !name.trim()) return null
     return run(
@@ -114,12 +139,14 @@ export function usePersonalization() {
 
   return {
     brandStats,
+    categoryStats,
     addBrand,
     removeBrand,
     addCategory,
     removeCategory,
     linkCategory,
     unlinkCategory,
+    setBrandCategories,
     addPayment,
     removePayment,
   }

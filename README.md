@@ -60,9 +60,13 @@ Apply **all files, in order**:
 brand exposes its own set of categories, so the product form and the catalog filter
 only offer the categories linked to the chosen brand (the category picker stays
 disabled until a brand is selected). A product still stores a single `category_id`;
-the link table only decides what the pickers show. Manage the links per category in
-**Profile → Categories** (`0007` backfills them from how existing products already
-pair brands and categories).
+the link table only decides what the pickers show. Manage everything on the dedicated
+**Links** page (**/links**): a two-panel editor — brands on the left, the selected
+brand's categories as toggle-cards on the right — where you add and delete brands and
+categories, tick the links (with *select all* / *clear*), and each change saves at
+once. Both lists scroll when they grow. Profile keeps only the account card and
+payment methods. `0007` backfills the links from how existing products already pair
+brands and categories.
 
 On first sign-up a company + owner profile are created automatically, along with
 default categories and payment methods. If the sign-up trigger ever fails to run,
@@ -311,8 +315,8 @@ Two of them carry most of the interaction weight:
   user-defined data (clients, brands, categories, products, payment methods) uses it;
   plain `Select` is left for short fixed lists like order status. Passing an
   `addLabel` adds a footer button that emits `add` — the forms use it to drop a
-  `QuickAddModal` in place so a missing **Personalization** item (brand, category or
-  payment method) can be created inline and auto-selected, without a trip to Profile.
+  `QuickAddModal` in place so a missing brand, category or payment method can be
+  created inline and auto-selected, without a trip to the Links page.
 - **`EmptyState`** — the icon + title + hint shown when a table has no rows. Its
   default slot takes **action buttons**, so every empty screen offers the obvious next
   step: import/new-product on the catalog, new-batch on the warehouse, new-client on
@@ -340,8 +344,8 @@ status and FIFO ordering, batch numbering, order totals, formatting, **CSV
 parsing**), Pinia stores (cart — including backorders and switching a line's
 batch — and currency), the composable logic (`useCatalog`, `useWarehouse`
 grouping, `useCurrency` conversion, `useSelection`), and the API layer (mocked
-Supabase client). `views.test.ts` mounts Catalog, Warehouse, Orders and the cart
-drawer against seeded stores, so a broken template or missing slot fails in CI
+Supabase client). `views.test.ts` mounts Catalog, Warehouse, Orders, Links and the
+cart drawer against seeded stores, so a broken template or missing slot fails in CI
 rather than in the browser. A Playwright smoke test in `tests/e2e/` verifies the
 auth gate.
 

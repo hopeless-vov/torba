@@ -35,6 +35,7 @@ const nav = computed(() => [
   { name: 'clients', label: t('nav.clients'), icon: 'fa-solid fa-users' },
   { name: 'orders', label: t('nav.orders'), icon: 'fa-solid fa-arrow-right-arrow-left' },
   { name: 'rates', label: t('nav.rates'), icon: 'fa-solid fa-hryvnia-sign' },
+  { name: 'links', label: t('nav.links'), icon: 'fa-solid fa-layer-group' },
   { name: 'profile', label: t('nav.profile'), icon: 'fa-solid fa-circle-user' },
 ])
 

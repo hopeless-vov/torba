@@ -51,12 +51,28 @@ export const categoriesApi = {
     if (error) throw error
   },
 
+  // Upsert several links at once (used by the "mark all" bulk action).
+  linkMany: async (links: NewBrandCategory[]): Promise<void> => {
+    if (links.length === 0) return
+    const { error } = await supabase
+      .from('brand_categories')
+      .upsert(links, { onConflict: 'brand_id,category_id', ignoreDuplicates: true })
+    if (error) throw error
+  },
+
   unlink: async (brandId: string, categoryId: string): Promise<void> => {
     const { error } = await supabase
       .from('brand_categories')
       .delete()
       .eq('brand_id', brandId)
       .eq('category_id', categoryId)
+    if (error) throw error
+  },
+
+  // Drop every category link for a brand (used by the "clear" bulk action and
+  // as the first half of replacing a brand's whole set).
+  unlinkAllForBrand: async (brandId: string): Promise<void> => {
+    const { error } = await supabase.from('brand_categories').delete().eq('brand_id', brandId)
     if (error) throw error
   },
 }

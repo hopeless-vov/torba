@@ -88,6 +88,7 @@ export const useReferenceStore = defineStore('reference', () => {
     brandsById,
     categoriesById,
     currenciesByCode,
+    categoryIdsByBrand,
     categoriesForBrand,
     brandIdsForCategory,
     brandRate,

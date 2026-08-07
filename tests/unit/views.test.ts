@@ -11,6 +11,7 @@ import { useReferenceStore } from '@/stores/reference'
 import type { Brand, Client, OrderItem } from '@/types/database'
 import CatalogView from '@/views/CatalogView.vue'
 import ClientsView from '@/views/ClientsView.vue'
+import LinksView from '@/views/LinksView.vue'
 import OrdersView from '@/views/OrdersView.vue'
 import WarehouseView from '@/views/WarehouseView.vue'
 import { mount } from '@vue/test-utils'
@@ -114,6 +115,10 @@ function render(component: Parameters<typeof mount>[0]) {
   const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
 
   useReferenceStore().brands = [brand]
+  useReferenceStore().categories = [{ id: 'cat1', company_id: 'c', name: 'Сироватки', created_at: '' }]
+  useReferenceStore().brandCategories = [
+    { company_id: 'c', brand_id: 'b1', category_id: 'cat1', created_at: '' },
+  ]
   useReferenceStore().paymentMethods = [
     { id: 'pm1', company_id: 'c', name: 'Готівка', created_at: '' },
   ]
@@ -222,6 +227,26 @@ describe('ClientsView', () => {
     // The confirm dialog teleports to body with the client's name.
     expect(document.body.textContent).toContain(uk.clients.deleteTitle)
     expect(document.body.textContent).toContain('Олег Петренко')
+  })
+})
+
+describe('LinksView', () => {
+  it('renders brands beside the selected brand’s categories', () => {
+    const wrapper = render(LinksView)
+    expect(wrapper.text()).toContain('Fairy')
+    expect(wrapper.text()).toContain('Сироватки')
+    expect(wrapper.text()).toContain(uk.links.markAll)
+    // The selected brand's only link shows as 1 of 1 categories.
+    expect(wrapper.text()).toContain(uk.links.savedImmediately)
+  })
+
+  it('confirms before deleting a brand', async () => {
+    const wrapper = render(LinksView)
+    const del = wrapper.findAll('button').find((b) => b.attributes('title') === uk.common.delete)
+    expect(del).toBeTruthy()
+    await del?.trigger('click')
+    // The confirm dialog teleports to body with the brand's name.
+    expect(document.body.textContent).toContain('Fairy')
   })
 })
 

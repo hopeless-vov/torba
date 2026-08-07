@@ -176,6 +176,34 @@ describe('categoriesApi links', () => {
     expect(chain.eq).toHaveBeenCalledWith('brand_id', 'b1')
     expect(chain.eq).toHaveBeenCalledWith('category_id', 'c1')
   })
+
+  it('upserts many links in one call for the bulk action', async () => {
+    const chain = builder({ data: null, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { categoriesApi } = await import('@/api/categories')
+    const links = [
+      { company_id: 'co1', brand_id: 'b1', category_id: 'c1' },
+      { company_id: 'co1', brand_id: 'b1', category_id: 'c2' },
+    ]
+    await categoriesApi.linkMany(links)
+    expect(chain.upsert).toHaveBeenCalledWith(links, { onConflict: 'brand_id,category_id', ignoreDuplicates: true })
+  })
+
+  it('skips the request when linkMany gets an empty list', async () => {
+    const { categoriesApi } = await import('@/api/categories')
+    await categoriesApi.linkMany([])
+    expect(mocked.from).not.toHaveBeenCalled()
+  })
+
+  it('drops every link for a brand in the clear action', async () => {
+    const chain = builder({ data: null, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { categoriesApi } = await import('@/api/categories')
+    await categoriesApi.unlinkAllForBrand('b1')
+    expect(mocked.from).toHaveBeenCalledWith('brand_categories')
+    expect(chain.delete).toHaveBeenCalled()
+    expect(chain.eq).toHaveBeenCalledWith('brand_id', 'b1')
+  })
 })
 
 describe('currenciesApi', () => {

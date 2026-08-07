@@ -2,12 +2,8 @@
 import Avatar from '@/components/ui/Avatar.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
-import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import Icon from '@/components/ui/Icon.vue'
-import Tabs from '@/components/ui/Tabs.vue'
-import Tag from '@/components/ui/Tag.vue'
 import TextInput from '@/components/ui/TextInput.vue'
-import { useCurrency } from '@/composables/use-currency'
 import { usePersonalization } from '@/composables/use-personalization'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
@@ -22,30 +18,12 @@ const { t } = useI18n()
 const router = useRouter()
 const auth = useAuthStore()
 const reference = useReferenceStore()
-const { functionalCode, formatIn } = useCurrency()
 const inventory = useInventoryStore()
 const clients = useClientsStore()
 const orders = useOrdersStore()
-const {
-  brandStats,
-  addBrand,
-  removeBrand,
-  addCategory,
-  removeCategory,
-  linkCategory,
-  unlinkCategory,
-  addPayment,
-  removePayment,
-} = usePersonalization()
+const { addPayment, removePayment } = usePersonalization()
 
-const tab = ref<'brands' | 'categories' | 'payment'>('brands')
-const newValue = ref('')
-
-const tabs = computed(() => [
-  { value: 'brands', label: t('profile.tabs.brands'), count: reference.brands.length },
-  { value: 'categories', label: t('profile.tabs.categories'), count: reference.categories.length },
-  { value: 'payment', label: t('profile.tabs.payment'), count: reference.paymentMethods.length },
-])
+const newPayment = ref('')
 
 const email = computed(() => auth.user?.email ?? '')
 const name = computed(() => auth.profile?.full_name ?? email.value)
@@ -67,36 +45,11 @@ const stats = computed(() => [
   { label: t('profile.stats.orders'), value: orders.orders.length },
 ])
 
-const placeholder = computed(() => {
-  if (tab.value === 'brands') return t('profile.brandPlaceholder')
-  if (tab.value === 'categories') return t('profile.categoryPlaceholder')
-  return t('profile.paymentPlaceholder')
-})
-
-const addLabel = computed(() => {
-  if (tab.value === 'brands') return t('profile.addBrand')
-  if (tab.value === 'categories') return t('profile.addCategory')
-  return t('profile.addPayment')
-})
-
-async function add() {
-  const value = newValue.value.trim()
+async function submitPayment() {
+  const value = newPayment.value.trim()
   if (!value) return
-  if (tab.value === 'brands') await addBrand(value)
-  else if (tab.value === 'categories') await addCategory(value)
-  else await addPayment(value)
-  newValue.value = ''
-}
-
-// Categories are many-to-many with brands: each category lists the brands it
-// is offered for, and can be linked to any brand not yet attached.
-function linkedBrands(categoryId: string) {
-  const ids = new Set(reference.brandIdsForCategory(categoryId))
-  return reference.brands.filter((b) => ids.has(b.id))
-}
-function addableBrandItems(categoryId: string) {
-  const ids = new Set(reference.brandIdsForCategory(categoryId))
-  return reference.brands.filter((b) => !ids.has(b.id)).map((b) => ({ value: b.id, label: b.name }))
+  await addPayment(value)
+  newPayment.value = ''
 }
 
 async function logout() {
@@ -168,147 +121,36 @@ async function logout() {
       </Button>
     </div>
 
-    <!-- Personalization -->
+    <!-- Payment methods -->
     <div class="flex flex-col gap-4 rounded-xl border border-line bg-panel p-6">
       <div>
         <h2 class="text-base font-semibold text-fg">
-          {{ t('profile.personalization.title') }}
+          {{ t('profile.paymentTitle') }}
         </h2>
         <p class="mt-1 text-sm text-muted">
-          {{ t('profile.personalization.hint') }}
+          {{ t('profile.paymentHint') }}
         </p>
       </div>
 
-      <Tabs
-        v-model="tab"
-        :tabs="tabs"
-      />
-
       <form
         class="flex items-center gap-2"
-        @submit.prevent="add"
+        @submit.prevent="submitPayment"
       >
         <TextInput
-          v-model="newValue"
+          v-model="newPayment"
           class="flex-1"
-          :placeholder="placeholder"
+          :placeholder="t('profile.paymentPlaceholder')"
         />
         <Button
           type="submit"
           variant="primary"
-          :disabled="!newValue.trim()"
+          :disabled="!newPayment.trim()"
         >
-          {{ addLabel }}
+          {{ t('profile.addPayment') }}
         </Button>
       </form>
 
-      <!-- Brands -->
-      <ul
-        v-if="tab === 'brands'"
-        class="flex flex-col gap-2"
-      >
-        <li
-          v-for="b in reference.brands"
-          :key="b.id"
-          class="flex items-center gap-3 rounded-lg border border-line-soft bg-surface px-3 py-2.5"
-        >
-          <Avatar
-            :name="b.name"
-            size="sm"
-            tone="muted"
-          />
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium text-fg">
-              {{ b.name }}
-            </p>
-            <p class="text-xs text-faint">
-              {{ t('profile.brandMeta', brandStats(b.id)) }}
-            </p>
-          </div>
-          <Badge :tone="b.catalog_currency === functionalCode ? 'neutral' : 'accent'">
-            {{
-              b.catalog_currency === functionalCode
-                ? t('rates.catalogIsBase')
-                : `${formatIn(functionalCode, b.supplier_rate, 2)} ${t('rates.perUnit', { code: b.catalog_currency })}`
-            }}
-          </Badge>
-          <button
-            type="button"
-            class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-danger"
-            @click="removeBrand(b.id)"
-          >
-            <Icon
-              icon="fa-solid fa-xmark"
-              size="sm"
-            />
-          </button>
-        </li>
-      </ul>
-
-      <!-- Categories (each offered for one or more brands) -->
-      <ul
-        v-else-if="tab === 'categories'"
-        class="flex flex-col gap-2"
-      >
-        <li
-          v-for="c in reference.categories"
-          :key="c.id"
-          class="flex flex-col gap-2.5 rounded-lg border border-line-soft bg-surface p-3"
-        >
-          <div class="flex items-center gap-2">
-            <span class="flex-1 text-sm font-medium text-fg">{{ c.name }}</span>
-            <button
-              type="button"
-              class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
-              :title="t('common.delete')"
-              @click="removeCategory(c.id)"
-            >
-              <Icon
-                icon="fa-solid fa-xmark"
-                size="sm"
-              />
-            </button>
-          </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <Tag
-              v-for="b in linkedBrands(c.id)"
-              :key="b.id"
-              removable
-              @remove="unlinkCategory(b.id, c.id)"
-            >
-              {{ b.name }}
-            </Tag>
-            <span
-              v-if="linkedBrands(c.id).length === 0"
-              class="text-xs text-faint"
-            >
-              {{ t('profile.categoryNoBrands') }}
-            </span>
-            <DropdownMenu
-              v-if="addableBrandItems(c.id).length > 0"
-              :items="addableBrandItems(c.id)"
-              @select="linkCategory($event, c.id)"
-            >
-              <button
-                type="button"
-                class="flex items-center gap-1 rounded-md border border-dashed border-line px-2 py-1 text-xs text-muted transition-colors hover:border-accent-line hover:text-accent"
-              >
-                <Icon
-                  icon="fa-solid fa-plus"
-                  size="xs"
-                />
-                {{ t('profile.linkBrand') }}
-              </button>
-            </DropdownMenu>
-          </div>
-        </li>
-      </ul>
-
-      <!-- Payment methods -->
-      <ul
-        v-else-if="tab === 'payment'"
-        class="flex flex-col gap-2"
-      >
+      <ul class="flex flex-col gap-2">
         <li
           v-for="p in reference.paymentMethods"
           :key="p.id"
@@ -330,6 +172,12 @@ async function logout() {
               size="sm"
             />
           </button>
+        </li>
+        <li
+          v-if="reference.paymentMethods.length === 0"
+          class="rounded-lg border border-dashed border-line px-3 py-6 text-center text-sm text-faint"
+        >
+          {{ t('profile.paymentEmpty') }}
         </li>
       </ul>
     </div>

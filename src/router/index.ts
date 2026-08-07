@@ -25,6 +25,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'clients', name: 'clients', component: () => import('@/views/ClientsView.vue') },
       { path: 'orders', name: 'orders', component: () => import('@/views/OrdersView.vue') },
       { path: 'rates', name: 'rates', component: () => import('@/views/RatesView.vue') },
+      { path: 'links', name: 'links', component: () => import('@/views/LinksView.vue') },
       { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue') },
       {
         path: ':pathMatch(.*)*',
