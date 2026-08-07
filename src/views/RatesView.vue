@@ -197,7 +197,7 @@ async function saveBrandRate() {
             </p>
           </div>
 
-          <div class="ml-auto flex items-end gap-2">
+          <div class="ml-auto flex flex-wrap items-end justify-end gap-2">
             <template v-if="editCode === row.code">
               <div class="w-36">
                 <NumberInput
@@ -309,7 +309,7 @@ async function saveBrandRate() {
       <div
         v-for="brand in reference.brands"
         :key="brand.id"
-        class="flex items-center gap-4 rounded-xl border border-line bg-panel px-5 py-4"
+        class="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-panel px-5 py-4"
       >
         <div class="min-w-0 flex-1">
           <p class="flex items-center gap-2 text-sm font-semibold text-fg">

@@ -18,7 +18,7 @@ const inventory = useInventoryStore()
 const { stats, burning } = useDashboard()
 
 const columns = computed<Column[]>(() => [
-  { key: 'name', label: t('dashboard.cols.product') },
+  { key: 'name', label: t('dashboard.cols.product'), card: 'title' },
   { key: 'batch', label: t('dashboard.cols.batch'), mono: true },
   { key: 'remaining', label: t('dashboard.cols.remaining'), align: 'right', mono: true },
   { key: 'expiry', label: t('dashboard.cols.expiry'), align: 'left', mono: true },
@@ -60,7 +60,7 @@ const columns = computed<Column[]>(() => [
     </div>
 
     <div class="rounded-xl border border-line bg-panel">
-      <div class="flex items-center justify-between px-5 py-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
         <div class="flex items-baseline gap-2">
           <h2 class="text-sm font-semibold text-fg">
             {{ t('dashboard.burning.title') }}
