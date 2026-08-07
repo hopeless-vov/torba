@@ -131,7 +131,7 @@ function submit() {
     :title="isEdit ? t('catalog.form.titleEdit') : t('catalog.form.titleNew')"
   >
     <form
-      class="grid grid-cols-2 gap-4"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2"
       @submit.prevent="submit"
     >
       <TextInput
@@ -146,7 +146,7 @@ function submit() {
       />
       <TextInput
         v-model="form.name"
-        class="col-span-2"
+        class="col-span-1 sm:col-span-2"
         :label="t('catalog.form.name')"
       />
       <Combobox
@@ -209,10 +209,10 @@ function submit() {
           />
         </div>
       </div>
-      <p class="col-span-2 -mt-1 text-xs text-faint">
+      <p class="col-span-1 -mt-1 text-xs text-faint sm:col-span-2">
         {{ t('catalog.form.priceHint') }}
       </p>
-      <div class="col-span-2">
+      <div class="col-span-1 sm:col-span-2">
         <Checkbox
           v-model="form.is_active"
           :label="t('catalog.form.active')"

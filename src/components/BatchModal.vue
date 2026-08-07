@@ -89,12 +89,12 @@ function submit() {
     :title="isEdit ? t('warehouse.editBatch') : t('warehouse.newBatch')"
   >
     <form
-      class="grid grid-cols-2 gap-4"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2"
       @submit.prevent="submit"
     >
       <Combobox
         v-model="form.product_id"
-        class="col-span-2"
+        class="col-span-1 sm:col-span-2"
         :label="t('warehouse.cols.product')"
         :placeholder="t('warehouse.chooseProduct')"
         :search-placeholder="t('catalog.searchPlaceholder')"
@@ -103,7 +103,7 @@ function submit() {
         :disabled="isEdit"
       />
 
-      <div class="col-span-2 flex flex-col gap-1.5">
+      <div class="col-span-1 flex flex-col gap-1.5 sm:col-span-2">
         <span class="text-xs font-medium text-muted">{{ t('warehouse.cols.batch') }}</span>
         <div
           class="flex h-9 items-center gap-2 rounded-lg border border-dashed border-line bg-bg-2 px-3"

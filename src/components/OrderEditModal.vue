@@ -105,7 +105,7 @@ function submit() {
     :title="t('orders.edit.title', { number: order?.number ?? '' })"
   >
     <form
-      class="grid grid-cols-2 gap-4"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2"
       @submit.prevent="submit"
     >
       <Select
@@ -126,7 +126,7 @@ function submit() {
       />
       <Combobox
         v-model="form.client_id"
-        class="col-span-2"
+        class="col-span-1 sm:col-span-2"
         :label="t('orders.edit.client')"
         :placeholder="t('cart.chooseClient')"
         :search-placeholder="t('clients.searchPlaceholder')"
@@ -136,13 +136,13 @@ function submit() {
       />
       <TextInput
         v-model="form.delivery_address"
-        class="col-span-2"
+        class="col-span-1 sm:col-span-2"
         :label="t('orders.edit.address')"
         :placeholder="t('orders.edit.addressPlaceholder')"
       />
       <TextInput
         v-model="form.tracking_number"
-        class="col-span-2"
+        class="col-span-1 sm:col-span-2"
         :label="t('orders.edit.tracking')"
       />
       <NumberInput
@@ -159,7 +159,7 @@ function submit() {
       />
       <NumberInput
         v-model="discount"
-        class="col-span-2"
+        class="col-span-1 sm:col-span-2"
         :label="t('orders.edit.discount')"
         :min="0"
         :max="100"
@@ -167,7 +167,7 @@ function submit() {
       />
       <TextInput
         v-model="form.note"
-        class="col-span-2"
+        class="col-span-1 sm:col-span-2"
         :label="t('orders.edit.note')"
       />
     </form>

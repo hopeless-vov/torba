@@ -55,7 +55,7 @@ function submit() {
     :title="client ? t('clients.form.titleEdit') : t('clients.form.titleNew')"
   >
     <form
-      class="grid grid-cols-2 gap-4"
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2"
       @submit.prevent="submit"
     >
       <TextInput
