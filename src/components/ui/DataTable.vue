@@ -12,6 +12,9 @@ export interface Column {
   mono?: boolean
   /** Shown as a native tooltip on the header — use it to explain a column. */
   hint?: string
+  /** Card layout (below `md`): promotes this column to the card's heading
+   *  instead of a label/value row. Falls back to the first column. */
+  card?: 'title'
 }
 
 const props = withDefaults(
@@ -61,6 +64,15 @@ const totalColumns = computed(
   () => props.columns.length + (props.selectable ? 1 : 0) + (props.expandable ? 1 : 0),
 )
 
+// Card layout (below `md`): one column becomes the heading, the trailing
+// "actions" column (the app-wide convention for row actions) moves into the
+// header row next to it, and everything else lists as label/value pairs.
+const titleColumn = computed(() => props.columns.find((c) => c.card === 'title') ?? props.columns[0])
+const actionsColumn = computed(() => props.columns.find((c) => c.key === 'actions'))
+const cardBodyColumns = computed(() =>
+  props.columns.filter((c) => c !== titleColumn.value && c !== actionsColumn.value),
+)
+
 function toggleAll() {
   if (allSelected.value) {
     selected.value = selected.value.filter((k) => !visibleKeys.value.includes(k))
@@ -92,143 +104,249 @@ const cell = tv({
 </script>
 
 <template>
-  <div class="w-full overflow-x-auto">
-    <table class="w-full border-collapse">
-      <thead>
-        <tr class="border-b border-line-soft">
-          <th
-            v-if="selectable"
-            class="w-10 px-4 py-2.5"
-          >
-            <Checkbox
-              :model-value="allSelected"
-              :indeterminate="someSelected"
-              @update:model-value="toggleAll"
-            />
-          </th>
-          <th
-            v-if="expandable"
-            class="w-8 px-2 py-2.5"
-          />
-          <th
-            v-for="col in columns"
-            :key="col.key"
-            :style="col.width ? { width: col.width } : undefined"
-            :title="col.hint"
-            class="px-4 py-2.5 text-xs font-medium tracking-wide text-faint uppercase"
-            :class="[
-              col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
-            ]"
-          >
-            <slot
-              :name="`head-${col.key}`"
-              :column="col"
-            >
-              <span class="inline-flex items-center gap-1.5">
-                {{ col.label }}
-                <Icon
-                  v-if="col.hint"
-                  icon="fa-solid fa-circle-info"
-                  size="xs"
-                  class="text-faint/70"
-                />
-              </span>
-            </slot>
-          </th>
-        </tr>
-      </thead>
-
-      <tbody v-if="loading && rows.length === 0">
-        <tr
-          v-for="n in 6"
-          :key="`skeleton-${n}`"
-          class="border-b border-line-soft last:border-0"
-        >
-          <td
-            v-for="i in totalColumns"
-            :key="i"
-            class="px-4 py-3"
-          >
-            <span class="block h-3.5 w-2/3 animate-pulse rounded bg-hover" />
-          </td>
-        </tr>
-      </tbody>
-
-      <tbody v-else>
-        <template
-          v-for="row in rows"
-          :key="String(row[rowKey])"
-        >
-          <tr
-            class="border-b border-line-soft transition-colors duration-100"
-            :class="[
-              clickable && 'cursor-pointer hover:bg-row-hover',
-              selected.includes(String(row[rowKey])) && 'bg-accent-soft/40',
-              expanded.includes(String(row[rowKey])) ? 'border-transparent' : 'last:border-0',
-            ]"
-            @click="clickable && emit('rowClick', row)"
-          >
-            <td
+  <div class="w-full">
+    <div class="hidden overflow-x-auto md:block">
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="border-b border-line-soft">
+            <th
               v-if="selectable"
-              class="px-4 py-3"
-              @click.stop
+              class="w-10 px-4 py-2.5"
             >
               <Checkbox
-                :model-value="selected.includes(String(row[rowKey]))"
-                @update:model-value="toggleRow(row)"
+                :model-value="allSelected"
+                :indeterminate="someSelected"
+                @update:model-value="toggleAll"
               />
-            </td>
-            <td
+            </th>
+            <th
               v-if="expandable"
-              class="px-2 py-3"
-              @click.stop
-            >
-              <button
-                type="button"
-                class="flex size-6 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-fg"
-                @click="toggleExpanded(row)"
-              >
-                <Icon
-                  :icon="
-                    expanded.includes(String(row[rowKey]))
-                      ? 'fa-solid fa-chevron-down'
-                      : 'fa-solid fa-chevron-right'
-                  "
-                  size="xs"
-                />
-              </button>
-            </td>
-            <td
+              class="w-8 px-2 py-2.5"
+            />
+            <th
               v-for="col in columns"
               :key="col.key"
-              :class="[cell({ align: col.align ?? 'left' }), col.mono && 'font-mono tabular-nums']"
+              :style="col.width ? { width: col.width } : undefined"
+              :title="col.hint"
+              class="px-4 py-2.5 text-xs font-medium tracking-wide text-faint uppercase"
+              :class="[
+                col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left',
+              ]"
             >
               <slot
-                :name="`cell-${col.key}`"
-                :row="row"
-                :value="row[col.key]"
+                :name="`head-${col.key}`"
+                :column="col"
               >
-                {{ row[col.key] }}
+                <span class="inline-flex items-center gap-1.5">
+                  {{ col.label }}
+                  <Icon
+                    v-if="col.hint"
+                    icon="fa-solid fa-circle-info"
+                    size="xs"
+                    class="text-faint/70"
+                  />
+                </span>
               </slot>
-            </td>
+            </th>
           </tr>
+        </thead>
+
+        <tbody v-if="loading && rows.length === 0">
           <tr
-            v-if="expandable && expanded.includes(String(row[rowKey]))"
+            v-for="n in 6"
+            :key="`skeleton-${n}`"
             class="border-b border-line-soft last:border-0"
           >
             <td
-              :colspan="totalColumns"
-              class="bg-bg-2/60 px-4 pt-0 pb-3"
+              v-for="i in totalColumns"
+              :key="i"
+              class="px-4 py-3"
             >
-              <slot
-                name="expanded"
-                :row="row"
-              />
+              <span class="block h-3.5 w-2/3 animate-pulse rounded bg-hover" />
             </td>
           </tr>
-        </template>
-      </tbody>
-    </table>
+        </tbody>
+
+        <tbody v-else>
+          <template
+            v-for="row in rows"
+            :key="String(row[rowKey])"
+          >
+            <tr
+              class="border-b border-line-soft transition-colors duration-100"
+              :class="[
+                clickable && 'cursor-pointer hover:bg-row-hover',
+                selected.includes(String(row[rowKey])) && 'bg-accent-soft/40',
+                expanded.includes(String(row[rowKey])) ? 'border-transparent' : 'last:border-0',
+              ]"
+              @click="clickable && emit('rowClick', row)"
+            >
+              <td
+                v-if="selectable"
+                class="px-4 py-3"
+                @click.stop
+              >
+                <Checkbox
+                  :model-value="selected.includes(String(row[rowKey]))"
+                  @update:model-value="toggleRow(row)"
+                />
+              </td>
+              <td
+                v-if="expandable"
+                class="px-2 py-3"
+                @click.stop
+              >
+                <button
+                  type="button"
+                  class="flex size-6 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-fg"
+                  @click="toggleExpanded(row)"
+                >
+                  <Icon
+                    :icon="
+                      expanded.includes(String(row[rowKey]))
+                        ? 'fa-solid fa-chevron-down'
+                        : 'fa-solid fa-chevron-right'
+                    "
+                    size="xs"
+                  />
+                </button>
+              </td>
+              <td
+                v-for="col in columns"
+                :key="col.key"
+                :class="[cell({ align: col.align ?? 'left' }), col.mono && 'font-mono tabular-nums']"
+              >
+                <slot
+                  :name="`cell-${col.key}`"
+                  :row="row"
+                  :value="row[col.key]"
+                >
+                  {{ row[col.key] }}
+                </slot>
+              </td>
+            </tr>
+            <tr
+              v-if="expandable && expanded.includes(String(row[rowKey]))"
+              class="border-b border-line-soft last:border-0"
+            >
+              <td
+                :colspan="totalColumns"
+                class="bg-bg-2/60 px-4 pt-0 pb-3"
+              >
+                <slot
+                  name="expanded"
+                  :row="row"
+                />
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Cards (below md): the same cell slots, laid out as heading + label/value rows. -->
+    <div
+      v-if="loading && rows.length === 0"
+      class="flex flex-col divide-y divide-line-soft md:hidden"
+    >
+      <div
+        v-for="n in 4"
+        :key="`skeleton-${n}`"
+        class="flex flex-col gap-2 p-4"
+      >
+        <span class="block h-4 w-1/2 animate-pulse rounded bg-hover" />
+        <span class="block h-3.5 w-2/3 animate-pulse rounded bg-hover" />
+      </div>
+    </div>
+
+    <div
+      v-else
+      class="flex flex-col divide-y divide-line-soft md:hidden"
+    >
+      <div
+        v-for="row in rows"
+        :key="String(row[rowKey])"
+        class="flex flex-col gap-2.5 p-4"
+        :class="[
+          clickable && 'cursor-pointer active:bg-row-hover',
+          selected.includes(String(row[rowKey])) && 'bg-accent-soft/40',
+        ]"
+        @click="clickable && emit('rowClick', row)"
+      >
+        <div class="flex items-start gap-3">
+          <div
+            v-if="selectable"
+            class="pt-0.5"
+            @click.stop
+          >
+            <Checkbox
+              :model-value="selected.includes(String(row[rowKey]))"
+              @update:model-value="toggleRow(row)"
+            />
+          </div>
+          <button
+            v-if="expandable"
+            type="button"
+            class="mt-0.5 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-fg"
+            @click.stop="toggleExpanded(row)"
+          >
+            <Icon
+              :icon="
+                expanded.includes(String(row[rowKey])) ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-right'
+              "
+              size="xs"
+            />
+          </button>
+          <div class="min-w-0 flex-1 text-sm">
+            <slot
+              :name="`cell-${titleColumn.key}`"
+              :row="row"
+              :value="row[titleColumn.key]"
+            >
+              {{ row[titleColumn.key] }}
+            </slot>
+          </div>
+          <div
+            v-if="actionsColumn"
+            class="shrink-0"
+            @click.stop
+          >
+            <slot
+              :name="`cell-${actionsColumn.key}`"
+              :row="row"
+              :value="row[actionsColumn.key]"
+            />
+          </div>
+        </div>
+
+        <div
+          v-for="col in cardBodyColumns"
+          :key="col.key"
+          class="flex items-center justify-between gap-3 text-sm"
+        >
+          <span class="shrink-0 text-xs font-medium tracking-wide text-faint uppercase">{{ col.label }}</span>
+          <span class="min-w-0 text-right">
+            <slot
+              :name="`cell-${col.key}`"
+              :row="row"
+              :value="row[col.key]"
+            >
+              {{ row[col.key] }}
+            </slot>
+          </span>
+        </div>
+
+        <div
+          v-if="expandable && expanded.includes(String(row[rowKey]))"
+          class="pt-1"
+        >
+          <slot
+            name="expanded"
+            :row="row"
+          />
+        </div>
+      </div>
+    </div>
 
     <slot
       v-if="rows.length === 0 && !loading"

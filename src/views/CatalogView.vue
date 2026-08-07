@@ -88,7 +88,7 @@ watch(brandFilter, (brand) => {
 
 const columns = computed<Column[]>(() => [
   { key: 'sku', label: t('catalog.cols.article'), width: '9rem', mono: true },
-  { key: 'name', label: t('catalog.cols.name') },
+  { key: 'name', label: t('catalog.cols.name'), card: 'title' },
   { key: 'supplierCost', label: t('catalog.cols.supplierCost'), align: 'right', mono: true },
   { key: 'purchase', label: `${t('catalog.cols.purchase')} ${code.value}`, align: 'right', mono: true },
   { key: 'retail', label: `${t('catalog.cols.retail')} ${code.value}`, align: 'right', mono: true },

@@ -19,7 +19,7 @@ const emit = defineEmits<{ delete: []; clear: [] }>()
   <AnimatePresence>
     <Motion
       v-if="visible"
-      class="flex items-center gap-3 rounded-xl border border-accent-line bg-accent-soft px-4 py-2.5"
+      class="flex flex-wrap items-center gap-3 rounded-xl border border-accent-line bg-accent-soft px-4 py-2.5"
       :initial="{ opacity: 0, y: -6 }"
       :animate="{ opacity: 1, y: 0 }"
       :exit="{ opacity: 0, y: -6 }"

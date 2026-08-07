@@ -73,7 +73,7 @@ const brandOptions = computed(() => [
 ])
 
 const batchColumns = computed<Column[]>(() => [
-  { key: 'name', label: t('warehouse.cols.product') },
+  { key: 'name', label: t('warehouse.cols.product'), card: 'title' },
   { key: 'batch', label: t('warehouse.cols.batch'), mono: true },
   { key: 'delivery', label: t('warehouse.cols.delivery'), mono: true },
   { key: 'expiry', label: t('warehouse.cols.expiry'), mono: true },
@@ -103,7 +103,7 @@ const batchColumns = computed<Column[]>(() => [
 ])
 
 const groupColumns = computed<Column[]>(() => [
-  { key: 'name', label: t('warehouse.cols.product') },
+  { key: 'name', label: t('warehouse.cols.product'), card: 'title' },
   { key: 'batchesCount', label: t('warehouse.cols.batches'), align: 'right', mono: true },
   {
     key: 'remaining',
@@ -362,22 +362,22 @@ async function deleteSelected() {
             <li
               v-for="batch in (row as WarehouseGroup).batches"
               :key="batch.id"
-              class="flex items-center gap-3 px-3 py-2"
+              class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2"
             >
               <Icon
                 icon="fa-solid fa-calendar-days"
                 size="xs"
-                class="text-faint"
+                class="shrink-0 text-faint"
               />
-              <span class="w-24 font-mono text-sm text-fg tabular-nums">
+              <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
                 {{ formatDate(batch.expiry) }}
               </span>
-              <span class="font-mono text-xs text-faint">{{ batch.batch }}</span>
+              <span class="shrink-0 font-mono text-xs text-faint">{{ batch.batch }}</span>
               <BatchStatusBadge
                 :status="batch.status"
                 :days-left="batch.daysLeft"
               />
-              <span class="ml-auto font-mono text-sm text-fg tabular-nums">
+              <span class="ml-auto shrink-0 font-mono text-sm text-fg tabular-nums">
                 {{ `${batch.remaining} / ${batch.received} ${t('common.pcs')}` }}
               </span>
               <button

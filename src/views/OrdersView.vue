@@ -129,7 +129,7 @@ const clientOptions = computed(() => [
 ])
 
 const columns = computed<Column[]>(() => [
-  { key: 'number', label: t('orders.cols.number'), mono: true },
+  { key: 'number', label: t('orders.cols.number'), mono: true, card: 'title' },
   { key: 'client', label: t('orders.cols.client') },
   { key: 'address', label: t('orders.cols.address') },
   { key: 'tracking', label: t('orders.cols.tracking'), mono: true },
