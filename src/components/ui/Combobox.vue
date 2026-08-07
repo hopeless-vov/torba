@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import Icon from '@/components/ui/Icon.vue'
 import type { SelectOption } from '@/components/ui/Select.vue'
-import { onClickOutside, useElementBounding } from '@vueuse/core'
+import { usePopoverPosition } from '@/composables/use-popover-position'
+import { onClickOutside } from '@vueuse/core'
 import { AnimatePresence, Motion } from 'motion-v'
 import { tv } from 'tailwind-variants'
 import { computed, nextTick, ref, useId, watch } from 'vue'
@@ -48,9 +49,10 @@ const triggerRef = ref<HTMLElement | null>(null)
 const listRef = ref<HTMLElement | null>(null)
 const searchRef = ref<HTMLInputElement | null>(null)
 
-const { bottom, left, width } = useElementBounding(triggerRef)
+// Search header + up to max-h-64 of results + an optional "add" row.
+const { vertical, left, width } = usePopoverPosition(triggerRef, () => (props.addLabel ? 340 : 300))
 const position = computed(() => ({
-  top: `${bottom.value + 4}px`,
+  ...vertical.value,
   left: `${left.value}px`,
   width: `${width.value}px`,
 }))

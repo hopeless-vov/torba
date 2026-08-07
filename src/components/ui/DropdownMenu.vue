@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="V extends string">
 import Icon from '@/components/ui/Icon.vue'
-import { onClickOutside, useElementBounding } from '@vueuse/core'
+import { usePopoverPosition } from '@/composables/use-popover-position'
+import { onClickOutside } from '@vueuse/core'
 import { AnimatePresence, Motion } from 'motion-v'
 import { computed, ref } from 'vue'
 
@@ -21,10 +22,10 @@ const triggerRef = ref<HTMLElement | null>(null)
 const menuRef = ref<HTMLElement | null>(null)
 const open = ref(false)
 
-const { top, right, bottom } = useElementBounding(triggerRef)
+const { vertical, right, windowWidth } = usePopoverPosition(triggerRef, () => props.items.length * 36 + 24)
 const position = computed(() => ({
-  top: `${bottom.value + 4}px`,
-  right: `${window.innerWidth - right.value}px`,
+  ...vertical.value,
+  right: `${windowWidth.value - right.value}px`,
 }))
 
 onClickOutside(triggerRef, () => (open.value = false), { ignore: [menuRef] })
@@ -33,10 +34,6 @@ function pick(item: MenuItem<V>) {
   open.value = false
   emit('select', item.value)
 }
-
-// referenced to keep `top` reactive dependency explicit for the linter
-void top
-void props
 </script>
 
 <template>
