@@ -244,8 +244,9 @@ const confirmMessage = computed(() =>
               variant="secondary"
               icon="fa-solid fa-plus"
               :disabled="!newCategory.trim()"
+              :title="t('profile.addCategory')"
             >
-              {{ t('profile.addCategory') }}
+              <span class="hidden sm:inline">{{ t('profile.addCategory') }}</span>
             </Button>
           </form>
 

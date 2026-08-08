@@ -10,6 +10,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import FilterSheet from '@/components/ui/FilterSheet.vue'
 import Icon from '@/components/ui/Icon.vue'
 import StatCard from '@/components/ui/StatCard.vue'
 import Tabs from '@/components/ui/Tabs.vue'
@@ -53,6 +54,13 @@ function clearDateRange() {
   fromDate.value = ''
   toDate.value = ''
 }
+
+// Badge on the mobile filter trigger — the status tabs stay outside the sheet,
+// so they are not counted here.
+const activeFilters = computed(
+  () =>
+    Number(paymentFilter.value !== 'all') + Number(clientFilter.value !== 'all') + Number(hasDateRange.value),
+)
 
 const editing = ref<Order | null>(null)
 const editOpen = ref(false)
@@ -197,62 +205,14 @@ function destination(order: OrderView) {
       />
     </div>
 
+    <Tabs
+      v-model="statusFilter"
+      :tabs="statusTabs"
+      size="sm"
+    />
+
     <div class="flex flex-wrap items-end gap-3">
-      <Tabs
-        v-model="statusFilter"
-        :tabs="statusTabs"
-        size="sm"
-      />
-      <Combobox
-        v-model="paymentFilter"
-        :options="paymentOptions"
-        :search-placeholder="t('common.search')"
-        :empty-text="t('common.noMatches')"
-        class="w-44"
-      />
-      <Combobox
-        v-model="clientFilter"
-        :options="clientOptions"
-        :search-placeholder="t('clients.searchPlaceholder')"
-        :empty-text="t('common.noMatches')"
-        class="w-44"
-      />
-      <div class="flex flex-wrap items-end gap-1.5">
-        <div class="w-40">
-          <TextInput
-            v-model="fromDate"
-            type="date"
-            :label="t('orders.dateFrom')"
-          />
-        </div>
-        <span class="flex h-9 items-center">
-          <Icon
-            icon="fa-solid fa-minus"
-            size="xs"
-            class="text-faint"
-          />
-        </span>
-        <div class="w-40">
-          <TextInput
-            v-model="toDate"
-            type="date"
-            :label="t('orders.dateTo')"
-          />
-        </div>
-        <button
-          v-if="hasDateRange"
-          type="button"
-          class="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-line text-faint transition-colors hover:border-line-hover hover:text-fg"
-          :title="t('orders.clearDates')"
-          @click="clearDateRange"
-        >
-          <Icon
-            icon="fa-solid fa-xmark"
-            size="sm"
-          />
-        </button>
-      </div>
-      <div class="w-72">
+      <div class="w-full md:w-72">
         <TextInput
           v-model="search"
           type="search"
@@ -260,6 +220,66 @@ function destination(order: OrderView) {
           :placeholder="t('orders.searchPlaceholder')"
         />
       </div>
+
+      <FilterSheet
+        :title="t('common.filters')"
+        :label="t('common.filters')"
+        :done-label="t('common.filtersApply')"
+        :count="activeFilters"
+      >
+        <Combobox
+          v-model="paymentFilter"
+          :label="t('orders.cols.payment')"
+          :options="paymentOptions"
+          :search-placeholder="t('common.search')"
+          :empty-text="t('common.noMatches')"
+          class="md:w-44"
+        />
+        <Combobox
+          v-model="clientFilter"
+          :label="t('orders.cols.client')"
+          :options="clientOptions"
+          :search-placeholder="t('clients.searchPlaceholder')"
+          :empty-text="t('common.noMatches')"
+          class="md:w-44"
+        />
+        <div class="flex flex-wrap items-end gap-1.5">
+          <div class="min-w-0 flex-1 md:w-40 md:flex-none">
+            <TextInput
+              v-model="fromDate"
+              type="date"
+              :label="t('orders.dateFrom')"
+            />
+          </div>
+          <span class="hidden h-9 items-center md:flex">
+            <Icon
+              icon="fa-solid fa-minus"
+              size="xs"
+              class="text-faint"
+            />
+          </span>
+          <div class="min-w-0 flex-1 md:w-40 md:flex-none">
+            <TextInput
+              v-model="toDate"
+              type="date"
+              :label="t('orders.dateTo')"
+            />
+          </div>
+          <button
+            v-if="hasDateRange"
+            type="button"
+            class="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-line text-faint transition-colors hover:border-line-hover hover:text-fg"
+            :title="t('orders.clearDates')"
+            @click="clearDateRange"
+          >
+            <Icon
+              icon="fa-solid fa-xmark"
+              size="sm"
+            />
+          </button>
+        </div>
+      </FilterSheet>
+
       <span class="ml-auto text-xs text-faint">{{ t('orders.count', { count: filtered.length }) }}</span>
     </div>
 

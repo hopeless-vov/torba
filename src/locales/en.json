@@ -18,6 +18,8 @@
     "close": "Close",
     "confirm": "Confirm",
     "search": "Search",
+    "filters": "Filters",
+    "filtersApply": "Show results",
     "noMatches": "Nothing found",
     "deleteSelected": "Delete selected",
     "clearSelection": "Clear selection",

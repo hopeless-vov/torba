@@ -106,7 +106,7 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
 <template>
   <div class="flex flex-col gap-4 p-6">
     <div class="flex flex-wrap items-center gap-3">
-      <div class="w-72">
+      <div class="w-full md:w-72">
         <TextInput
           v-model="search"
           type="search"
@@ -118,9 +118,10 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
         variant="primary"
         icon="fa-solid fa-plus"
         class="ml-auto"
+        :title="t('clients.newClient')"
         @click="openNew"
       >
-        {{ t('clients.newClient') }}
+        <span class="hidden sm:inline">{{ t('clients.newClient') }}</span>
       </Button>
     </div>
 

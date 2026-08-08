@@ -15,7 +15,9 @@ withDefaults(
 )
 
 const valueClass = tv({
-  base: 'font-mono text-3xl font-semibold tracking-tight tabular-nums',
+  // Smaller on phones: at 30px a figure like "2 258 ₴" wrapped onto a second
+  // line inside the 2-up KPI grid.
+  base: 'font-mono text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl',
   variants: {
     tone: {
       default: 'text-fg',

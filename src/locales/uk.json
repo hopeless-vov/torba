@@ -18,6 +18,8 @@
     "close": "Закрити",
     "confirm": "Підтвердити",
     "search": "Пошук",
+    "filters": "Фільтри",
+    "filtersApply": "Показати результати",
     "noMatches": "Нічого не знайдено",
     "deleteSelected": "Видалити вибрані",
     "clearSelection": "Зняти вибір",

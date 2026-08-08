@@ -8,7 +8,9 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import FilterSheet from '@/components/ui/FilterSheet.vue'
 import Icon from '@/components/ui/Icon.vue'
+import Select from '@/components/ui/Select.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
@@ -188,19 +190,17 @@ async function deleteSelected() {
         :tabs="viewTabs"
         size="sm"
       />
-      <Tabs
-        v-model="statusFilter"
-        :tabs="statusTabs"
-        size="sm"
-      />
-      <Combobox
-        v-model="brandFilter"
-        :options="brandOptions"
-        :search-placeholder="t('common.search')"
-        :empty-text="t('common.noMatches')"
-        class="w-44"
-      />
-      <div class="w-64">
+      <!-- Wrapped, not given `hidden md:*` directly — Tabs' own root sets
+           `inline-flex`, which wins over `hidden` on CSS source order. -->
+      <span class="hidden md:inline-flex">
+        <Tabs
+          v-model="statusFilter"
+          :tabs="statusTabs"
+          size="sm"
+        />
+      </span>
+
+      <div class="w-full md:w-64">
         <TextInput
           v-model="search"
           type="search"
@@ -208,13 +208,39 @@ async function deleteSelected() {
           :placeholder="t('warehouse.searchPlaceholder')"
         />
       </div>
+
+      <FilterSheet
+        :title="t('common.filters')"
+        :label="t('common.filters')"
+        :done-label="t('common.filtersApply')"
+        :count="Number(brandFilter !== 'all') + Number(statusFilter !== 'all')"
+      >
+        <!-- Status is a tab strip at md+, but inside the sheet it reads better
+             as a plain list of choices. -->
+        <Select
+          v-model="statusFilter"
+          class="md:hidden"
+          :label="t('warehouse.cols.status')"
+          :options="statusTabs"
+        />
+        <Combobox
+          v-model="brandFilter"
+          :label="t('catalog.form.brand')"
+          :options="brandOptions"
+          :search-placeholder="t('common.search')"
+          :empty-text="t('common.noMatches')"
+          class="md:w-44"
+        />
+      </FilterSheet>
+
       <Button
         variant="primary"
         icon="fa-solid fa-plus"
         class="ml-auto"
+        :title="t('warehouse.newBatch')"
         @click="openNew"
       >
-        {{ t('warehouse.newBatch') }}
+        <span class="hidden sm:inline">{{ t('warehouse.newBatch') }}</span>
       </Button>
     </div>
 

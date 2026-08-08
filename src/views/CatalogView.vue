@@ -10,6 +10,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import FilterSheet from '@/components/ui/FilterSheet.vue'
 import Icon from '@/components/ui/Icon.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
 import Tag from '@/components/ui/Tag.vue'
@@ -69,6 +70,13 @@ async function deleteSelected() {
     deleting.value = false
   }
 }
+
+// Drives the filter-sheet badge on mobile: how many filters are actually
+// narrowing the list (the discount field reprices rather than filters).
+const activeFilters = computed(
+  () =>
+    Number(brandFilter.value !== 'all') + Number(categoryFilter.value !== 'all') + Number(showInactive.value),
+)
 
 const brandOptions = computed(() => [
   { value: 'all', label: t('catalog.allBrands') },
@@ -131,23 +139,10 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
 
 <template>
   <div class="flex flex-col gap-4 p-6">
-    <!-- Toolbar -->
+    <!-- Toolbar: search stays out (it is the most-used control), the rest
+         collapses into a sheet below md. -->
     <div class="flex flex-wrap items-center gap-3">
-      <Combobox
-        v-model="brandFilter"
-        :options="brandOptions"
-        :search-placeholder="t('common.search')"
-        :empty-text="t('common.noMatches')"
-        class="w-44"
-      />
-      <Combobox
-        v-model="categoryFilter"
-        :options="categoryOptions"
-        :search-placeholder="t('common.search')"
-        :empty-text="t('common.noMatches')"
-        class="w-44"
-      />
-      <div class="w-64">
+      <div class="w-full md:w-64">
         <TextInput
           v-model="search"
           type="search"
@@ -155,31 +150,59 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
           :placeholder="t('catalog.searchPlaceholder')"
         />
       </div>
-      <div class="w-28">
-        <NumberInput
-          v-model="discount"
-          :min="0"
-          :max="100"
-          suffix="%"
+
+      <FilterSheet
+        :title="t('common.filters')"
+        :label="t('common.filters')"
+        :done-label="t('common.filtersApply')"
+        :count="activeFilters"
+      >
+        <Combobox
+          v-model="brandFilter"
+          :label="t('catalog.form.brand')"
+          :options="brandOptions"
+          :search-placeholder="t('common.search')"
+          :empty-text="t('common.noMatches')"
+          class="md:w-44"
         />
-      </div>
-      <Checkbox
-        v-model="showInactive"
-        :label="t('catalog.inactive')"
-      />
+        <Combobox
+          v-model="categoryFilter"
+          :label="t('catalog.form.category')"
+          :options="categoryOptions"
+          :search-placeholder="t('common.search')"
+          :empty-text="t('common.noMatches')"
+          class="md:w-44"
+        />
+        <div class="md:w-28">
+          <NumberInput
+            v-model="discount"
+            :label="t('catalog.cols.discounted')"
+            :min="0"
+            :max="100"
+            suffix="%"
+          />
+        </div>
+        <Checkbox
+          v-model="showInactive"
+          :label="t('catalog.inactive')"
+        />
+      </FilterSheet>
+
       <div class="ml-auto flex items-center gap-2">
         <Button
           icon="fa-solid fa-file-arrow-up"
+          :title="t('catalog.importCsv')"
           @click="importOpen = true"
         >
-          {{ t('catalog.importCsv') }}
+          <span class="hidden sm:inline">{{ t('catalog.importCsv') }}</span>
         </Button>
         <Button
           variant="primary"
           icon="fa-solid fa-plus"
+          :title="t('catalog.newProduct')"
           @click="openNew"
         >
-          {{ t('catalog.newProduct') }}
+          <span class="hidden sm:inline">{{ t('catalog.newProduct') }}</span>
         </Button>
       </div>
     </div>

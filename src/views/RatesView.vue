@@ -253,7 +253,7 @@ async function saveBrandRate() {
 
         <!-- Add custom currency -->
         <form
-          class="grid grid-cols-[6rem_5rem_1fr_auto] items-end gap-2 bg-surface px-5 py-4"
+          class="grid grid-cols-2 items-end gap-2 bg-surface px-5 py-4 sm:grid-cols-[6rem_5rem_1fr_auto]"
           @submit.prevent="addCustom"
         >
           <TextInput
@@ -266,17 +266,21 @@ async function saveBrandRate() {
             :label="t('profile.currency.symbol')"
             :placeholder="t('profile.currency.symbolPlaceholder')"
           />
-          <NumberInput
-            v-model="addRate"
-            :label="t('rates.addRate', { base: functionalCode })"
-            :min="0"
-            :step="0.01"
-          />
+          <div class="col-span-2 sm:col-span-1">
+            <NumberInput
+              v-model="addRate"
+              :label="t('rates.addRate', { base: functionalCode })"
+              :min="0"
+              :step="0.01"
+            />
+          </div>
           <Button
             type="submit"
             variant="primary"
             icon="fa-solid fa-plus"
+            class="col-span-2 sm:col-span-1"
             :disabled="!addForm.code.trim()"
+            :title="t('rates.addCurrency')"
           >
             {{ t('rates.addCurrency') }}
           </Button>

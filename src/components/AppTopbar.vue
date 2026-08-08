@@ -43,7 +43,7 @@ const today = formatDate(new Date())
 
 <template>
   <header
-    class="sticky top-0 z-20 flex items-center gap-4 border-b border-line bg-panel/80 px-4 py-3 backdrop-blur sm:px-6"
+    class="sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-panel/80 px-4 py-3 backdrop-blur sm:gap-4 sm:px-6"
   >
     <button
       type="button"
@@ -58,10 +58,12 @@ const today = formatDate(new Date())
     </button>
 
     <div class="flex min-w-0 flex-1 items-baseline gap-2">
-      <h1 class="text-base font-semibold text-fg">
+      <h1 class="truncate text-base font-semibold text-fg">
         {{ title }}
       </h1>
-      <span class="truncate text-sm text-faint">{{ `/ ${subtitle}` }}</span>
+      <!-- The page already names itself in the nav; on a phone the subtitle
+           only competes with the title for the little width that is left. -->
+      <span class="hidden truncate text-sm text-faint md:inline">{{ `/ ${subtitle}` }}</span>
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
@@ -75,7 +77,7 @@ const today = formatDate(new Date())
           class="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-fg transition-colors hover:bg-hover"
         >
           <span class="font-mono">{{ symbol }}</span>
-          <span class="text-xs text-faint">{{ code }}</span>
+          <span class="hidden text-xs text-faint sm:inline">{{ code }}</span>
           <Icon
             icon="fa-solid fa-chevron-down"
             size="xs"
@@ -84,12 +86,17 @@ const today = formatDate(new Date())
         </button>
       </DropdownMenu>
 
-      <Tabs
-        v-model="language"
-        :tabs="languageTabs"
-        size="sm"
-        class="hidden lg:inline-flex"
-      />
+      <!-- Wrapped rather than given `hidden lg:inline-flex` directly: Tabs'
+           own root sets `inline-flex`, and between two display utilities of
+           equal specificity CSS source order decides — `inline-flex` won, so
+           the strip stayed visible on phones and overflowed the bar. -->
+      <span class="hidden lg:inline-flex">
+        <Tabs
+          v-model="language"
+          :tabs="languageTabs"
+          size="sm"
+        />
+      </span>
 
       <span class="hidden font-mono text-xs tracking-wide text-faint tabular-nums xl:inline">
         {{ today }}
@@ -109,6 +116,7 @@ const today = formatDate(new Date())
 
       <button
         type="button"
+        :title="t('nav.cart')"
         class="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-line px-3 text-sm text-fg transition-colors hover:bg-hover"
         @click="cart.toggle(true)"
       >
@@ -117,8 +125,8 @@ const today = formatDate(new Date())
           size="sm"
           class="text-faint"
         />
-        <span>{{ t('nav.cart') }}</span>
-        <span class="text-faint tabular-nums">{{ `· ${cart.count}` }}</span>
+        <span class="hidden sm:inline">{{ t('nav.cart') }}</span>
+        <span class="text-faint tabular-nums">{{ cart.count }}</span>
       </button>
     </div>
   </header>
