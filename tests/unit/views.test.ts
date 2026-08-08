@@ -209,6 +209,17 @@ describe('OrdersView', () => {
     expect(wrapper.text()).toContain(uk.status.order.sent)
   })
 
+  // A viewer reads orders but moves nothing: no status menu to open, no row
+  // actions. The database refuses those writes anyway (migration 0013).
+  it('hides the status menu and row actions from a viewer', () => {
+    const wrapper = render(OrdersView, 'viewer')
+    expect(wrapper.text()).toContain('#3001')
+    const statusBtn = wrapper
+      .findAll('button')
+      .find((b) => b.attributes('title') === uk.orders.changeStatus)
+    expect(statusBtn).toBeUndefined()
+  })
+
   it('opens the details modal from a row click', async () => {
     const wrapper = render(OrdersView)
     await wrapper.find('tbody tr').trigger('click')

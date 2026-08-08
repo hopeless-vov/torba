@@ -138,8 +138,13 @@ being unable to touch the tables directly.
 
 On the client, `use-permissions` mirrors the same matrix (`canTrade`,
 `canConfigure`, `canManageMembers`, `canAdministerCompany`) and hides controls
-that would fail anyway. It is a courtesy, not a control: **the database is what
-actually decides**, and nothing in the interface is load-bearing for security.
+that would fail anyway — an add/edit/delete button, a status menu, a row action
+— so a role that cannot do a thing never sees the control for it. Whole screens
+are gated too: a route may carry `meta.minRole` (the router guard bounces a
+lower role to the dashboard) and the sidebar drops any link that role could not
+use — the **Members** screen is `admin`-only on both counts. It is a courtesy,
+not a control: **the database is what actually decides**, and nothing in the
+interface is load-bearing for security.
 
 **Categories depend on brands.** `brand_categories` is a many-to-many link: each
 brand exposes its own set of categories, so the product form and the catalog filter

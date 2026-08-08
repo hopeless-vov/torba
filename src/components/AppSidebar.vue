@@ -2,6 +2,7 @@
 import OrgSwitcher from '@/components/OrgSwitcher.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import Icon from '@/components/ui/Icon.vue'
+import { usePermissions } from '@/composables/use-permissions'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
 import { useUiStore } from '@/stores/ui'
@@ -18,6 +19,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const inventory = useInventoryStore()
 const ui = useUiStore()
+const { canManageMembers } = usePermissions()
 
 // The off-canvas nav (below `lg`) closes on navigation and on Escape — above
 // `lg` the sidebar is always visible and this state has no visual effect.
@@ -34,23 +36,28 @@ const warehouseWarnings = computed(
     }).length,
 )
 
-const nav = computed(() => [
-  { name: 'dashboard', label: t('nav.dashboard'), icon: 'fa-solid fa-table-cells-large' },
-  { name: 'catalog', label: t('nav.catalog'), icon: 'fa-solid fa-box-open', count: inventory.products.length },
-  {
-    name: 'warehouse',
-    label: t('nav.warehouse'),
-    icon: 'fa-solid fa-warehouse',
-    count: warehouseWarnings.value || undefined,
-    warn: warehouseWarnings.value > 0,
-  },
-  { name: 'clients', label: t('nav.clients'), icon: 'fa-solid fa-users' },
-  { name: 'orders', label: t('nav.orders'), icon: 'fa-solid fa-arrow-right-arrow-left' },
-  { name: 'rates', label: t('nav.rates'), icon: 'fa-solid fa-hryvnia-sign' },
-  { name: 'links', label: t('nav.links'), icon: 'fa-solid fa-layer-group' },
-  { name: 'members', label: t('nav.members'), icon: 'fa-solid fa-users' },
-  { name: 'profile', label: t('nav.profile'), icon: 'fa-solid fa-circle-user' },
-])
+// Everyone may read every screen except member management, which is an
+// administrator's. A page hidden here is also refused by the route guard, so
+// this only spares lower roles a link they could not act on.
+const nav = computed(() =>
+  [
+    { name: 'dashboard', label: t('nav.dashboard'), icon: 'fa-solid fa-table-cells-large' },
+    { name: 'catalog', label: t('nav.catalog'), icon: 'fa-solid fa-box-open', count: inventory.products.length },
+    {
+      name: 'warehouse',
+      label: t('nav.warehouse'),
+      icon: 'fa-solid fa-warehouse',
+      count: warehouseWarnings.value || undefined,
+      warn: warehouseWarnings.value > 0,
+    },
+    { name: 'clients', label: t('nav.clients'), icon: 'fa-solid fa-users' },
+    { name: 'orders', label: t('nav.orders'), icon: 'fa-solid fa-arrow-right-arrow-left' },
+    { name: 'rates', label: t('nav.rates'), icon: 'fa-solid fa-hryvnia-sign' },
+    { name: 'links', label: t('nav.links'), icon: 'fa-solid fa-layer-group' },
+    { name: 'members', label: t('nav.members'), icon: 'fa-solid fa-users', show: canManageMembers.value },
+    { name: 'profile', label: t('nav.profile'), icon: 'fa-solid fa-circle-user' },
+  ].filter((item) => item.show !== false),
+)
 
 const companyName = computed(() => auth.company?.name ?? t('app.name'))
 const userName = computed(() => auth.profile?.full_name ?? auth.user?.email ?? '')

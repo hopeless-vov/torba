@@ -397,11 +397,14 @@ function destination(order: OrderView) {
           >{{ t('common.emptyValue') }}</span>
         </template>
         <template #cell-status="{ row }">
+          <!-- A viewer cannot move an order along; show the badge as plain
+               text with no menu to open. -->
           <span
             class="inline-flex"
             @click.stop
           >
             <DropdownMenu
+              v-if="canTrade"
               :items="statusMenu"
               @select="setStatus((row as OrderView).id, $event as OrderStatus)"
             >
@@ -413,6 +416,10 @@ function destination(order: OrderView) {
                 <OrderStatusBadge :status="(row as OrderView).status" />
               </button>
             </DropdownMenu>
+            <OrderStatusBadge
+              v-else
+              :status="(row as OrderView).status"
+            />
           </span>
         </template>
         <template #cell-actions="{ row }">
@@ -421,6 +428,7 @@ function destination(order: OrderView) {
             @click.stop
           >
             <DropdownMenu
+              v-if="canTrade"
               :items="rowMenu"
               @select="onMenu(row as OrderView, $event)"
             />
@@ -483,6 +491,7 @@ function destination(order: OrderView) {
     <OrderDetailsModal
       v-model:open="detailsOpen"
       :order="viewing"
+      :actions="canTrade"
       @edit="openEdit"
       @delete="askDelete([$event.id])"
     />
