@@ -6,6 +6,11 @@
 
 export type OrderStatus = 'new' | 'sent' | 'done'
 
+// What a member may do in one organization, weakest to strongest.
+// `memberships.role` is the authority; `profiles.role` below is a leftover
+// from when a user belonged to exactly one company and is not consulted.
+export type MembershipRole = 'owner' | 'admin' | 'member' | 'viewer'
+
 export type UserRole = 'owner' | 'member'
 
 export interface Company {
@@ -22,6 +27,16 @@ export interface Profile {
   company_id: string
   full_name: string | null
   role: UserRole
+  created_at: string
+}
+
+// A user's seat in one company. Keyed (company_id, user_id): the same user
+// holds one of these per organization they belong to, which is what lets the
+// top-bar switcher move between them.
+export interface Membership {
+  company_id: string
+  user_id: string
+  role: MembershipRole
   created_at: string
 }
 

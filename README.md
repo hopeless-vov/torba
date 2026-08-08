@@ -56,7 +56,7 @@ Apply **all files, in order**:
   `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`,
   `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`,
   `0008_product_currency.sql`, `0009_drop_paid_status.sql`,
-  `0010_lock_profile_identity.sql`.
+  `0010_lock_profile_identity.sql`, `0011_memberships.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -67,6 +67,18 @@ identity columns are now immutable from the API — `authenticated` holds
 `UPDATE (full_name)` only, with a trigger backstop — and `next_order_number`
 lost its default `PUBLIC` execute grant, which had leaked any company's order
 volume to any signed-in user.
+
+**`0011` makes a user able to belong to several companies.** Membership moved
+out of `profiles.company_id` into its own `memberships (company_id, user_id,
+role)` table, and every policy now asks `is_member(company_id)` instead of
+comparing against the caller's single company. Existing users are backfilled as
+`owner` of the company they already had, so nothing changes for them. Which
+organization is *active* is a client concern — it travels as an explicit
+`company_id` on every query rather than being stored — so two browser tabs can
+sit in different organizations and switching writes nothing to the database.
+Roles (`owner` > `admin` > `member` > `viewer`, compared with `has_min_role()`)
+are recorded but **not yet enforced**; granting access and restricting it are
+separate migrations so they can be rolled back separately.
 
 **Categories depend on brands.** `brand_categories` is a many-to-many link: each
 brand exposes its own set of categories, so the product form and the catalog filter
