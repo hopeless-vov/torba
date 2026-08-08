@@ -54,7 +54,7 @@ Apply **all files, in order**:
   `0001_init.sql`, `0002_bootstrap_and_orders.sql`, `0003_client_discount.sql`,
   `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`,
   `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`,
-  `0008_product_currency.sql`.
+  `0008_product_currency.sql`, `0009_drop_paid_status.sql`.
 
 **Categories depend on brands.** `brand_categories` is a many-to-many link: each
 brand exposes its own set of categories, so the product form and the catalog filter
@@ -254,6 +254,18 @@ card** (`ProductInfoModal`) resolving the live catalog product behind the line �
 brand, category, prices in the display currency and current stock — falling back to
 the line's name/SKU snapshot when the product was since deleted.
 
+The order list itself carries a **Товари** column (first item, plus `+n` when
+there are more) and each row **expands in place** to list every line with its
+SKU, quantity, unit price and total — so "what was in this order" no longer
+requires opening the details modal. Clicking the row still opens the full
+details.
+
+**Order statuses are `new → sent → done`.** "Paid" was removed (`0009`): payment
+is recorded on `payment_method`, not as a workflow step, so an order could be
+paid *and* shipped while a single status column could only say one of them. The
+migration moves any leftover `paid` row back to `new` — the payment itself is
+untouched — and tightens the check constraint to match.
+
 ## Project Structure
 
 ```
@@ -316,7 +328,11 @@ Two of them carry most of the interaction weight:
   plain `Select` is left for short fixed lists like order status. Passing an
   `addLabel` adds a footer button that emits `add` — the forms use it to drop a
   `QuickAddModal` in place so a missing brand, category or payment method can be
-  created inline and auto-selected, without a trip to the Links page.
+  created inline and auto-selected, without a trip to the Links page. Option
+  labels **wrap rather than truncate** and an optional `hint` renders a second,
+  muted line (the product picker puts the SKU there) — several products can open
+  with the same long phrase, and a clipped one-line list made them
+  indistinguishable. The hint is searchable along with the label.
 - **`EmptyState`** — the icon + title + hint shown when a table has no rows. Its
   default slot takes **action buttons**, so every empty screen offers the obvious next
   step: import/new-product on the catalog, new-batch on the warehouse, new-client on

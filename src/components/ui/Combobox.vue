@@ -59,10 +59,14 @@ const position = computed(() => ({
 
 const selectedLabel = computed(() => props.options.find((o) => o.value === model.value)?.label ?? '')
 
+// The hint is searchable too — it carries the SKU, which is half of what the
+// product picker's "search by name or article" placeholder promises.
 const results = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return props.options
-  return props.options.filter((o) => o.label.toLowerCase().includes(q))
+  return props.options.filter(
+    (o) => o.label.toLowerCase().includes(q) || (o.hint?.toLowerCase().includes(q) ?? false),
+  )
 })
 
 onClickOutside(triggerRef, () => close(), { ignore: [listRef] })
@@ -159,6 +163,7 @@ const trigger = tv({
       ref="triggerRef"
       type="button"
       :disabled="disabled"
+      :title="selectedLabel || undefined"
       :class="trigger({ size, disabled, open })"
       @click="toggle"
       @keydown="onKeydown"
@@ -212,10 +217,14 @@ const trigger = tv({
           </div>
 
           <ul class="max-h-64 overflow-y-auto p-1">
+            <!-- Labels wrap rather than truncate: several products can share a
+                 long opening phrase, and a clipped list makes them
+                 indistinguishable. The hint line carries the SKU, which tells
+                 them apart even when the names read alike. -->
             <li
               v-for="(option, index) in results"
               :key="option.value"
-              class="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors"
+              class="flex cursor-pointer items-start gap-2 rounded-md px-2.5 py-2 text-sm transition-colors"
               :class="[
                 index === activeIndex ? 'bg-hover text-fg' : 'text-muted',
                 option.value === model && 'text-accent',
@@ -223,11 +232,18 @@ const trigger = tv({
               @click="pick(option)"
               @mouseenter="activeIndex = index"
             >
-              <span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
+              <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="break-words">{{ option.label }}</span>
+                <span
+                  v-if="option.hint"
+                  class="font-mono text-xs text-faint"
+                >{{ option.hint }}</span>
+              </span>
               <Icon
                 v-if="option.value === model"
                 icon="fa-solid fa-check"
                 size="xs"
+                class="mt-0.5 shrink-0"
               />
             </li>
             <li

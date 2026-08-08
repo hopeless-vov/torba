@@ -34,8 +34,14 @@ const remaining = ref(0)
 
 const isEdit = computed(() => !!props.batch)
 
+// Name on top, SKU underneath: two products can open with the same long
+// phrase, and the SKU is what actually tells them apart.
 const productOptions = computed(() =>
-  inventory.products.map((p) => ({ value: p.id, label: `${p.sku} · ${p.name}` })),
+  inventory.products.map((p) => ({
+    value: p.id,
+    label: p.volume ? `${p.name} · ${p.volume}` : p.name,
+    hint: p.sku,
+  })),
 )
 const canSave = computed(() => !!form.product_id)
 

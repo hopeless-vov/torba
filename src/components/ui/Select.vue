@@ -6,6 +6,9 @@ import { useId } from 'vue'
 export interface SelectOption {
   value: string
   label: string
+  /** Secondary line under the label in Combobox's list (e.g. an SKU). Ignored
+   *  by the native Select, which cannot render two lines per option. */
+  hint?: string
 }
 
 withDefaults(

@@ -260,6 +260,7 @@
     "cols": {
       "number": "№ / Date",
       "client": "Client",
+      "products": "Items",
       "address": "Ships to",
       "tracking": "Waybill",
       "sale": "Sale",
@@ -269,6 +270,8 @@
       "payment": "Payment",
       "status": "Status"
     },
+    "moreItems": "+{n}",
+    "noItems": "This order has no items",
     "menu": {
       "details": "Details"
     },
@@ -428,7 +431,6 @@
     },
     "order": {
       "new": "New",
-      "paid": "Paid",
       "sent": "Sent",
       "done": "Done"
     }

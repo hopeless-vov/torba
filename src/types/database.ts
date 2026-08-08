@@ -4,7 +4,7 @@
 // column names are readable. Derived/computed values live in utils
 // and composables, never in the persisted shape.
 
-export type OrderStatus = 'new' | 'paid' | 'sent' | 'done'
+export type OrderStatus = 'new' | 'sent' | 'done'
 
 export type UserRole = 'owner' | 'member'
 

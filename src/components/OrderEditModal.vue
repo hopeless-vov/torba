@@ -37,7 +37,7 @@ const packaging = ref(0)
 const discount = ref(0)
 
 const statusOptions = computed(() =>
-  (['new', 'paid', 'sent', 'done'] as OrderStatus[]).map((s) => ({
+  (['new', 'sent', 'done'] as OrderStatus[]).map((s) => ({
     value: s,
     label: t(`status.order.${s}`),
   })),

@@ -70,6 +70,10 @@ const viewing = ref<OrderView | null>(null)
 const detailsOpen = ref(false)
 
 const { selected, count: selectedCount, hasSelection, clear: clearSelection } = useSelection(filtered)
+// Which orders have their line items unfolded under the row. The list shows a
+// one-line summary; expanding is the cheap way to see everything ordered
+// without leaving for the details modal.
+const expanded = ref<string[]>([])
 const pendingDelete = ref<string[]>([])
 const confirmOpen = ref(false)
 const deleting = ref(false)
@@ -122,7 +126,6 @@ async function confirmDelete() {
 const statusTabs = computed(() => [
   { value: 'all', label: t('common.all') },
   { value: 'new', label: t('status.order.new') },
-  { value: 'paid', label: t('status.order.paid') },
   { value: 'sent', label: t('status.order.sent') },
   { value: 'done', label: t('status.order.done') },
 ])
@@ -139,6 +142,7 @@ const clientOptions = computed(() => [
 const columns = computed<Column[]>(() => [
   { key: 'number', label: t('orders.cols.number'), mono: true, card: 'title' },
   { key: 'client', label: t('orders.cols.client') },
+  { key: 'products', label: t('orders.cols.products') },
   { key: 'address', label: t('orders.cols.address') },
   { key: 'tracking', label: t('orders.cols.tracking'), mono: true },
   { key: 'sale', label: t('orders.cols.sale'), align: 'right', mono: true },
@@ -153,7 +157,6 @@ const columns = computed<Column[]>(() => [
 // Every status is reachable straight from the row, "Виконано" included.
 const statusMenu = computed(() => [
   { value: 'new', label: t('status.order.new'), icon: 'fa-solid fa-inbox' },
-  { value: 'paid', label: t('status.order.paid'), icon: 'fa-solid fa-circle-check' },
   { value: 'sent', label: t('status.order.sent'), icon: 'fa-solid fa-truck' },
   { value: 'done', label: t('status.order.done'), icon: 'fa-solid fa-flag-checkered' },
 ])
@@ -295,10 +298,12 @@ function destination(order: OrderView) {
     <div class="rounded-xl border border-line bg-panel">
       <DataTable
         v-model:selected="selected"
+        v-model:expanded="expanded"
         :columns="columns"
         :rows="filtered"
         row-key="id"
         selectable
+        expandable
         clickable
         :loading="ordersStore.loading"
         @row-click="openDetails($event as OrderView)"
@@ -317,6 +322,26 @@ function destination(order: OrderView) {
               class="font-mono text-xs text-faint"
             >{{ (row as OrderView).client?.phone }}</span>
           </div>
+        </template>
+        <template #cell-products="{ row }">
+          <span
+            v-if="(row as OrderView).items.length"
+            class="flex min-w-0 items-center gap-1.5"
+          >
+            <span class="max-w-40 truncate text-sm text-muted">
+              {{ (row as OrderView).items[0].product_name }}
+            </span>
+            <span
+              v-if="(row as OrderView).items.length > 1"
+              class="shrink-0 rounded-md bg-chip px-1.5 py-0.5 font-mono text-xs text-faint tabular-nums"
+            >
+              {{ t('orders.moreItems', { n: (row as OrderView).items.length - 1 }) }}
+            </span>
+          </span>
+          <span
+            v-else
+            class="text-faint"
+          >{{ t('common.emptyValue') }}</span>
         </template>
         <template #cell-address="{ row }">
           <span
@@ -399,6 +424,34 @@ function destination(order: OrderView) {
             />
           </span>
         </template>
+        <template #expanded="{ row }">
+          <ul class="flex flex-col divide-y divide-line-soft rounded-lg border border-line-soft bg-panel">
+            <li
+              v-for="item in (row as OrderView).items"
+              :key="item.id"
+              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2"
+            >
+              <span class="min-w-0 flex-1 text-sm text-fg">{{ item.product_name }}</span>
+              <span
+                v-if="item.sku"
+                class="shrink-0 font-mono text-xs text-faint"
+              >{{ item.sku }}</span>
+              <span class="shrink-0 font-mono text-xs text-muted tabular-nums">
+                {{ `${item.qty} × ${formatFrom((row as OrderView).currency, item.unit_price)}` }}
+              </span>
+              <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
+                {{ formatFrom((row as OrderView).currency, item.lineSale) }}
+              </span>
+            </li>
+            <li
+              v-if="!(row as OrderView).items.length"
+              class="px-3 py-3 text-center text-sm text-faint"
+            >
+              {{ t('orders.noItems') }}
+            </li>
+          </ul>
+        </template>
+
         <template #empty>
           <EmptyState
             icon="fa-solid fa-arrow-right-arrow-left"

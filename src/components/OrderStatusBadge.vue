@@ -7,9 +7,8 @@ defineProps<{ status: OrderStatus }>()
 
 const { t } = useI18n()
 
-const TONE: Record<OrderStatus, 'warn' | 'accent' | 'info' | 'neutral'> = {
+const TONE: Record<OrderStatus, 'warn' | 'info' | 'neutral'> = {
   new: 'warn',
-  paid: 'accent',
   sent: 'info',
   done: 'neutral',
 }
