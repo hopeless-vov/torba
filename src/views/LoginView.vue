@@ -5,11 +5,19 @@ import TextInput from '@/components/ui/TextInput.vue'
 import { useAuth } from '@/composables/use-auth'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 
 const { t } = useI18n()
+const route = useRoute()
 const { loading, error, info, signIn, signUp, resetPassword } = useAuth()
 
-const mode = ref<'login' | 'register'>('login')
+// An invitation link sends new recipients here in sign-up mode: they have no
+// account, and the invitation is tied to a specific email, so the register
+// path has to be the one they land on.
+const mode = ref<'login' | 'register'>(route.query.mode === 'register' ? 'register' : 'login')
+const fromInvite = computed(
+  () => typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/invite/'),
+)
 const email = ref('')
 const password = ref('')
 const fullName = ref('')
@@ -56,6 +64,12 @@ function switchMode() {
       </h1>
       <p class="mt-2 text-sm text-muted">
         {{ isRegister ? t('auth.registerSubtitle') : t('auth.loginSubtitle') }}
+      </p>
+      <p
+        v-if="fromInvite"
+        class="mt-3 rounded-lg border border-accent-line bg-accent-soft px-3 py-2 text-sm text-fg"
+      >
+        {{ t('auth.inviteHint') }}
       </p>
 
       <form

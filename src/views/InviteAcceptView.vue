@@ -37,6 +37,14 @@ async function accept() {
   await router.push({ name: 'dashboard' })
 }
 
+// Both paths come back to this link once authenticated; the register button
+// only differs by opening the login screen in sign-up mode. The invitee may
+// have no account yet, and the invitation is tied to a specific email, so we
+// have to offer registration — not just sign-in.
+function goRegister() {
+  router.push({ name: 'login', query: { redirect: route.fullPath, mode: 'register' } })
+}
+
 function goSignIn() {
   router.push({ name: 'login', query: { redirect: route.fullPath } })
 }
@@ -66,6 +74,13 @@ function goSignIn() {
         </p>
         <Button
           variant="primary"
+          block
+          @click="goRegister"
+        >
+          {{ t('invite.register') }}
+        </Button>
+        <Button
+          variant="ghost"
           block
           @click="goSignIn"
         >
