@@ -149,6 +149,16 @@
     font-feature-settings: 'tnum' 1;
   }
 
+  /* Native <select> popups: giving the control its own background (even a
+     transparent one) makes Chromium abandon `color-scheme` popup theming and
+     fall back to the white OS list. Colour the options from the theme tokens
+     so every native select's dropdown follows light/dark. */
+  select option,
+  select optgroup {
+    background-color: var(--surface);
+    color: var(--text);
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
