@@ -57,6 +57,17 @@ export interface Invitation {
   revoked_at: string | null
 }
 
+// What a token points at, shown on the invite landing page before the
+// recipient commits. The email is masked (j***@example.com) so a link-holder
+// cannot read the exact invited address; `matches_current` says whether the
+// signed-in account is the one the invitation was actually meant for.
+export interface InvitationPreview {
+  company_name: string | null
+  email_hint: string | null
+  status: 'pending' | 'accepted' | 'revoked' | 'expired' | 'invalid'
+  matches_current: boolean
+}
+
 // One row of the members screen: the membership joined to the identity behind
 // it, which the client cannot read from auth.users directly.
 export interface CompanyMember {

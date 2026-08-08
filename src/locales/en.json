@@ -494,13 +494,19 @@
   },
   "invite": {
     "title": "Organization invitation",
+    "titleTo": "Invitation to {company}",
     "checking": "Checking the invitation…",
     "signInFirst": "To join, sign in or create an account with the email the invitation was sent to.",
     "signIn": "Sign in to an existing account",
     "register": "Create account",
     "accept": "Join",
     "accepted": "You have joined the organization",
-    "invalid": "This invitation is invalid, expired, or meant for someone else.",
+    "wrongAccount": "This invitation was sent to {email}, but you are signed in as {current}. Sign out and use the invited address.",
+    "useAnotherAccount": "Sign out and switch account",
+    "invalid": "This invitation is invalid or meant for someone else.",
+    "revoked": "This invitation has been revoked.",
+    "expired": "This invitation has expired.",
+    "used": "This invitation has already been used.",
     "backHome": "Go home"
   }
 }

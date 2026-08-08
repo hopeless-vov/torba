@@ -57,7 +57,8 @@ Apply **all files, in order**:
   `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`,
   `0008_product_currency.sql`, `0009_drop_paid_status.sql`,
   `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
-  `0012_invitations.sql`, `0013_role_enforcement.sql`.
+  `0012_invitations.sql`, `0013_role_enforcement.sql`,
+  `0014_invitation_preview.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -99,6 +100,17 @@ accepting, revoking, re-roling and removing all go through `SECURITY DEFINER`
 functions that re-check the caller's role, so a client that talked to PostgREST
 directly could not invite or promote itself. Only an owner can create another
 owner, and the last owner of a company cannot be demoted or removed.
+
+**`0014` lets the recipient see which invitation they hold.** Because the
+invited address is checked on redemption, registering or signing in with a
+*different* email fails — and `0012` returned the same opaque `INVALID_INVITATION`
+for that as for a bad token, leaving a legitimate recipient with no clue what
+went wrong. `invitation_preview(token)` lets a holder of the (unguessable) token
+see the company, a **masked** hint of the invited address (`j***@example.com`)
+and whether the account they are signed in as can accept it. The full address is
+never returned, so a leaked link still cannot reveal exactly who was invited. The
+`/invite` page uses it to show who the link is for and, when the wrong account is
+signed in, to offer signing out instead of failing blankly.
 
 **`0013` makes the roles bite.** Until it is applied every member can do
 everything, which is why it is a separate, separately reversible step. Reading

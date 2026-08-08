@@ -49,6 +49,29 @@ describe('invitationsApi', () => {
     expect(created.token).toBe('tok')
   })
 
+  // The preview rpc returns a table, i.e. an array; the client unwraps the
+  // single row so the landing page can read it as a plain object.
+  it('unwraps the single preview row from the rpc array', async () => {
+    mocked.rpc.mockResolvedValue({
+      data: [{ company_name: 'Acme', email_hint: 'j***@x.com', status: 'pending', matches_current: false }],
+      error: null,
+    } as never)
+    const { invitationsApi } = await import('@/api/invitations')
+    const row = await invitationsApi.preview('tok')
+    expect(mocked.rpc).toHaveBeenCalledWith('invitation_preview', { p_token: 'tok' })
+    expect(row.company_name).toBe('Acme')
+    expect(row.matches_current).toBe(false)
+  })
+
+  // An unknown token yields no rows; the client must still hand back a usable
+  // "invalid" shape rather than undefined.
+  it('treats an empty preview result as an invalid invitation', async () => {
+    mocked.rpc.mockResolvedValue({ data: [], error: null } as never)
+    const { invitationsApi } = await import('@/api/invitations')
+    const row = await invitationsApi.preview('tok')
+    expect(row.status).toBe('invalid')
+  })
+
   it('returns the joined company when a token is redeemed', async () => {
     mocked.rpc.mockResolvedValue({ data: 'c9', error: null } as never)
     const { invitationsApi } = await import('@/api/invitations')

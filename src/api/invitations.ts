@@ -1,5 +1,5 @@
 import { supabase } from '@/api/supabase'
-import type { CompanyMember, Invitation, MembershipRole } from '@/types/database'
+import type { CompanyMember, Invitation, InvitationPreview, MembershipRole } from '@/types/database'
 
 // Everything that changes membership goes through a SECURITY DEFINER function
 // (migration 0012): the tables themselves grant no writes, so a client cannot
@@ -27,6 +27,16 @@ export const invitationsApi = {
     })
     if (error) throw error
     return data as Invitation
+  },
+
+  // What the link is for, for the landing page — safe to call before signing
+  // in. Never throws on a bad token; an unknown one comes back as 'invalid'.
+  preview: async (token: string): Promise<InvitationPreview> => {
+    const { data, error } = await supabase.rpc('invitation_preview', { p_token: token })
+    if (error) throw error
+    // A `returns table` rpc yields an array; one row at most.
+    const row = (Array.isArray(data) ? data[0] : data) as InvitationPreview | undefined
+    return row ?? { company_name: null, email_hint: null, status: 'invalid', matches_current: false }
   },
 
   // Returns the company the caller just joined.
