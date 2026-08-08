@@ -11,6 +11,7 @@ import TextInput from '@/components/ui/TextInput.vue'
 import { useClients } from '@/composables/use-clients'
 import { useCurrency } from '@/composables/use-currency'
 import { useOrders } from '@/composables/use-orders'
+import { usePermissions } from '@/composables/use-permissions'
 import { useUiStore } from '@/stores/ui'
 import type { Client, NewClient } from '@/types/database'
 import type { ClientView, OrderView } from '@/types/models'
@@ -20,6 +21,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const { format } = useCurrency()
 const { filtered, createClient, updateClient, removeClient } = useClients()
+const { canTrade } = usePermissions()
 
 // Spend is already converted into the active currency by useClients.
 function spent(client: ClientView) {
@@ -115,6 +117,7 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
         />
       </div>
       <Button
+        v-if="canTrade"
         variant="primary"
         icon="fa-solid fa-plus"
         class="ml-auto"
@@ -135,6 +138,7 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
         :hint="t('clients.emptyHint')"
       >
         <Button
+          v-if="canTrade"
           variant="primary"
           icon="fa-solid fa-plus"
           @click="openNew"
@@ -177,6 +181,7 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
               {{ t('clients.discountBadge', { pct: client.discount }) }}
             </Badge>
             <button
+              v-if="canTrade"
               type="button"
               class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-fg"
               :title="t('common.edit')"
@@ -188,6 +193,7 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
               />
             </button>
             <button
+              v-if="canTrade"
               type="button"
               class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-danger"
               :title="t('common.delete')"

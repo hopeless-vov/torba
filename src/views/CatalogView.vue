@@ -18,6 +18,7 @@ import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
 import { useCatalog } from '@/composables/use-catalog'
 import { useCurrency } from '@/composables/use-currency'
+import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
@@ -52,6 +53,7 @@ const editing = ref<Product | null>(null)
 const saving = ref(false)
 
 const { selected, count: selectedCount, hasSelection, clear: clearSelection } = useSelection(filtered)
+const { canTrade } = usePermissions()
 const confirmOpen = ref(false)
 const deleting = ref(false)
 
@@ -188,7 +190,10 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
         />
       </FilterSheet>
 
-      <div class="ml-auto flex items-center gap-2">
+      <div
+        v-if="canTrade"
+        class="ml-auto flex items-center gap-2"
+      >
         <Button
           icon="fa-solid fa-file-arrow-up"
           :title="t('catalog.importCsv')"
@@ -223,7 +228,7 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
         :columns="columns"
         :rows="filtered"
         row-key="id"
-        selectable
+        :selectable="canTrade"
         :loading="inventory.loading"
       >
         <template #cell-sku="{ row }">
@@ -330,7 +335,10 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
             :title="t('catalog.empty')"
             :hint="t('catalog.emptyHint')"
           >
-            <div class="flex flex-wrap items-center justify-center gap-2">
+            <div
+              v-if="canTrade"
+              class="flex flex-wrap items-center justify-center gap-2"
+            >
               <Button
                 icon="fa-solid fa-file-arrow-up"
                 @click="importOpen = true"

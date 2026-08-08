@@ -17,6 +17,7 @@ import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useOrders } from '@/composables/use-orders'
+import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
 import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
@@ -36,6 +37,7 @@ const clients = useClientsStore()
 const ordersStore = useOrdersStore()
 const cart = useCartStore()
 const ui = useUiStore()
+const { canTrade } = usePermissions()
 const {
   filtered,
   kpis,
@@ -302,7 +304,7 @@ function destination(order: OrderView) {
         :columns="columns"
         :rows="filtered"
         row-key="id"
-        selectable
+        :selectable="canTrade"
         expandable
         clickable
         :loading="ordersStore.loading"
@@ -466,7 +468,7 @@ function destination(order: OrderView) {
               {{ t('orders.clearDates') }}
             </Button>
             <Button
-              v-else
+              v-else-if="canTrade"
               variant="primary"
               icon="fa-solid fa-basket-shopping"
               @click="cart.toggle(true)"

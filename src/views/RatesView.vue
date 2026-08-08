@@ -11,6 +11,7 @@ import Spinner from '@/components/ui/Spinner.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrencies } from '@/composables/use-currencies'
 import { BUILT_IN_CODES, BUILT_IN_CURRENCIES, NUMERAIRE, useCurrency } from '@/composables/use-currency'
+import { usePermissions } from '@/composables/use-permissions'
 import { useRates } from '@/composables/use-rates'
 import { useReferenceStore } from '@/stores/reference'
 import type { Brand } from '@/types/database'
@@ -23,6 +24,7 @@ const reference = useReferenceStore()
 const { code: activeCode, functionalCode, options, rateOf, convertBetween, formatIn, setBase } = useCurrency()
 const { addCurrency, setRate, removeCurrency } = useCurrencies()
 const { updating, history, loadingHistory, updateRate, loadHistory } = useRates()
+const { canConfigure, canAdministerCompany } = usePermissions()
 
 // What 1 unit of `codeStr` is worth in the base currency — the readable,
 // USD-free way to show a market rate.
@@ -221,7 +223,7 @@ async function saveBrandRate() {
             </template>
             <template v-else>
               <Button
-                v-if="row.code !== functionalCode"
+                v-if="row.code !== functionalCode && canAdministerCompany"
                 size="sm"
                 variant="ghost"
                 @click="askBase(row.code)"
@@ -229,14 +231,14 @@ async function saveBrandRate() {
                 {{ t('rates.makeBase') }}
               </Button>
               <Button
-                v-if="row.code !== functionalCode"
+                v-if="row.code !== functionalCode && canConfigure"
                 size="sm"
                 @click="startEdit(row)"
               >
                 {{ t('rates.update') }}
               </Button>
               <button
-                v-if="row.kind === 'custom' && row.id"
+                v-if="row.kind === 'custom' && row.id && canConfigure"
                 type="button"
                 class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-danger"
                 :title="t('common.delete')"
@@ -253,6 +255,7 @@ async function saveBrandRate() {
 
         <!-- Add custom currency -->
         <form
+          v-if="canConfigure"
           class="grid grid-cols-2 items-end gap-2 bg-surface px-5 py-4 sm:grid-cols-[6rem_5rem_1fr_auto]"
           @submit.prevent="addCustom"
         >
@@ -351,6 +354,7 @@ async function saveBrandRate() {
             {{ t('rates.history') }}
           </Button>
           <Button
+            v-if="canConfigure"
             variant="primary"
             @click="openUpdate(brand)"
           >

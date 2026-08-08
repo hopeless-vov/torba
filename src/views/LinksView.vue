@@ -5,6 +5,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import TextInput from '@/components/ui/TextInput.vue'
+import { usePermissions } from '@/composables/use-permissions'
 import { usePersonalization } from '@/composables/use-personalization'
 import { useReferenceStore } from '@/stores/reference'
 import { computed, ref } from 'vue'
@@ -25,6 +26,7 @@ const {
   unlinkCategory,
   setBrandCategories,
 } = usePersonalization()
+const { canConfigure } = usePermissions()
 
 // The selected brand drives the right-hand panel. It falls back to the first
 // brand when nothing is picked or the picked brand was just deleted, so the
@@ -132,6 +134,7 @@ const confirmMessage = computed(() =>
         </div>
 
         <form
+          v-if="canConfigure"
           class="flex items-center gap-2 px-4 pb-3"
           @submit.prevent="submitBrand"
         >
@@ -230,6 +233,7 @@ const confirmMessage = computed(() =>
           </div>
 
           <form
+            v-if="canConfigure"
             class="flex items-center gap-2 px-6 pt-3 pb-2"
             @submit.prevent="submitCategory"
           >
@@ -264,7 +268,9 @@ const confirmMessage = computed(() =>
                 <button
                   type="button"
                   class="flex flex-1 items-center gap-3 rounded-lg px-3.5 py-3 text-left"
-                  @click="toggle(c.id)"
+                  :disabled="!canConfigure"
+                  :class="canConfigure ? 'cursor-pointer' : 'cursor-default'"
+                  @click="canConfigure && toggle(c.id)"
                 >
                   <span
                     class="flex size-[18px] shrink-0 items-center justify-center rounded-[5px]"

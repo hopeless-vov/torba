@@ -4,6 +4,7 @@ import Icon from '@/components/ui/Icon.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useLocale } from '@/composables/use-locale'
+import { usePermissions } from '@/composables/use-permissions'
 import { useTheme } from '@/composables/use-theme'
 import { useCartStore } from '@/stores/cart'
 import { useUiStore } from '@/stores/ui'
@@ -21,6 +22,7 @@ const ui = useUiStore()
 const { isDark, toggle } = useTheme()
 const { code, symbol, options, setCurrency } = useCurrency()
 const { locale, setLocale } = useLocale()
+const { canTrade } = usePermissions()
 
 // Built-ins plus whatever the owner added on the Rates page.
 const currencyItems = computed(() =>
@@ -115,6 +117,7 @@ const today = formatDate(new Date())
       </button>
 
       <button
+        v-if="canTrade"
         type="button"
         :title="t('nav.cart')"
         class="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-line px-3 text-sm text-fg transition-colors hover:bg-hover"

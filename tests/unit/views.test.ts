@@ -3,12 +3,13 @@ import type { OrderRow } from '@/api/orders'
 import type { ProductRow } from '@/api/products'
 import CartDrawer from '@/components/CartDrawer.vue'
 import uk from '@/locales/uk.json'
+import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
-import type { Brand, Client, OrderItem } from '@/types/database'
+import type { Brand, Client, Company, MembershipRole, OrderItem } from '@/types/database'
 import CatalogView from '@/views/CatalogView.vue'
 import ClientsView from '@/views/ClientsView.vue'
 import LinksView from '@/views/LinksView.vue'
@@ -109,11 +110,30 @@ const order = {
   ],
 } as OrderRow
 
-function render(component: Parameters<typeof mount>[0]) {
+// Write controls are gated on the caller's role (migration 0013), so a screen
+// mounted without a membership renders read-only. These smoke tests are about
+// the templates, so they run as an owner unless a case says otherwise.
+function seedRole(role: MembershipRole = 'owner') {
+  const auth = useAuthStore()
+  auth.session = { user: { id: 'u1', email: 'me@x.com' } } as never
+  auth.memberships = [
+    {
+      company_id: 'c',
+      user_id: 'u1',
+      role,
+      created_at: '',
+      company: { id: 'c', name: 'Co', base_currency: 'UAH' } as Company,
+    },
+  ]
+  auth.activeCompanyId = 'c'
+}
+
+function render(component: Parameters<typeof mount>[0], role: MembershipRole = 'owner') {
   const pinia = createPinia()
   setActivePinia(pinia)
   const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
 
+  seedRole(role)
   useReferenceStore().brands = [brand]
   useReferenceStore().categories = [{ id: 'cat1', company_id: 'c', name: 'Сироватки', created_at: '' }]
   useReferenceStore().brandCategories = [
@@ -141,6 +161,17 @@ describe('CatalogView', () => {
     expect(wrapper.text()).toContain('FRY-500')
     // one per row plus the select-all header, plus the "inactive" filter
     expect(wrapper.findAll('input[type="checkbox"]').length).toBeGreaterThanOrEqual(3)
+  })
+
+  // A viewer reads the catalogue and changes nothing; the database refuses the
+  // writes anyway (migration 0013), so offering the controls would only lie.
+  it('hides the add, import and selection controls from a viewer', () => {
+    const wrapper = render(CatalogView, 'viewer')
+    expect(wrapper.text()).toContain('Fairy Засіб для миття посуду')
+    expect(wrapper.text()).not.toContain(uk.catalog.newProduct)
+    expect(wrapper.text()).not.toContain(uk.catalog.importCsv)
+    // Only the "inactive" filter checkbox is left — no row selection.
+    expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(1)
   })
 })
 
@@ -190,6 +221,7 @@ describe('OrdersView', () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
+    seedRole()
     useOrdersStore().orders = []
     const cart = useCartStore()
 

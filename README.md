@@ -57,7 +57,7 @@ Apply **all files, in order**:
   `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`,
   `0008_product_currency.sql`, `0009_drop_paid_status.sql`,
   `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
-  `0012_invitations.sql`.
+  `0012_invitations.sql`, `0013_role_enforcement.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -99,6 +99,35 @@ accepting, revoking, re-roling and removing all go through `SECURITY DEFINER`
 functions that re-check the caller's role, so a client that talked to PostgREST
 directly could not invite or promote itself. Only an owner can create another
 owner, and the last owner of a company cannot be demoted or removed.
+
+**`0013` makes the roles bite.** Until it is applied every member can do
+everything, which is why it is a separate, separately reversible step. Reading
+is for any member; writing splits three ways:
+
+| | owner | admin | member | viewer |
+|---|:---:|:---:|:---:|:---:|
+| See everything (dashboard, catalog, warehouse, orders, clients, rates) | ✓ | ✓ | ✓ | ✓ |
+| Products, batches, clients, orders — create, edit, delete | ✓ | ✓ | ✓ | — |
+| Brands, categories, links, payment methods, currencies and rates | ✓ | ✓ | — | — |
+| Invite people, change roles, remove members | ✓ | ✓¹ | — | — |
+| Company settings (name, functional currency) | ✓ | — | — | — |
+
+¹ An `admin` manages `member` and `viewer`; only an `owner` touches owners and
+admins, or hands out `owner`.
+
+Rates and currencies sit at `admin`, not `member`, because they silently
+re-price the whole catalogue: changing a supplier rate rewrites every margin in
+the company without touching a single product.
+
+`create_order` and `delete_orders` check the role themselves. They are
+`SECURITY DEFINER`, so the table policies do not apply inside them — without
+the check a viewer could place and delete orders through the functions while
+being unable to touch the tables directly.
+
+On the client, `use-permissions` mirrors the same matrix (`canTrade`,
+`canConfigure`, `canManageMembers`, `canAdministerCompany`) and hides controls
+that would fail anyway. It is a courtesy, not a control: **the database is what
+actually decides**, and nothing in the interface is load-bearing for security.
 
 **Categories depend on brands.** `brand_categories` is a many-to-many link: each
 brand exposes its own set of categories, so the product form and the catalog filter

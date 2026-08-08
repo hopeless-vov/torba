@@ -4,6 +4,7 @@ import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Icon from '@/components/ui/Icon.vue'
 import TextInput from '@/components/ui/TextInput.vue'
+import { usePermissions } from '@/composables/use-permissions'
 import { usePersonalization } from '@/composables/use-personalization'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
@@ -22,6 +23,7 @@ const inventory = useInventoryStore()
 const clients = useClientsStore()
 const orders = useOrdersStore()
 const { addPayment, removePayment } = usePersonalization()
+const { canConfigure } = usePermissions()
 
 const newPayment = ref('')
 
@@ -138,6 +140,7 @@ async function logout() {
       </div>
 
       <form
+        v-if="canConfigure"
         class="flex items-center gap-2"
         @submit.prevent="submitPayment"
       >
@@ -170,6 +173,7 @@ async function logout() {
           />
           <span class="flex-1 text-sm text-fg">{{ p.name }}</span>
           <button
+            v-if="canConfigure"
             type="button"
             class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-danger"
             @click="removePayment(p.id)"

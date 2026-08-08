@@ -14,6 +14,7 @@ import Select from '@/components/ui/Select.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
+import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
 import { useWarehouse, type WarehouseGroup, type WarehouseRow } from '@/composables/use-warehouse'
 import { useInventoryStore } from '@/stores/inventory'
@@ -47,6 +48,7 @@ const view = ref<'batches' | 'products'>('batches')
 const expanded = ref<string[]>([])
 
 const { selected, count: selectedCount, hasSelection, clear: clearSelection } = useSelection(filtered)
+const { canTrade } = usePermissions()
 const confirmOpen = ref(false)
 const deleting = ref(false)
 
@@ -234,6 +236,7 @@ async function deleteSelected() {
       </FilterSheet>
 
       <Button
+        v-if="canTrade"
         variant="primary"
         icon="fa-solid fa-plus"
         class="ml-auto"
@@ -263,7 +266,7 @@ async function deleteSelected() {
         :columns="batchColumns"
         :rows="filtered"
         row-key="id"
-        selectable
+        :selectable="canTrade"
         :loading="inventory.loading"
       >
         <template #cell-name="{ row }">
@@ -328,6 +331,7 @@ async function deleteSelected() {
             :hint="t('warehouse.emptyHint')"
           >
             <Button
+              v-if="canTrade"
               variant="primary"
               icon="fa-solid fa-plus"
               @click="openNew"
@@ -406,39 +410,41 @@ async function deleteSelected() {
               <span class="ml-auto shrink-0 font-mono text-sm text-fg tabular-nums">
                 {{ `${batch.remaining} / ${batch.received} ${t('common.pcs')}` }}
               </span>
-              <button
-                type="button"
-                class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-accent"
-                :title="t('catalog.addToCart')"
-                @click="addToCart(batch.id)"
-              >
-                <Icon
-                  icon="fa-solid fa-plus"
-                  size="xs"
-                />
-              </button>
-              <button
-                type="button"
-                class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-fg"
-                :title="t('catalog.menu.edit')"
-                @click="openEdit(batch.id)"
-              >
-                <Icon
-                  icon="fa-solid fa-pen"
-                  size="xs"
-                />
-              </button>
-              <button
-                type="button"
-                class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
-                :title="t('catalog.menu.delete')"
-                @click="removeBatch(batch.id)"
-              >
-                <Icon
-                  icon="fa-solid fa-trash"
-                  size="xs"
-                />
-              </button>
+              <template v-if="canTrade">
+                <button
+                  type="button"
+                  class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-accent"
+                  :title="t('catalog.addToCart')"
+                  @click="addToCart(batch.id)"
+                >
+                  <Icon
+                    icon="fa-solid fa-plus"
+                    size="xs"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-fg"
+                  :title="t('catalog.menu.edit')"
+                  @click="openEdit(batch.id)"
+                >
+                  <Icon
+                    icon="fa-solid fa-pen"
+                    size="xs"
+                  />
+                </button>
+                <button
+                  type="button"
+                  class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
+                  :title="t('catalog.menu.delete')"
+                  @click="removeBatch(batch.id)"
+                >
+                  <Icon
+                    icon="fa-solid fa-trash"
+                    size="xs"
+                  />
+                </button>
+              </template>
             </li>
           </ul>
         </template>
@@ -450,6 +456,7 @@ async function deleteSelected() {
             :hint="t('warehouse.emptyHint')"
           >
             <Button
+              v-if="canTrade"
               variant="primary"
               icon="fa-solid fa-plus"
               @click="openNew"

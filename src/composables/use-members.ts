@@ -1,4 +1,5 @@
 import { invitationsApi } from '@/api/invitations'
+import { usePermissions } from '@/composables/use-permissions'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import type { CompanyMember, Invitation, MembershipRole } from '@/types/database'
@@ -18,8 +19,7 @@ export function useMembers() {
   const invitations = ref<Invitation[]>([])
   const loading = ref(false)
 
-  const canManage = computed(() => auth.role === 'owner' || auth.role === 'admin')
-  const isOwner = computed(() => auth.role === 'owner')
+  const { canManageMembers: canManage, canAdministerCompany: isOwner } = usePermissions()
 
   // A role the current user is allowed to hand out. Only an owner can make
   // another owner, so the invite form never offers it.
