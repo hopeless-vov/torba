@@ -465,7 +465,7 @@
     "inviteTitle": "Invite a member",
     "inviteHint": "Create a link and send it yourself — the system does not send email.",
     "email": "Email",
-    "emailPlaceholder": "people@example.com",
+    "emailPlaceholder": "people{'@'}example.com",
     "role": "Role",
     "invite": "Create invitation",
     "linkTitle": "Invitation link",

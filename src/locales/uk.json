@@ -465,7 +465,7 @@
     "inviteTitle": "Запросити учасника",
     "inviteHint": "Створіть посилання і надішліть його самі — листи система не надсилає.",
     "email": "Емейл",
-    "emailPlaceholder": "people@example.com",
+    "emailPlaceholder": "people{'@'}example.com",
     "role": "Роль",
     "invite": "Створити запрошення",
     "linkTitle": "Посилання-запрошення",
