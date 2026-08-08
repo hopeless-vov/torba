@@ -306,7 +306,10 @@ async function deleteSelected() {
           />
         </template>
         <template #cell-actions="{ row }">
-          <div class="flex items-center justify-end gap-1">
+          <div
+            v-if="canTrade"
+            class="flex items-center justify-end gap-1"
+          >
             <button
               type="button"
               class="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-accent-line hover:text-accent"

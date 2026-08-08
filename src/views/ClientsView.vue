@@ -244,6 +244,7 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
     <ClientCardModal
       v-model:open="cardOpen"
       :client="activeCard"
+      :actions="canTrade"
       @open-order="openOrder"
       @edit="openEdit"
       @delete="askDelete"

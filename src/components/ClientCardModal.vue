@@ -13,7 +13,12 @@ import { computeOrderTotals } from '@/utils/orders'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const props = defineProps<{ client?: ClientView | null }>()
+// `actions` off makes the card read-only — a viewer can look up a client but
+// has no edit/delete to reach; the database would refuse both anyway.
+const props = withDefaults(defineProps<{ client?: ClientView | null; actions?: boolean }>(), {
+  client: null,
+  actions: true,
+})
 
 const emit = defineEmits<{
   openOrder: [orderId: string]
@@ -149,6 +154,7 @@ const history = computed(() => {
       #footer
     >
       <Button
+        v-if="actions"
         variant="danger"
         icon="fa-solid fa-trash"
         @click="emit('delete', client)"
@@ -162,6 +168,7 @@ const history = computed(() => {
         {{ t('common.close') }}
       </Button>
       <Button
+        v-if="actions"
         variant="primary"
         icon="fa-solid fa-pen"
         @click="emit('edit', client)"

@@ -2,6 +2,7 @@ import type { BatchRow } from '@/api/batches'
 import type { OrderRow } from '@/api/orders'
 import type { ProductRow } from '@/api/products'
 import CartDrawer from '@/components/CartDrawer.vue'
+import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import uk from '@/locales/uk.json'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
@@ -173,6 +174,14 @@ describe('CatalogView', () => {
     // Only the "inactive" filter checkbox is left — no row selection.
     expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(1)
   })
+
+  // The row's edit/delete menu is a DropdownMenu, not plain text, so it has
+  // to be checked as a component — a viewer must not even have it to open.
+  it('hides the row edit/delete menu and add-to-cart button from a viewer', () => {
+    const wrapper = render(CatalogView, 'viewer')
+    expect(wrapper.findComponent(DropdownMenu).exists()).toBe(false)
+    expect(wrapper.find(`[title="${uk.catalog.addToCart}"]`).exists()).toBe(false)
+  })
 })
 
 describe('WarehouseView', () => {
@@ -196,6 +205,14 @@ describe('WarehouseView', () => {
     await wrapper.find('tbody tr td button').trigger('click')
     expect(wrapper.text()).toContain('FRY-500-01')
     expect(wrapper.text()).toContain('32 / 40')
+  })
+
+  // Same reasoning as Catalog: a viewer can see what is on the shelf, but the
+  // edit/delete menu and add-to-cart button on each row must not be offered.
+  it('hides the row edit/delete menu and add-to-cart button from a viewer', () => {
+    const wrapper = render(WarehouseView, 'viewer')
+    expect(wrapper.findComponent(DropdownMenu).exists()).toBe(false)
+    expect(wrapper.find(`[title="${uk.catalog.addToCart}"]`).exists()).toBe(false)
   })
 })
 
@@ -271,6 +288,21 @@ describe('ClientsView', () => {
     expect(document.body.textContent).toContain(uk.clients.deleteTitle)
     expect(document.body.textContent).toContain('Олег Петренко')
   })
+
+  // The grid's own edit/delete buttons are gone for a viewer (canTrade),
+  // but the card modal is a second route to the same actions and has to be
+  // gated independently — it teleports to body, so the check reads there.
+  it('hides the row buttons and the card modal actions from a viewer', async () => {
+    const wrapper = render(ClientsView, 'viewer')
+    expect(wrapper.findAll('button').find((b) => b.attributes('title') === uk.common.delete)).toBeUndefined()
+    expect(wrapper.findAll('button').find((b) => b.attributes('title') === uk.common.edit)).toBeUndefined()
+
+    // The card itself (not the row buttons, already gone) opens the modal.
+    await wrapper.find('.p-5').trigger('click')
+    expect(document.body.textContent).toContain('Олег Петренко')
+    expect(document.body.textContent).not.toContain(uk.common.delete)
+    expect(document.body.textContent).not.toContain(uk.common.edit)
+  })
 })
 
 describe('LinksView', () => {
@@ -291,6 +323,13 @@ describe('LinksView', () => {
     // The confirm dialog teleports to body with the brand's name.
     expect(document.body.textContent).toContain('Fairy')
   })
+
+  // Links sit at canConfigure (admin+), not canTrade — a plain member can
+  // sell but must not be able to unlink a brand from a category or delete it.
+  it('hides brand and category delete buttons from a member', () => {
+    const wrapper = render(LinksView, 'member')
+    expect(wrapper.findAll('button').find((b) => b.attributes('title') === uk.common.delete)).toBeUndefined()
+  })
 })
 
 describe('CartDrawer', () => {
@@ -298,6 +337,7 @@ describe('CartDrawer', () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
+    seedRole()
     useInventoryStore().products = [product]
     useInventoryStore().batches = [batch({ id: 'ba1' })]
     useClientsStore().clients = [client]
@@ -319,5 +359,33 @@ describe('CartDrawer', () => {
 
     expect(rendered).toContain('01.01.2999') // the batch's expiry, in the line
     expect(rendered).toContain('бракує 18') // 50 ordered, 32 on hand
+  })
+
+  // The topbar and catalog/warehouse rows already keep a viewer from ever
+  // opening the cart in practice; this is the drawer's own lock in case a
+  // line survives a mid-session role change.
+  it('hides the checkout button for a viewer', () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
+    seedRole('viewer')
+    useInventoryStore().products = [product]
+    useInventoryStore().batches = [batch({ id: 'ba1' })]
+    useClientsStore().clients = [client]
+
+    const cart = useCartStore()
+    cart.toggle(true)
+    cart.addLine({
+      product,
+      brand,
+      batch: batch({ id: 'ba1' }),
+      unitPrice: 145,
+      unitCost: 87,
+      qty: 1,
+      stockQty: 32,
+    })
+
+    const wrapper = mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
+    expect(wrapper.text()).not.toContain(uk.cart.checkout)
   })
 })

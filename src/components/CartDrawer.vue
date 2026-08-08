@@ -12,6 +12,7 @@ import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
 import { useCurrency } from '@/composables/use-currency'
+import { usePermissions } from '@/composables/use-permissions'
 import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
@@ -37,6 +38,7 @@ const {
   selectBatch,
 } = useCart()
 const { format } = useCurrency()
+const { canTrade } = usePermissions()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const clients = useClientsStore()
@@ -356,7 +358,11 @@ function batchOptions(line: CartLine) {
           {{ t('cart.backorderHint') }}
         </p>
 
+        <!-- The cart is only reachable through buttons already gated on
+             canTrade; this is a second lock in case a line survived a
+             mid-session role change. -->
         <Button
+          v-if="canTrade"
           variant="primary"
           block
           :disabled="cart.isEmpty"

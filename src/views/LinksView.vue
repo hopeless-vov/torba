@@ -180,6 +180,7 @@ const confirmMessage = computed(() =>
               />
             </button>
             <button
+              v-if="canConfigure"
               type="button"
               class="mr-1.5 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
               :title="t('common.delete')"
@@ -293,6 +294,7 @@ const confirmMessage = computed(() =>
                   </span>
                 </button>
                 <button
+                  v-if="canConfigure"
                   type="button"
                   class="mr-1.5 flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
                   :title="t('common.delete')"
