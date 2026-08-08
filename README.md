@@ -345,8 +345,9 @@ untouched — and tightens the check constraint to match.
 src/
   api/                   → Supabase data layer (one file per resource)
     supabase.ts          → typed client (reads VITE_SUPABASE_* env)
-    auth.ts, profile.ts, brands.ts, categories.ts, payment-methods.ts,
-    currencies.ts, products.ts, batches.ts, clients.ts, orders.ts
+    auth.ts, profile.ts, memberships.ts, invitations.ts, brands.ts,
+    categories.ts, payment-methods.ts, currencies.ts, products.ts,
+    batches.ts, clients.ts, orders.ts
   assets/                → static assets
   components/
     ui/                  → presentational kit (props in, events out — no store/api/composable access)
@@ -355,7 +356,8 @@ src/
                            use-currency, use-currencies, use-cart, use-orders,
                            use-warehouse, use-clients, use-rates, use-selection,
                            use-personalization, use-dashboard, use-theme,
-                           use-locale, use-toast, use-popover-position)
+                           use-locale, use-toast, use-popover-position,
+                           use-permissions, use-members, use-invite)
   locales/               → uk.json (default) + en.json
   router/                → routes + auth guard
   stores/                → Pinia state (auth, reference, inventory, clients,
