@@ -24,6 +24,16 @@ vi.mock('@/api/profile', () => ({
 
 const uah = { id: 'c-uah', company_id: 'c', code: 'UAH', symbol: '₴', usd_rate: 40 } as Currency
 
+// `auth.company` is derived from the active membership, so seeding the active
+// organization is how a test puts a company in place.
+function seedCompany(auth: ReturnType<typeof useAuthStore>, company: Partial<Company>) {
+  const full = { id: 'c', name: '', owner_id: 'u', display_currency: 'UAH', created_at: '', ...company } as Company
+  auth.memberships = [
+    { company_id: full.id, user_id: 'u', role: 'owner', created_at: '', company: full },
+  ]
+  auth.activeCompanyId = full.id
+}
+
 describe('useCurrency.setBase', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -32,15 +42,11 @@ describe('useCurrency.setBase', () => {
 
   it('re-expresses every brand supplier rate into the new base and persists it', async () => {
     const auth = useAuthStore()
-    auth.company = {
-      id: 'c',
-      name: '',
-      owner_id: 'u',
-      base_currency: 'UAH',
-      display_currency: 'UAH',
-      created_at: '',
-    } as Company
+    seedCompany(auth, { base_currency: 'UAH' })
     const reference = useReferenceStore()
+    // setBase reloads the workspace once the rates are rewritten; that round
+    // trip is not what this test is about.
+    reference.load = vi.fn()
     reference.currencies = [uah]
     reference.brands = [
       { id: 'b1', supplier_rate: 44.5, catalog_currency: 'USD' } as Brand,
@@ -58,7 +64,7 @@ describe('useCurrency.setBase', () => {
 
   it('does nothing when the base is unchanged', async () => {
     const auth = useAuthStore()
-    auth.company = { id: 'c', base_currency: 'UAH' } as Company
+    seedCompany(auth, { base_currency: 'UAH' })
     const c = useCurrency()
     await c.setBase('UAH')
     expect(setSupplierRate).not.toHaveBeenCalled()

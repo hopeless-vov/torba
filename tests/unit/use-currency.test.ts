@@ -13,9 +13,11 @@ const pln = { id: 'c-pln', company_id: 'c', code: 'PLN', symbol: 'zł', usd_rate
 // uk-UA groups with a non-breaking space; normalise for stable assertions.
 const norm = (s: string) => s.replace(/\s/g, ' ')
 
-// The functional (base) currency lives on the company.
+// The functional (base) currency lives on the company, which is derived from
+// the active membership — so seeding an organization is how a test sets it.
 function setFunctional(code: string) {
-  useAuthStore().company = {
+  const auth = useAuthStore()
+  const company = {
     id: 'c',
     name: '',
     owner_id: 'u',
@@ -23,6 +25,8 @@ function setFunctional(code: string) {
     display_currency: code,
     created_at: '',
   } as Company
+  auth.memberships = [{ company_id: 'c', user_id: 'u', role: 'owner', created_at: '', company }]
+  auth.activeCompanyId = 'c'
 }
 
 describe('useCurrency', () => {

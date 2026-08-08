@@ -120,12 +120,11 @@ export function useOrders() {
   // Deleting returns the goods to their batches (delete_orders in
   // migration 0004), so the warehouse has to be reloaded too.
   async function removeOrders(ids: string[]) {
-    if (ids.length === 0) return
+    const companyId = auth.companyId
+    if (ids.length === 0 || !companyId) return
     try {
-      await ordersApi.removeMany(ids)
-      if (auth.companyId) {
-        await Promise.all([store.load(auth.companyId), inventory.load(auth.companyId)])
-      }
+      await ordersApi.removeMany(ids, companyId)
+      await Promise.all([store.load(companyId), inventory.load(companyId)])
       toast.success(t('toasts.deleted'))
     } catch (e) {
       toast.error(t('errors.delete'))

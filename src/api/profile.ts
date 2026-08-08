@@ -23,16 +23,6 @@ export const profileApi = {
     return data as Profile | null
   },
 
-  getCompany: async (companyId: string): Promise<Company | null> => {
-    const { data, error } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('id', companyId)
-      .maybeSingle()
-    if (error) throw error
-    return data as Company | null
-  },
-
   updateCompany: async (
     companyId: string,
     patch: Partial<Pick<Company, 'name' | 'display_currency' | 'base_currency'>>,

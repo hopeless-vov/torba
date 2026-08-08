@@ -83,21 +83,39 @@ describe('productsApi.removeMany', () => {
   })
 })
 
-describe('ordersApi.nextNumber', () => {
-  it('reads the next number via rpc', async () => {
-    mocked.rpc.mockResolvedValue({ data: 2044, error: null } as never)
-    const { ordersApi } = await import('@/api/orders')
-    const number = await ordersApi.nextNumber('c1')
-    expect(mocked.rpc).toHaveBeenCalledWith('next_order_number', { p_company_id: 'c1' })
-    expect(number).toBe(2044)
+describe('membershipsApi', () => {
+  it('lists the user’s organizations with their company joined', async () => {
+    const rows = [{ company_id: 'c1', user_id: 'u1', role: 'owner', company: { id: 'c1', name: 'Mine' } }]
+    const chain = builder({ data: rows, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { membershipsApi } = await import('@/api/memberships')
+    const result = await membershipsApi.listForUser('u1')
+    expect(mocked.from).toHaveBeenCalledWith('memberships')
+    expect(chain.eq).toHaveBeenCalledWith('user_id', 'u1')
+    expect(result).toEqual(rows)
+  })
+
+  // RLS could in principle hide the company behind a membership; a row with no
+  // company would blow up every consumer that reads `company.name`.
+  it('drops a membership whose company did not come back', async () => {
+    const rows = [
+      { company_id: 'c1', company: { id: 'c1', name: 'Mine' } },
+      { company_id: 'c2', company: null },
+    ]
+    mocked.from.mockReturnValue(builder({ data: rows, error: null }) as never)
+    const { membershipsApi } = await import('@/api/memberships')
+    const result = await membershipsApi.listForUser('u1')
+    expect(result).toHaveLength(1)
+    expect(result[0].company_id).toBe('c1')
   })
 })
 
 describe('ordersApi.place', () => {
-  it('passes the delivery address through to create_order', async () => {
+  it('passes the company and delivery address through to create_order', async () => {
     mocked.rpc.mockResolvedValue({ data: 'order-1', error: null } as never)
     const { ordersApi } = await import('@/api/orders')
     await ordersApi.place({
+      companyId: 'c1',
       clientId: 'cl1',
       paymentMethod: 'Готівка',
       currency: 'UAH',
@@ -111,13 +129,14 @@ describe('ordersApi.place', () => {
       p_items: [],
       p_delivery_address: 'Львів, НП №30',
       p_discount: 0,
+      p_company_id: 'c1',
     })
   })
 
   it('sends a null address when none was given', async () => {
     mocked.rpc.mockResolvedValue({ data: 'order-1', error: null } as never)
     const { ordersApi } = await import('@/api/orders')
-    await ordersApi.place({ clientId: null, paymentMethod: null, currency: 'UAH', items: [] })
+    await ordersApi.place({ companyId: 'c1', clientId: null, paymentMethod: null, currency: 'UAH', items: [] })
     expect(mocked.rpc.mock.calls[0][1]).toMatchObject({ p_delivery_address: null })
   })
 })
@@ -126,21 +145,21 @@ describe('ordersApi deletion', () => {
   it('goes through delete_orders so stock is restored', async () => {
     mocked.rpc.mockResolvedValue({ data: 2, error: null } as never)
     const { ordersApi } = await import('@/api/orders')
-    const deleted = await ordersApi.removeMany(['o1', 'o2'])
-    expect(mocked.rpc).toHaveBeenCalledWith('delete_orders', { p_ids: ['o1', 'o2'] })
+    const deleted = await ordersApi.removeMany(['o1', 'o2'], 'c1')
+    expect(mocked.rpc).toHaveBeenCalledWith('delete_orders', { p_ids: ['o1', 'o2'], p_company_id: 'c1' })
     expect(deleted).toBe(2)
   })
 
   it('routes a single delete through the same rpc', async () => {
     mocked.rpc.mockResolvedValue({ data: 1, error: null } as never)
     const { ordersApi } = await import('@/api/orders')
-    await ordersApi.remove('o1')
-    expect(mocked.rpc).toHaveBeenCalledWith('delete_orders', { p_ids: ['o1'] })
+    await ordersApi.remove('o1', 'c1')
+    expect(mocked.rpc).toHaveBeenCalledWith('delete_orders', { p_ids: ['o1'], p_company_id: 'c1' })
   })
 
   it('skips the request when nothing is selected', async () => {
     const { ordersApi } = await import('@/api/orders')
-    await ordersApi.removeMany([])
+    await ordersApi.removeMany([], 'c1')
     expect(mocked.rpc).not.toHaveBeenCalled()
   })
 })

@@ -4,6 +4,7 @@ import AppTopbar from '@/components/AppTopbar.vue'
 import CartDrawer from '@/components/CartDrawer.vue'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
@@ -18,6 +19,7 @@ const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const clients = useClientsStore()
 const orders = useOrdersStore()
+const cart = useCartStore()
 const ui = useUiStore()
 const toast = useToast()
 const route = useRoute()
@@ -31,10 +33,19 @@ watch(
 )
 
 // Load the workspace once the company is known (survives a hard refresh,
-// where the session resolves asynchronously before this mounts).
+// where the session resolves asynchronously before this mounts), and reload it
+// whenever the active organization changes.
 watch(
   () => auth.companyId,
-  async (companyId) => {
+  async (companyId, previous) => {
+    // A cart holds products, prices and a client from the organization it was
+    // filled in; carrying it across a switch would check out one company's
+    // goods against another's stock. The open drawer goes with it.
+    if (previous && previous !== companyId) {
+      cart.clear()
+      cart.toggle(false)
+      ui.setSearch('')
+    }
     if (!companyId) return
     const results = await Promise.allSettled([
       reference.load(companyId),

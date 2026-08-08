@@ -61,7 +61,10 @@ function harness() {
     defineComponent({
       setup() {
         useCurrencyStore().setCurrency('UAH')
-        useAuthStore().company = {
+        // `company` is derived from the active membership, so the organization
+        // is what a test seeds to put a functional currency in place.
+        const auth = useAuthStore()
+        const company = {
           id: 'c',
           name: '',
           owner_id: 'u',
@@ -69,6 +72,8 @@ function harness() {
           display_currency: 'UAH',
           created_at: '',
         } as Company
+        auth.memberships = [{ company_id: 'c', user_id: 'u', role: 'owner', created_at: '', company }]
+        auth.activeCompanyId = 'c'
         ctx = { inventory: useInventoryStore(), ui: useUiStore(), catalog: useCatalog() }
         return () => null
       },

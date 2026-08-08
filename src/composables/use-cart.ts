@@ -144,11 +144,13 @@ export function useCart() {
   }
 
   async function checkout() {
-    if (cart.isEmpty || !auth.companyId) return
+    const companyId = auth.companyId
+    if (cart.isEmpty || !companyId) return
     submitting.value = true
     error.value = null
     try {
       await ordersApi.place({
+        companyId,
         clientId: cart.clientId,
         paymentMethod: cart.paymentMethod,
         currency: currency.displayCurrency,
@@ -167,7 +169,6 @@ export function useCart() {
       })
       cart.clear()
       cart.toggle(false)
-      const companyId = auth.companyId
       await Promise.all([orders.load(companyId), inventory.load(companyId)])
       toast.success(t('toasts.orderPlaced'))
     } catch (e) {

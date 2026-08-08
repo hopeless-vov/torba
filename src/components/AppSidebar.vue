@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OrgSwitcher from '@/components/OrgSwitcher.vue'
 import Avatar from '@/components/ui/Avatar.vue'
 import Icon from '@/components/ui/Icon.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -83,7 +84,7 @@ async function logout() {
           size="sm"
         />
       </span>
-      <span class="min-w-0 flex-1 truncate text-sm font-semibold text-fg">{{ companyName }}</span>
+      <OrgSwitcher />
       <button
         type="button"
         :title="t('common.close')"

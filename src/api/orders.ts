@@ -11,9 +11,16 @@ const SELECT_WITH_RELATIONS = '*, client:clients(*), items:order_items(*)'
 // Deletion goes through delete_orders so the quantities drawn from
 // batch-tied lines land back on the shelf (see migration 0004).
 // order_items cascade with the order.
-async function deleteOrders(ids: string[]): Promise<number> {
+//
+// The company is explicit because the RPC is SECURITY DEFINER: it cannot infer
+// which of the user's organizations is active, and it checks membership
+// against what we pass (migration 0011).
+async function deleteOrders(ids: string[], companyId: string): Promise<number> {
   if (ids.length === 0) return 0
-  const { data, error } = await supabase.rpc('delete_orders', { p_ids: ids })
+  const { data, error } = await supabase.rpc('delete_orders', {
+    p_ids: ids,
+    p_company_id: companyId,
+  })
   if (error) throw error
   return (data as number) ?? 0
 }
@@ -29,17 +36,12 @@ export const ordersApi = {
     return (data ?? []) as unknown as OrderRow[]
   },
 
-  nextNumber: async (companyId: string): Promise<number> => {
-    const { data, error } = await supabase.rpc('next_order_number', { p_company_id: companyId })
-    if (error) throw error
-    return (data as number) ?? 2041
-  },
-
   // Atomic order creation: assigns the number, inserts items and draws
   // down warehouse stock in one transaction (see create_order in
   // supabase/migrations/0004). Stock never goes negative — a line that
   // exceeds what is on hand ships short as a backorder.
   place: async (input: {
+    companyId: string
     clientId: string | null
     paymentMethod: string | null
     currency: string
@@ -62,6 +64,7 @@ export const ordersApi = {
       p_items: input.items,
       p_delivery_address: input.deliveryAddress ?? null,
       p_discount: input.discount ?? 0,
+      p_company_id: input.companyId,
     })
     if (error) throw error
     return data as string
@@ -109,8 +112,8 @@ export const ordersApi = {
     return data as Order
   },
 
-  remove: async (id: string): Promise<void> => {
-    await deleteOrders([id])
+  remove: async (id: string, companyId: string): Promise<void> => {
+    await deleteOrders([id], companyId)
   },
 
   removeMany: deleteOrders,

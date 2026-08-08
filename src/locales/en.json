@@ -446,5 +446,16 @@
     "load": "Could not load data.",
     "save": "Could not save changes.",
     "delete": "Could not delete."
+  },
+  "org": {
+    "switch": "Organization",
+    "mine": "My organization",
+    "invited": "Invited",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "member": "Member",
+      "viewer": "Viewer"
+    }
   }
 }
