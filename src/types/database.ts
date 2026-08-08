@@ -40,6 +40,33 @@ export interface Membership {
   created_at: string
 }
 
+// An outstanding invitation to join a company. `token` is the credential in
+// the invite link, so it is generated server-side and only ever readable by
+// someone who already administers the company.
+export interface Invitation {
+  id: string
+  company_id: string
+  email: string
+  role: Exclude<MembershipRole, 'owner'> // ownership is transferred, not invited
+  token: string
+  invited_by: string | null
+  created_at: string
+  expires_at: string
+  accepted_at: string | null
+  accepted_by: string | null
+  revoked_at: string | null
+}
+
+// One row of the members screen: the membership joined to the identity behind
+// it, which the client cannot read from auth.users directly.
+export interface CompanyMember {
+  user_id: string
+  email: string
+  full_name: string | null
+  role: MembershipRole
+  created_at: string
+}
+
 export interface Brand {
   id: string
   company_id: string

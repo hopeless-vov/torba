@@ -75,8 +75,13 @@ async function logout() {
             {{ companyName }}
           </p>
         </div>
-        <Badge tone="accent">
-          {{ t('profile.owner') }}
+        <!-- The role is per-organization now, so it has to be read rather
+             than assumed: an invited user is not the owner of what they see. -->
+        <Badge
+          v-if="auth.role"
+          tone="accent"
+        >
+          {{ t(`org.roles.${auth.role}`) }}
         </Badge>
       </div>
 

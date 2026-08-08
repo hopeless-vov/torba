@@ -56,7 +56,8 @@ Apply **all files, in order**:
   `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`,
   `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`,
   `0008_product_currency.sql`, `0009_drop_paid_status.sql`,
-  `0010_lock_profile_identity.sql`, `0011_memberships.sql`.
+  `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
+  `0012_invitations.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -79,6 +80,25 @@ sit in different organizations and switching writes nothing to the database.
 Roles (`owner` > `admin` > `member` > `viewer`, compared with `has_min_role()`)
 are recorded but **not yet enforced**; granting access and restricting it are
 separate migrations so they can be rolled back separately.
+
+**`0012` adds invitations, on the **Members** page (**/members**).** Supabase's
+own `inviteUserByEmail()` needs the `service_role` key, which cannot live in a
+browser bundle, so invitations are a table plus an opaque token: an owner or
+admin creates one for an email address and a role, copies the link
+(`/invite/<token>`) and sends it through whatever channel they already use —
+**the app sends no email**. The link is valid for 14 days and only works for
+the address it was issued to, checked against the recipient's verified email,
+so a leaked link is useless to anyone else. Accepting adds the membership and
+drops the user straight into that organization; they keep their own company and
+switch between the two from the sidebar. `/invite/:token` is a public route
+because the recipient may still need to sign up.
+
+Membership is never writable from the client. The `memberships` and
+`invitations` tables grant no `INSERT`/`UPDATE`/`DELETE` at all — creating,
+accepting, revoking, re-roling and removing all go through `SECURITY DEFINER`
+functions that re-check the caller's role, so a client that talked to PostgREST
+directly could not invite or promote itself. Only an owner can create another
+owner, and the last owner of a company cannot be demoted or removed.
 
 **Categories depend on brands.** `brand_categories` is a many-to-many link: each
 brand exposes its own set of categories, so the product form and the catalog filter

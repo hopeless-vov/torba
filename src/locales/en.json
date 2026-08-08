@@ -41,7 +41,8 @@
     "cart": "Cart",
     "currency": "Display currency",
     "theme": "Theme",
-    "menu": "Menu"
+    "menu": "Menu",
+    "members": "Members"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -457,5 +458,47 @@
       "member": "Member",
       "viewer": "Viewer"
     }
+  },
+  "members": {
+    "title": "Members",
+    "subtitle": "Who has access to this organization",
+    "inviteTitle": "Invite a member",
+    "inviteHint": "Create a link and send it yourself — the system does not send email.",
+    "email": "Email",
+    "emailPlaceholder": "people@example.com",
+    "role": "Role",
+    "invite": "Create invitation",
+    "linkTitle": "Invitation link",
+    "linkHint": "Valid for 14 days. Works only for the address it was issued to.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "pending": "Pending",
+    "pendingEmpty": "No pending invitations",
+    "revoke": "Revoke",
+    "revoked": "Invitation revoked",
+    "invited": "Invitation created",
+    "remove": "Remove",
+    "removeConfirm": "Remove this member from the organization?",
+    "leave": "Leave organization",
+    "leaveConfirm": "Leave this organization? You will lose access to its data.",
+    "readOnly": "Read-only — only an owner or admin can manage members.",
+    "errors": {
+      "alreadyMember": "This person is already in the organization",
+      "invalidEmail": "Invalid email address",
+      "forbidden": "Not enough permissions",
+      "lastOwner": "An organization must keep at least one owner"
+    },
+    "youSuffix": " · you",
+    "pendingMeta": "{role} · valid until {date}"
+  },
+  "invite": {
+    "title": "Organization invitation",
+    "checking": "Checking the invitation…",
+    "signInFirst": "Sign in with the email the invitation was sent to.",
+    "signIn": "Sign in",
+    "accept": "Join",
+    "accepted": "You have joined the organization",
+    "invalid": "This invitation is invalid, expired, or meant for someone else.",
+    "backHome": "Go home"
   }
 }

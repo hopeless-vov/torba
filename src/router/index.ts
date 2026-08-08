@@ -16,6 +16,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/ResetPasswordView.vue'),
   },
   {
+    // Public: the recipient may not have an account yet, so they have to be
+    // able to land here, sign up, and come back to the same link.
+    path: '/invite/:token',
+    name: 'invite',
+    meta: { public: true },
+    component: () => import('@/views/InviteAcceptView.vue'),
+  },
+  {
     path: '/',
     component: () => import('@/components/AppLayout.vue'),
     children: [
@@ -26,6 +34,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'orders', name: 'orders', component: () => import('@/views/OrdersView.vue') },
       { path: 'rates', name: 'rates', component: () => import('@/views/RatesView.vue') },
       { path: 'links', name: 'links', component: () => import('@/views/LinksView.vue') },
+      { path: 'members', name: 'members', component: () => import('@/views/MembersView.vue') },
       { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue') },
       {
         path: ':pathMatch(.*)*',
