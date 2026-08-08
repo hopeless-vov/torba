@@ -144,9 +144,11 @@ async function logout() {
         <Button
           type="submit"
           variant="primary"
+          icon="fa-solid fa-plus"
           :disabled="!newPayment.trim()"
+          :title="t('profile.addPayment')"
         >
-          {{ t('profile.addPayment') }}
+          <span class="hidden sm:inline">{{ t('profile.addPayment') }}</span>
         </Button>
       </form>
 

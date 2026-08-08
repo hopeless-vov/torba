@@ -305,8 +305,8 @@ See [`CLAUDE.md`](CLAUDE.md) for the full list. In short:
 Reusable presentational components in [`src/components/ui/`](src/components/ui),
 composed across every screen: `Button`, `TextInput`, `NumberInput`, `Select`,
 `Combobox`, `Checkbox`, `Tabs`, `Badge`, `Tag`, `Card`, `StatCard`, `DataTable`,
-`Modal`, `ConfirmDialog`, `Drawer`, `DropdownMenu`, `Avatar`, `EmptyState`,
-`Spinner`, `Toast`, `Icon`.
+`Modal`, `ConfirmDialog`, `Drawer`, `DropdownMenu`, `FilterSheet`, `Avatar`,
+`EmptyState`, `Spinner`, `Toast`, `Icon`.
 
 Two of them carry most of the interaction weight:
 
@@ -354,6 +354,19 @@ Two breakpoints carry the whole app down to a phone:
 - **`md` (768px)** — below it, every `DataTable` (Catalog, Orders, Warehouse,
   Dashboard) switches from the table to a card list (see the UI Kit section
   above). `ClientsView` was already a responsive card grid and needed nothing.
+
+Below `md` a page's filters collapse behind one button that opens them in a
+sheet (`FilterSheet`), badged with how many are actually narrowing the list;
+search keeps its own full-width row, and add/import actions drop their labels
+(the text stays as `title`, so the accessible name survives). `Tabs` scrolls
+horizontally rather than clipping, so a long status strip never hides its last
+option.
+
+⚠️ Passing `hidden lg:*` **directly to a component whose root sets its own
+display** (`Tabs`, `Button`) does not work: between two display utilities of
+equal specificity CSS source order decides, and the component's own
+`inline-flex` wins. Wrap it in a plain element instead — see `AppTopbar`'s
+language strip.
 
 Floating panels (`Combobox`, `DropdownMenu`) use
 [`use-popover-position`](src/composables/use-popover-position.ts) to flip
