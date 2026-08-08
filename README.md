@@ -42,7 +42,8 @@ Both come from your Supabase project → **Project Settings → API**.
 ### Database schema
 
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
-trigger, a self-heal bootstrap RPC, the atomic `create_order` / `delete_orders`
+trigger, the profile-identity lockdown, a self-heal bootstrap RPC, the atomic
+`create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, user-defined
 currencies, an order-level discount, the supplier/market rate split, per-product
 price currencies, and the brand↔category links) lives in
@@ -54,7 +55,18 @@ Apply **all files, in order**:
   `0001_init.sql`, `0002_bootstrap_and_orders.sql`, `0003_client_discount.sql`,
   `0004_addresses_currencies_backorder.sql`, `0005_order_discount.sql`,
   `0006_supplier_rates_functional_currency.sql`, `0007_brand_categories.sql`,
-  `0008_product_currency.sql`, `0009_drop_paid_status.sql`.
+  `0008_product_currency.sql`, `0009_drop_paid_status.sql`,
+  `0010_lock_profile_identity.sql`.
+
+**`0010` is a security fix — apply it before letting anyone else sign up.**
+Tenant isolation resolves through `current_company_id()`, which reads
+`profiles.company_id`; the original `profiles_update` policy pinned only the row
+id, so a user could repoint their own profile at another company and inherit
+full access to it (and grant themselves `role = 'owner'` the same way). The
+identity columns are now immutable from the API — `authenticated` holds
+`UPDATE (full_name)` only, with a trigger backstop — and `next_order_number`
+lost its default `PUBLIC` execute grant, which had leaked any company's order
+volume to any signed-in user.
 
 **Categories depend on brands.** `brand_categories` is a many-to-many link: each
 brand exposes its own set of categories, so the product form and the catalog filter
