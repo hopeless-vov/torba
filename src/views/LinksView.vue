@@ -214,7 +214,12 @@ const confirmMessage = computed(() =>
                 {{ t('links.categoriesForHint') }}
               </div>
             </div>
-            <div class="flex shrink-0 gap-2">
+            <!-- Bulk linking is a write, same as toggling a single category:
+                 admin and above only. -->
+            <div
+              v-if="canConfigure"
+              class="flex shrink-0 gap-2"
+            >
               <Button
                 size="sm"
                 :disabled="reference.categories.length === 0"

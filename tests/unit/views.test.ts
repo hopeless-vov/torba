@@ -326,9 +326,12 @@ describe('LinksView', () => {
 
   // Links sit at canConfigure (admin+), not canTrade — a plain member can
   // sell but must not be able to unlink a brand from a category or delete it.
-  it('hides brand and category delete buttons from a member', () => {
+  // The bulk mark-all/clear pair writes the same links, so it goes too.
+  it('hides brand/category delete and the bulk link buttons from a member', () => {
     const wrapper = render(LinksView, 'member')
     expect(wrapper.findAll('button').find((b) => b.attributes('title') === uk.common.delete)).toBeUndefined()
+    expect(wrapper.text()).not.toContain(uk.links.markAll)
+    expect(wrapper.text()).not.toContain(uk.links.clear)
   })
 })
 
