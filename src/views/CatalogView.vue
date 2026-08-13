@@ -142,8 +142,9 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
 <template>
   <div class="flex flex-col gap-4 p-6">
     <!-- Toolbar: search stays out (it is the most-used control), the rest
-         collapses into a sheet below md. -->
-    <div class="flex flex-wrap items-center gap-3">
+         collapses into a sheet below md. items-end keeps the labelled filters
+         on the same baseline as the unlabelled search box. -->
+    <div class="flex flex-wrap items-end gap-3">
       <div class="w-full md:w-64">
         <TextInput
           v-model="search"

@@ -186,7 +186,10 @@ async function deleteSelected() {
 
 <template>
   <div class="flex flex-col gap-4 p-6">
-    <div class="flex flex-wrap items-center gap-3">
+    <!-- items-end, not items-center: the filter sheet's controls carry labels
+         that sit above the input, so centring them leaves the labelled and
+         unlabelled controls on different baselines. -->
+    <div class="flex flex-wrap items-end gap-3">
       <Tabs
         v-model="view"
         :tabs="viewTabs"
