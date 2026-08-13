@@ -14,6 +14,8 @@ export interface MenuItem<V extends string = string> {
 
 const props = defineProps<{
   items: MenuItem<V>[]
+  /** Small caption above the list, naming what the items are. */
+  heading?: string
 }>()
 
 const emit = defineEmits<{ select: [value: V] }>()
@@ -22,7 +24,10 @@ const triggerRef = ref<HTMLElement | null>(null)
 const menuRef = ref<HTMLElement | null>(null)
 const open = ref(false)
 
-const { vertical, right, windowWidth } = usePopoverPosition(triggerRef, () => props.items.length * 36 + 24)
+const { vertical, right, windowWidth } = usePopoverPosition(
+  triggerRef,
+  () => props.items.length * 36 + 24 + (props.heading ? 24 : 0),
+)
 const position = computed(() => ({
   ...vertical.value,
   right: `${windowWidth.value - right.value}px`,
@@ -64,6 +69,12 @@ function pick(item: MenuItem<V>) {
         :exit="{ opacity: 0, scale: 0.96 }"
         :transition="{ duration: 0.12 }"
       >
+        <p
+          v-if="heading"
+          class="px-2.5 pt-1.5 pb-1 text-xs font-medium tracking-wide text-faint"
+        >
+          {{ heading }}
+        </p>
         <button
           v-for="item in items"
           :key="item.value"

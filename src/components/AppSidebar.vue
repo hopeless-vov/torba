@@ -85,13 +85,9 @@ async function logout() {
     class="fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 -translate-x-full flex-col border-r border-line bg-panel transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0"
     :class="ui.sidebarOpen && 'translate-x-0'"
   >
-    <div class="flex items-center gap-2.5 px-5 py-5">
-      <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-on-accent">
-        <Icon
-          icon="fa-solid fa-bag-shopping"
-          size="sm"
-        />
-      </span>
+    <!-- The brand tile lives inside OrgSwitcher, so the tile, name and role
+         are one target rather than a logo sitting beside a separate button. -->
+    <div class="flex items-center gap-1 px-3.5 py-5">
       <OrgSwitcher />
       <button
         type="button"
