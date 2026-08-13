@@ -458,6 +458,12 @@
       "admin": "Admin",
       "member": "Member",
       "viewer": "Viewer"
+    },
+    "roleHints": {
+      "owner": "Full access. Changes the company name and currency, and grants or removes any role, including other owners.",
+      "admin": "Everything a member can do, plus brands, categories, links, payment methods, currencies and rates. Invites people and changes their roles.",
+      "member": "Day-to-day work: creates, edits and deletes products, batches, clients and orders. Not reference data or members.",
+      "viewer": "Read-only. Sees everything, changes nothing."
     }
   },
   "members": {
@@ -489,6 +495,8 @@
       "forbidden": "Not enough permissions",
       "lastOwner": "An organization must keep at least one owner"
     },
+    "rolesTitle": "What the roles mean",
+    "rolesHint": "Permissions apply to this organization. You may hold a different role in another.",
     "youSuffix": " · you",
     "pendingMeta": "{role} · valid until {date}"
   },

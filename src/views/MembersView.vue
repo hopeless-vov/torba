@@ -44,6 +44,10 @@ const roleOptions = computed(() =>
 // never handed out in an invitation.
 const invitableRoles = computed(() => roleOptions.value.filter((o) => o.value !== 'owner'))
 
+// The legend is for everyone, including a viewer who cannot manage anyone:
+// the roles are the first thing a new user has no way to guess.
+const ROLE_ORDER: MembershipRole[] = ['owner', 'admin', 'member', 'viewer']
+
 function roleTone(r: MembershipRole) {
   if (r === 'owner') return 'accent'
   if (r === 'admin') return 'info'
@@ -107,60 +111,89 @@ async function confirmRemoval() {
     </header>
 
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_22rem]">
-      <!-- Members -->
-      <section class="flex flex-col rounded-xl border border-line bg-panel">
-        <ul class="flex flex-col divide-y divide-line-soft">
-          <li
-            v-for="member in members"
-            :key="member.user_id"
-            class="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5"
-          >
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-fg">
-                {{ member.full_name || member.email }}
-                <span
-                  v-if="isSelf(member)"
-                  class="text-xs font-normal text-faint"
-                >{{ t('members.youSuffix') }}</span>
-              </p>
-              <p class="truncate font-mono text-xs text-faint">
-                {{ member.email }}
-              </p>
-            </div>
-
-            <Select
-              v-if="canEdit(member)"
-              :model-value="member.role"
-              :options="roleOptions"
-              size="sm"
-              class="w-40"
-              @update:model-value="setRole(member.user_id, $event as MembershipRole)"
-            />
-            <Badge
-              v-else
-              :tone="roleTone(member.role)"
+      <div class="flex min-w-0 flex-col gap-5">
+        <!-- Members -->
+        <section class="flex flex-col rounded-xl border border-line bg-panel">
+          <ul class="flex flex-col divide-y divide-line-soft">
+            <li
+              v-for="member in members"
+              :key="member.user_id"
+              class="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5"
             >
-              {{ t(`org.roles.${member.role}`) }}
-            </Badge>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-fg">
+                  {{ member.full_name || member.email }}
+                  <span
+                    v-if="isSelf(member)"
+                    class="text-xs font-normal text-faint"
+                  >{{ t('members.youSuffix') }}</span>
+                </p>
+                <p class="truncate font-mono text-xs text-faint">
+                  {{ member.email }}
+                </p>
+              </div>
 
-            <Button
-              v-if="canEdit(member) || isSelf(member)"
-              variant="ghost"
-              size="sm"
-              icon="fa-solid fa-trash"
-              :title="isSelf(member) ? t('members.leave') : t('members.remove')"
-              @click="pendingRemoval = member"
-            />
-          </li>
-        </ul>
+              <Select
+                v-if="canEdit(member)"
+                :model-value="member.role"
+                :options="roleOptions"
+                size="sm"
+                class="w-40"
+                @update:model-value="setRole(member.user_id, $event as MembershipRole)"
+              />
+              <Badge
+                v-else
+                :tone="roleTone(member.role)"
+              >
+                {{ t(`org.roles.${member.role}`) }}
+              </Badge>
 
-        <p
-          v-if="!canManage"
-          class="border-t border-line-soft px-4 py-3 text-xs text-faint sm:px-5"
-        >
-          {{ t('members.readOnly') }}
-        </p>
-      </section>
+              <Button
+                v-if="canEdit(member) || isSelf(member)"
+                variant="ghost"
+                size="sm"
+                icon="fa-solid fa-trash"
+                :title="isSelf(member) ? t('members.leave') : t('members.remove')"
+                @click="pendingRemoval = member"
+              />
+            </li>
+          </ul>
+
+          <p
+            v-if="!canManage"
+            class="border-t border-line-soft px-4 py-3 text-xs text-faint sm:px-5"
+          >
+            {{ t('members.readOnly') }}
+          </p>
+        </section>
+
+        <!-- What the roles actually mean. Shown to every role: the badge on
+             your own row is meaningless until you know what it grants. -->
+        <section class="flex flex-col rounded-xl border border-line bg-panel p-4 sm:p-5">
+          <h2 class="text-sm font-semibold text-fg">
+            {{ t('members.rolesTitle') }}
+          </h2>
+          <p class="mt-1 text-xs text-muted">
+            {{ t('members.rolesHint') }}
+          </p>
+          <dl class="mt-4 flex flex-col gap-3">
+            <div
+              v-for="r in ROLE_ORDER"
+              :key="r"
+              class="flex flex-col gap-1 sm:flex-row sm:gap-3"
+            >
+              <dt class="sm:w-32 sm:shrink-0">
+                <Badge :tone="roleTone(r)">
+                  {{ t(`org.roles.${r}`) }}
+                </Badge>
+              </dt>
+              <dd class="text-xs leading-relaxed text-muted">
+                {{ t(`org.roleHints.${r}`) }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
 
       <!-- Invite + pending -->
       <div
