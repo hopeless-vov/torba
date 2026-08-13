@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from '@/components/ui/Button.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import Icon from '@/components/ui/Icon.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useAuth } from '@/composables/use-auth'
@@ -22,10 +23,14 @@ const email = ref('')
 const password = ref('')
 const fullName = ref('')
 const companyName = ref('')
+// Only asked for on sign-up; signing in again does not re-prompt.
+const acceptedTerms = ref(false)
 
 const isRegister = computed(() => mode.value === 'register')
 
 function submit() {
+  // The button is disabled without it, but Enter in a field can still submit.
+  if (isRegister.value && !acceptedTerms.value) return
   if (isRegister.value) {
     signUp(email.value, password.value, { fullName: fullName.value, companyName: companyName.value })
   } else {
@@ -120,6 +125,30 @@ function switchMode() {
           </template>
         </TextInput>
 
+        <!-- The link opens in a new tab so a half-filled form is not lost,
+             and stops the click from toggling the wrapping label. -->
+        <Checkbox
+          v-if="isRegister"
+          v-model="acceptedTerms"
+        >
+          <i18n-t
+            keypath="terms.accept"
+            scope="global"
+          >
+            <template #link>
+              <RouterLink
+                :to="{ name: 'terms' }"
+                target="_blank"
+                class="text-accent underline underline-offset-2 hover:opacity-80"
+                :title="t('terms.openInNew')"
+                @click.stop
+              >
+                {{ t('terms.acceptLink') }}
+              </RouterLink>
+            </template>
+          </i18n-t>
+        </Checkbox>
+
         <p
           v-if="error"
           class="text-sm text-danger"
@@ -139,6 +168,7 @@ function switchMode() {
           size="lg"
           block
           :loading="loading"
+          :disabled="isRegister && !acceptedTerms"
         >
           <template v-if="isRegister">
             {{ loading ? t('auth.creating') : t('auth.createAccount') }}

@@ -18,6 +18,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/ResetPasswordView.vue'),
   },
   {
+    // Public: the sign-up form links here, so it has to be readable before
+    // the visitor has an account to accept anything with.
+    path: '/terms',
+    name: 'terms',
+    meta: { public: true },
+    component: () => import('@/views/TermsView.vue'),
+  },
+  {
     // Public: the recipient may not have an account yet, so they have to be
     // able to land here, sign up, and come back to the same link.
     path: '/invite/:token',

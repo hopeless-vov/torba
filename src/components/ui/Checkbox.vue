@@ -18,6 +18,11 @@ withDefaults(
   },
 )
 
+// The slot is for a label that is more than text — a link to the terms, say.
+// Anything interactive inside it should stop propagation, or clicking it also
+// toggles the box through the wrapping <label>.
+defineSlots<{ default?(): unknown }>()
+
 const model = defineModel<boolean>({ default: false })
 const id = useId()
 </script>
@@ -51,7 +56,11 @@ const id = useId()
       />
     </span>
     <span
-      v-if="label"
+      v-if="$slots.default"
+      class="text-sm text-muted"
+    ><slot /></span>
+    <span
+      v-else-if="label"
       class="text-sm text-muted"
     >{{ label }}</span>
   </label>

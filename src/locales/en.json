@@ -516,5 +516,49 @@
     "expired": "This invitation has expired.",
     "used": "This invitation has already been used.",
     "backHome": "Go home"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "subtitle": "The rules for using this service",
+    "updated": "Version of 13 August 2026",
+    "draftNotice": "This is a template, not a lawyer-reviewed document. Before launching publicly, replace the contact and company details with your own and have it reviewed.",
+    "back": "Back",
+    "accept": "I accept the {link}",
+    "acceptLink": "terms of service",
+    "openInNew": "Open the terms in a new tab",
+    "sections": {
+      "service": {
+        "title": "1. What this service is",
+        "body": "The service is a tool for tracking products, stock, clients and orders for your organization. It is provided as is: we do not guarantee it fits your particular business process."
+      },
+      "account": {
+        "title": "2. Account and access",
+        "body": "You are responsible for keeping your password safe and for anything done under your account. Access to an organization is granted by its owner or an administrator and can be revoked at any time. One account belongs to one person; do not share your credentials."
+      },
+      "data": {
+        "title": "3. Your data",
+        "body": "The data you enter belongs to you. We process it only to make the service work and do not sell it to third parties. Data is stored with our hosting provider; deleting an organization also deletes the records tied to it."
+      },
+      "acceptable": {
+        "title": "4. Acceptable use",
+        "body": "Do not use the service for unlawful activity, do not attempt to reach organizations you were not invited to, do not load the system with automated requests, and do not try to work around the role restrictions."
+      },
+      "availability": {
+        "title": "5. Availability",
+        "body": "We aim to keep the service running continuously but do not guarantee it. Planned updates and provider outages happen. Keep your own backups of business-critical data."
+      },
+      "liability": {
+        "title": "6. Liability",
+        "body": "The service is provided without warranties. To the extent permitted by law, we are not liable for lost profit, downtime or data loss arising from use of the service."
+      },
+      "changes": {
+        "title": "7. Changes to these terms",
+        "body": "We may change these terms. We will announce material changes in the app. Continuing to use the service after a change takes effect means you accept it."
+      },
+      "contact": {
+        "title": "8. Contact",
+        "body": "For questions about these terms, contact the owner of your organization or the service operator using the details published on the site."
+      }
+    }
   }
 }
