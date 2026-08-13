@@ -106,6 +106,18 @@
       "remaining": "Stock",
       "expiry": "Expiry",
       "status": "Status"
+    },
+    "trend": {
+      "title": "Revenue by month",
+      "subtitle": "last 6 months",
+      "cost": "Cost",
+      "profit": "Profit",
+      "empty": "No orders in this period yet"
+    },
+    "stock": {
+      "title": "Stock by expiry",
+      "subtitle": "units on hand",
+      "empty": "Nothing in stock"
     }
   },
   "catalog": {

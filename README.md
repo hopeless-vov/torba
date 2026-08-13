@@ -376,7 +376,7 @@ src/
                            use-locale, use-toast, use-popover-position,
                            use-permissions, use-members, use-invite)
   locales/               → uk.json (default) + en.json
-  router/                → routes + auth guard
+  router/                → routes + auth guard (meta.public, meta.minRole)
   stores/                → Pinia state (auth, reference, inventory, clients,
                            orders, cart, currency, ui, toast)
   styles/main.css        → Tailwind + theme tokens
@@ -410,7 +410,14 @@ Reusable presentational components in [`src/components/ui/`](src/components/ui),
 composed across every screen: `Button`, `TextInput`, `NumberInput`, `Select`,
 `Combobox`, `Checkbox`, `Tabs`, `Badge`, `Tag`, `Card`, `StatCard`, `DataTable`,
 `Modal`, `ConfirmDialog`, `Drawer`, `DropdownMenu`, `FilterSheet`, `Avatar`,
-`EmptyState`, `Spinner`, `Toast`, `Icon`.
+`EmptyState`, `Spinner`, `Toast`, `Icon`, `TrendBars`, `CompositionBar`.
+
+The two charts are plain HTML — stacked `div`s sized in percentages, coloured
+from the theme tokens, so they flip with light/dark like everything else and
+add no charting dependency. `TrendBars` stacks a period's series into one bar
+(one scale, never a second axis); `CompositionBar` splits a single whole and
+puts the numbers in the legend, so the colours never have to be told apart on
+their own.
 
 Two of them carry most of the interaction weight:
 

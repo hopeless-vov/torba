@@ -18,6 +18,30 @@ export interface BurningRow {
   daysLeft: number | null
 }
 
+/** One month of trade, in the active display currency. */
+export interface MonthTotals {
+  /** 'YYYY-MM' — stable key; the view formats the visible label. */
+  key: string
+  year: number
+  /** 0-indexed, ready for `new Date(year, month)`. */
+  month: number
+  revenue: number
+  cost: number
+  profit: number
+  orders: number
+}
+
+export interface StatusSlice {
+  status: BatchStatus
+  units: number
+  batches: number
+}
+
+/** Worst first: the point of the bar is how much stock is at risk. */
+const STATUS_ORDER: BatchStatus[] = ['expired', 'critical', 'ending', 'almost', 'ok']
+
+const MONTHS_SHOWN = 6
+
 export function useDashboard() {
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
@@ -100,5 +124,55 @@ export function useDashboard() {
       })),
   )
 
-  return { stats, burning }
+  // Trade over the last six months, bucketed by the month the order was
+  // placed. Every order is converted from the currency it was sold in, so the
+  // bars stay comparable when a company sells in more than one.
+  const monthly = computed<MonthTotals[]>(() => {
+    const now = new Date()
+    const buckets = new Map<string, MonthTotals>()
+
+    for (let back = MONTHS_SHOWN - 1; back >= 0; back -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - back, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      buckets.set(key, {
+        key,
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        revenue: 0,
+        cost: 0,
+        profit: 0,
+        orders: 0,
+      })
+    }
+
+    for (const order of orders.orders) {
+      const bucket = buckets.get(order.created_at.slice(0, 7))
+      if (!bucket) continue // older than the window
+      const totals = computeOrderTotals(order.items, order.delivery_cost, order.packaging_cost, order.discount)
+      bucket.revenue += convertBetween(totals.saleTotal, order.currency)
+      bucket.cost += convertBetween(totals.costTotal, order.currency)
+      bucket.profit += convertBetween(totals.profit, order.currency)
+      bucket.orders += 1
+    }
+
+    return [...buckets.values()]
+  })
+
+  // How the units on the shelf split across expiry states. Batches with
+  // nothing left are not stock, so they do not dilute the picture.
+  const stockByStatus = computed<StatusSlice[]>(() => {
+    const slices = new Map<BatchStatus, StatusSlice>(
+      STATUS_ORDER.map((status) => [status, { status, units: 0, batches: 0 }]),
+    )
+    for (const { batch, status } of enriched.value) {
+      if (batch.remaining_qty <= 0) continue
+      const slice = slices.get(status)
+      if (!slice) continue
+      slice.units += batch.remaining_qty
+      slice.batches += 1
+    }
+    return [...slices.values()]
+  })
+
+  return { stats, burning, monthly, stockByStatus }
 }

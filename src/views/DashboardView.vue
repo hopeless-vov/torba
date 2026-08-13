@@ -1,21 +1,66 @@
 <script setup lang="ts">
 import BatchStatusBadge from '@/components/BatchStatusBadge.vue'
+import type { CompositionSlice } from '@/components/ui/CompositionBar.vue'
+import CompositionBar from '@/components/ui/CompositionBar.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
 import StatCard from '@/components/ui/StatCard.vue'
+import type { BarPoint, BarSeries, BarTone } from '@/components/ui/TrendBars.vue'
+import TrendBars from '@/components/ui/TrendBars.vue'
 import { useCurrency } from '@/composables/use-currency'
 import type { BurningRow } from '@/composables/use-dashboard'
 import { useDashboard } from '@/composables/use-dashboard'
 import { useInventoryStore } from '@/stores/inventory'
+import type { BatchStatus } from '@/types/models'
 import { formatDate } from '@/utils/format'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const { format } = useCurrency()
 const inventory = useInventoryStore()
-const { stats, burning } = useDashboard()
+const { stats, burning, monthly, stockByStatus } = useDashboard()
+
+// Revenue splits into what the goods cost and what was left over, so the two
+// segments stack to the bar's full height instead of competing on two scales.
+const trendSeries = computed<BarSeries[]>(() => [
+  { key: 'cost', label: t('dashboard.trend.cost'), tone: 'neutral' },
+  { key: 'profit', label: t('dashboard.trend.profit'), tone: 'accent' },
+])
+
+const trendPoints = computed<BarPoint[]>(() => {
+  const month = new Intl.DateTimeFormat(locale.value, { month: 'short' })
+  return monthly.value.map((m) => ({
+    key: m.key,
+    label: month.format(new Date(m.year, m.month, 1)),
+    values: { cost: m.cost, profit: m.profit },
+    total: m.revenue,
+  }))
+})
+
+// The same tones the batch badges use, so a colour means the same thing on
+// the dashboard as it does in the warehouse table.
+const STATUS_TONE: Record<BatchStatus, BarTone> = {
+  expired: 'neutral',
+  critical: 'danger',
+  ending: 'warn',
+  almost: 'info',
+  ok: 'accent',
+}
+
+const stockSlices = computed<CompositionSlice[]>(() =>
+  stockByStatus.value.map((s) => ({
+    key: s.status,
+    label: t(`status.batch.${s.status}`),
+    value: s.units,
+    tone: STATUS_TONE[s.status],
+  })),
+)
+
+function units(value: number) {
+  return `${value} ${t('common.pcs')}`
+}
 
 const columns = computed<Column[]>(() => [
   { key: 'name', label: t('dashboard.cols.product'), card: 'title' },
@@ -57,6 +102,37 @@ const columns = computed<Column[]>(() => [
         tone="accent"
         :hint="t('dashboard.kpi.profitHint', { count: stats.ordersCount })"
       />
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
+      <section class="flex flex-col gap-4 rounded-xl border border-line bg-panel p-5">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-sm font-semibold text-fg">
+            {{ t('dashboard.trend.title') }}
+          </h2>
+          <span class="text-xs text-faint">{{ t('dashboard.trend.subtitle') }}</span>
+        </div>
+        <TrendBars
+          :points="trendPoints"
+          :series="trendSeries"
+          :format-value="format"
+          :empty-text="t('dashboard.trend.empty')"
+        />
+      </section>
+
+      <section class="flex flex-col gap-4 rounded-xl border border-line bg-panel p-5">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-sm font-semibold text-fg">
+            {{ t('dashboard.stock.title') }}
+          </h2>
+          <span class="text-xs text-faint">{{ t('dashboard.stock.subtitle') }}</span>
+        </div>
+        <CompositionBar
+          :slices="stockSlices"
+          :format-value="units"
+          :empty-text="t('dashboard.stock.empty')"
+        />
+      </section>
     </div>
 
     <div class="rounded-xl border border-line bg-panel">
