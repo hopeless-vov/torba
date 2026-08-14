@@ -391,4 +391,53 @@ describe('CartDrawer', () => {
     const wrapper = mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
     expect(wrapper.text()).not.toContain(uk.cart.checkout)
   })
+
+  // The footer is pinned, so anything parked there is height the product
+  // list never gets. Only the decision itself belongs in it.
+  it('keeps the order settings in the scrolling body, not the footer', () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
+    seedRole()
+    useInventoryStore().products = [product]
+    useClientsStore().clients = [client]
+
+    const cart = useCartStore()
+    cart.toggle(true)
+    cart.addLine({ product, brand, unitPrice: 145, unitCost: 87, qty: 1, stockQty: 5 })
+    mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
+
+    const body = document.querySelector('[data-slot="drawer-body"]')?.textContent ?? ''
+    const footer = document.querySelector('[data-slot="drawer-footer"]')?.textContent ?? ''
+
+    expect(body).toContain(uk.cart.client)
+    expect(body).toContain(uk.cart.payment)
+    expect(footer).not.toContain(uk.cart.client)
+    expect(footer).toContain(uk.cart.checkout)
+  })
+
+  it('lets a line be re-priced and discounted, and offers the catalog price back', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
+    seedRole()
+    useInventoryStore().products = [product]
+    useClientsStore().clients = [client]
+
+    const cart = useCartStore()
+    cart.toggle(true)
+    cart.addLine({ product, brand, unitPrice: 145, unitCost: 87, qty: 1, stockQty: 5 })
+    const wrapper = mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
+
+    expect(document.body.textContent).toContain(uk.cart.unitPrice)
+    // Nothing overridden yet, so no undo is offered.
+    expect(document.body.textContent).not.toContain('повернути ціну')
+
+    cart.setPrice('p1', 200)
+    cart.setDiscount('p1', 10)
+    await wrapper.vm.$nextTick()
+
+    expect(document.body.textContent).toContain('повернути ціну')
+    expect(cart.lines[0].listPrice).toBe(145)
+  })
 })

@@ -447,7 +447,7 @@ function destination(order: OrderView) {
                 class="shrink-0 font-mono text-xs text-faint"
               >{{ item.sku }}</span>
               <span class="shrink-0 font-mono text-xs text-muted tabular-nums">
-                {{ `${item.qty} × ${formatFrom((row as OrderView).currency, item.unit_price)}` }}
+                {{ `${item.qty} × ${formatFrom((row as OrderView).currency, item.unitNet)}` }}
               </span>
               <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
                 {{ formatFrom((row as OrderView).currency, item.lineSale) }}

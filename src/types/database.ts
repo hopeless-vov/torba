@@ -200,8 +200,9 @@ export interface OrderItem {
   product_name: string
   sku: string | null
   qty: number
-  unit_price: number
+  unit_price: number // list price / unit, gross — the line discount is kept separate
   unit_cost: number
+  discount: number // percent (0..100) off this line, before the order discount
   created_at: string
 }
 

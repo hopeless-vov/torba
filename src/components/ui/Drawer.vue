@@ -71,12 +71,19 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
             </button>
           </div>
 
-          <div class="flex-1 overflow-y-auto px-5 py-4">
+          <!-- The footer is pinned, so it costs the body height one-for-one.
+               Keep it to the decision itself; everything the user scrolls
+               through belongs in the body. -->
+          <div
+            data-slot="drawer-body"
+            class="flex-1 overflow-y-auto px-5 py-4"
+          >
             <slot />
           </div>
 
           <div
             v-if="$slots.footer"
+            data-slot="drawer-footer"
             class="border-t border-line-soft px-5 py-4"
           >
             <slot name="footer" />

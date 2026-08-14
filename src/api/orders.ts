@@ -55,6 +55,7 @@ export const ordersApi = {
       qty: number
       unit_price: number
       unit_cost: number
+      discount?: number // percent off this line, before the order discount
     }[]
   }): Promise<string> => {
     const { data, error } = await supabase.rpc('create_order', {

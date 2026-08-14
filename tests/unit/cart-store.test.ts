@@ -98,6 +98,55 @@ describe('cart store', () => {
     expect(cart.lines[0].qty).toBe(5)
   })
 
+  it('remembers the catalog price so an override can be undone', () => {
+    const cart = useCartStore()
+    cart.addLine({ product: productA, brand, unitPrice: 100, unitCost: 60 })
+    cart.setPrice(cart.lines[0].key, 130)
+    expect(cart.lines[0].unitPrice).toBe(130)
+    expect(cart.lines[0].listPrice).toBe(100)
+
+    cart.setPrice(cart.lines[0].key, cart.lines[0].listPrice)
+    expect(cart.lines[0].unitPrice).toBe(100)
+  })
+
+  it('refuses a negative price', () => {
+    const cart = useCartStore()
+    cart.addLine({ product: productA, brand, unitPrice: 100, unitCost: 60 })
+    cart.setPrice(cart.lines[0].key, -20)
+    expect(cart.lines[0].unitPrice).toBe(0)
+  })
+
+  it('holds a discount per line, clamped into 0..100', () => {
+    const cart = useCartStore()
+    cart.addLine({ product: productA, brand, unitPrice: 100, unitCost: 60 })
+    cart.addLine({ product: productB, brand, unitPrice: 50, unitCost: 30 })
+
+    expect(cart.lines.map((l) => l.discount)).toEqual([0, 0])
+
+    cart.setDiscount('p1', 15)
+    cart.setDiscount('p2', 400)
+    expect(cart.lines[0].discount).toBe(15)
+    expect(cart.lines[1].discount).toBe(100)
+
+    cart.setDiscount('p2', -5)
+    expect(cart.lines[1].discount).toBe(0)
+  })
+
+  // Adding the same product again is a quantity change, not a re-quote — a
+  // price the user typed must survive it.
+  it('keeps a price override when the same product is added again', () => {
+    const cart = useCartStore()
+    cart.addLine({ product: productA, brand, unitPrice: 100, unitCost: 60 })
+    cart.setPrice('p1', 80)
+    cart.setDiscount('p1', 10)
+    cart.addLine({ product: productA, brand, unitPrice: 100, unitCost: 60, qty: 2 })
+
+    expect(cart.lines).toHaveLength(1)
+    expect(cart.lines[0].qty).toBe(3)
+    expect(cart.lines[0].unitPrice).toBe(80)
+    expect(cart.lines[0].discount).toBe(10)
+  })
+
   it('clears lines, selections and the discount override', () => {
     const cart = useCartStore()
     cart.addLine({ product: productA, brand, unitPrice: 100, unitCost: 60 })

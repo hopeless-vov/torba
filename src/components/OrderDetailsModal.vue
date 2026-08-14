@@ -77,12 +77,20 @@ function expiryOf(batchId: string | null) {
 const money = computed(() => {
   const order = props.order
   if (!order) return []
-  // Lines are gross; the order discount reduces the sale total, so show the
-  // gross goods and the discount taken off separately.
+  // Both discounts are shown as their own subtraction, so the arithmetic
+  // reads top to bottom: list price, off the lines, off the order.
+  const list = order.items.reduce((sum, i) => sum + i.qty * i.unit_price, 0)
   const gross = order.items.reduce((sum, i) => sum + i.lineSale, 0)
   const rows: { label: string; value: string; muted?: boolean }[] = [
-    { label: t('orders.details.goods'), value: fmt(gross) },
+    { label: t('orders.details.goods'), value: fmt(list) },
   ]
+  if (list > gross) {
+    rows.push({
+      label: t('orders.details.lineDiscounts'),
+      value: `− ${fmt(list - gross)}`,
+      muted: true,
+    })
+  }
   if (order.discount > 0) {
     rows.push({
       label: `${t('orders.edit.discount')} · ${formatPercent(order.discount / 100)}`,
@@ -208,8 +216,24 @@ const money = computed(() => {
               <td class="px-3 py-2.5 text-right font-mono text-sm text-fg tabular-nums">
                 {{ item.qty }}
               </td>
+              <!-- A line sold below list keeps both numbers: what it should
+                   have cost and what it actually went out at. -->
               <td class="px-3 py-2.5 text-right font-mono text-sm text-muted tabular-nums">
-                {{ fmt(item.unit_price) }}
+                <span
+                  v-if="item.discount > 0"
+                  class="flex flex-col items-end gap-0.5"
+                >
+                  <span class="text-faint line-through">{{ fmt(item.unit_price) }}</span>
+                  <span class="flex items-center gap-1.5 text-fg">
+                    {{ fmt(item.unitNet) }}
+                    <span class="rounded bg-warn-soft px-1 py-px font-sans text-xs text-warn">
+                      {{ `−${formatPercent(item.discount / 100)}` }}
+                    </span>
+                  </span>
+                </span>
+                <template v-else>
+                  {{ fmt(item.unit_price) }}
+                </template>
               </td>
               <td class="px-3 py-2.5 text-right font-mono text-sm text-fg tabular-nums">
                 {{ fmt(item.lineSale) }}

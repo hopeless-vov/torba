@@ -5,6 +5,7 @@ import { computed, useId } from 'vue'
 const props = withDefaults(
   defineProps<{
     label?: string
+    hint?: string
     min?: number
     max?: number
     step?: number
@@ -15,6 +16,7 @@ const props = withDefaults(
   }>(),
   {
     label: undefined,
+    hint: undefined,
     min: undefined,
     max: undefined,
     step: 1,
@@ -68,5 +70,11 @@ const inputClass = computed(
         class="shrink-0 text-sm text-faint"
       >{{ suffix }}</span>
     </div>
+    <p
+      v-if="hint"
+      class="text-xs leading-relaxed text-faint"
+    >
+      {{ hint }}
+    </p>
   </div>
 </template>

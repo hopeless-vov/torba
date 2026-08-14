@@ -30,7 +30,8 @@ export interface ClientView extends Client {
 }
 
 export interface OrderItemView extends OrderItem {
-  lineSale: number // qty * unit_price
+  unitNet: number // unit_price after this line's own discount
+  lineSale: number // qty * unitNet
   lineCost: number // qty * unit_cost
 }
 
@@ -53,6 +54,8 @@ export interface CartLine {
   batch: Batch | null // set when selling from a specific warehouse batch
   qty: number
   stockQty: number // what is actually on hand — qty above this ships as a backorder
-  unitPrice: number // sale price / unit, display currency
+  unitPrice: number // sale price / unit, display currency — editable per line
+  listPrice: number // what the catalog said when the line was added, for "reset"
   unitCost: number // purchase cost / unit, display currency
+  discount: number // percent (0..100) off this line, on top of the order discount
 }

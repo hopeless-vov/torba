@@ -45,8 +45,8 @@ The schema (tables, relationships, Row Level Security, the new-user bootstrap
 trigger, the profile-identity lockdown, a self-heal bootstrap RPC, the atomic
 `create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, user-defined
-currencies, an order-level discount, the supplier/market rate split, per-product
-price currencies, and the brand↔category links) lives in
+currencies, order-level and per-line discounts, the supplier/market rate split,
+per-product price currencies, and the brand↔category links) lives in
 [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
@@ -58,7 +58,7 @@ Apply **all files, in order**:
   `0008_product_currency.sql`, `0009_drop_paid_status.sql`,
   `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
-  `0014_invitation_preview.sql`.
+  `0014_invitation_preview.sql`, `0015_order_item_discount.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -135,6 +135,16 @@ the company without touching a single product.
 `SECURITY DEFINER`, so the table policies do not apply inside them — without
 the check a viewer could place and delete orders through the functions while
 being unable to touch the tables directly.
+
+**`0015` gives a single line its own discount.** `0005` discounts the order as
+a whole, which covers "this client gets 10% off everything" but not a clearance
+line, a damaged box or a sweetener on one position. `order_items.discount` is a
+percentage off that line; the two compose rather than compete — the line
+discount reduces the line, the order discount then reduces the total, so a line
+at 20% inside an order at 10% sells at 72% of list and both numbers stay
+literally true. `unit_price` remains the gross list price, so what a line was
+sold *against* is never lost, and the order details screen shows the list
+price struck through next to what it actually went out at.
 
 On the client, `use-permissions` mirrors the same matrix (`canTrade`,
 `canConfigure`, `canManageMembers`, `canAdministerCompany`) and hides controls
@@ -290,7 +300,9 @@ owner can add more (PLN, …) on **/rates**.
 (`order.currency`) and are re-expressed into the active display currency via
 `convertBetween`, so the order list, details, client card and KPI totals all read in
 one currency. A client's agreed discount is applied to sale prices in the cart and can
-be overridden per cart/order. The top bar also carries a UK/EN language toggle.
+be overridden per cart/order, and each cart line can additionally be **re-priced** and
+given **its own discount** (see *Orders & stock*). The top bar also carries a UK/EN
+language toggle.
 
 ---
 
@@ -334,6 +346,21 @@ a line that exceeds what is on hand ships short and the remainder stays a
 **backorder**, which the cart flags per line before checkout. Each cart line names
 the batch (and therefore the expiry date) it draws from and can be switched to
 another one, so two deliveries of the same product are never confused.
+
+Every cart line also carries its **own price and its own discount**. The price
+starts at the catalog retail and can be raised or lowered for this sale; the
+original stays on the line so the override is visible and one click undoes it.
+The line discount is a percentage off that product only and **stacks** with the
+order-level one — 20% on the line inside a 10% order sells at 72% of list. Both
+are stored as they were entered (`order_items.unit_price` gross,
+`order_items.discount` as a percentage, migration `0015`), so the order details
+screen can show the list price struck through beside what the line actually went
+out at, and the totals stay recomputable rather than baked in.
+
+The cart drawer keeps the product picker, the lines and the order settings
+(client, payment method, order discount) in the **scrolling** area; only the
+totals and the checkout button are pinned to the footer, so the footer never
+squeezes the product list out of view.
 
 Deleting an order goes through `delete_orders`, which **returns the goods to their
 batches** before removing it (capped at what each batch was delivered with). Every

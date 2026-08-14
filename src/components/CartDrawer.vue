@@ -28,6 +28,7 @@ const {
   totals,
   discountPct,
   discountModel,
+  lineNet,
   linePrice,
   submitting,
   checkout,
@@ -122,7 +123,7 @@ function batchOptions(line: CartLine) {
         :placeholder="t('cart.pickerSearch')"
       />
 
-      <ul class="max-h-52 overflow-y-auto rounded-lg border border-line-soft">
+      <ul class="max-h-64 overflow-y-auto rounded-lg border border-line-soft">
         <template v-if="pickerTab === 'catalog'">
           <li
             v-for="p in catalogResults"
@@ -211,7 +212,7 @@ function batchOptions(line: CartLine) {
       <li
         v-for="line in cart.lines"
         :key="line.key"
-        class="flex flex-col gap-2 rounded-lg border border-line-soft bg-surface px-3 py-2.5"
+        class="flex flex-col gap-2.5 rounded-lg border border-line-soft bg-surface px-3 py-2.5"
       >
         <div class="flex items-center gap-3">
           <div class="min-w-0 flex-1">
@@ -222,15 +223,7 @@ function batchOptions(line: CartLine) {
               {{ line.product.sku }}
             </p>
           </div>
-          <NumberInput
-            :model-value="line.qty"
-            size="sm"
-            :min="1"
-            align="right"
-            class="w-16"
-            @update:model-value="cart.setQty(line.key, $event ?? 1)"
-          />
-          <span class="w-24 text-right font-mono text-sm text-fg tabular-nums">
+          <span class="text-right font-mono text-sm text-fg tabular-nums">
             {{ format(linePrice(line) * line.qty) }}
           </span>
           <button
@@ -242,6 +235,58 @@ function batchOptions(line: CartLine) {
               icon="fa-solid fa-xmark"
               size="sm"
             />
+          </button>
+        </div>
+
+        <!-- Quantity, the price this line goes out at, and a discount that
+             applies to this product only — on top of the order's. -->
+        <div class="grid grid-cols-3 gap-2">
+          <NumberInput
+            :model-value="line.qty"
+            :label="t('cart.qty')"
+            size="sm"
+            :min="1"
+            align="right"
+            @update:model-value="cart.setQty(line.key, $event ?? 1)"
+          />
+          <NumberInput
+            :model-value="line.unitPrice"
+            :label="t('cart.unitPrice')"
+            size="sm"
+            :min="0"
+            :step="0.01"
+            align="right"
+            @update:model-value="cart.setPrice(line.key, $event ?? 0)"
+          />
+          <NumberInput
+            :model-value="line.discount"
+            :label="t('cart.lineDiscount')"
+            size="sm"
+            :min="0"
+            :max="100"
+            align="right"
+            suffix="%"
+            @update:model-value="cart.setDiscount(line.key, $event ?? 0)"
+          />
+        </div>
+
+        <div
+          v-if="line.discount > 0 || line.unitPrice !== line.listPrice"
+          class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+        >
+          <span
+            v-if="line.discount > 0"
+            class="text-muted"
+          >
+            {{ t('cart.netUnit', { price: format(lineNet(line)) }) }}
+          </span>
+          <button
+            v-if="line.unitPrice !== line.listPrice"
+            type="button"
+            class="cursor-pointer text-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-fg"
+            @click="cart.setPrice(line.key, line.listPrice)"
+          >
+            {{ t('cart.resetPrice', { price: format(line.listPrice) }) }}
           </button>
         </div>
 
@@ -273,41 +318,50 @@ function batchOptions(line: CartLine) {
       </li>
     </ul>
 
+    <!-- Order-wide settings live in the scrolling body, not the footer: the
+         footer is pinned, and anything parked there eats the height the
+         product list needs. -->
+    <section class="mt-5 flex flex-col gap-3 border-t border-line-soft pt-5">
+      <h3 class="text-xs font-medium tracking-wide text-faint uppercase">
+        {{ t('cart.orderSection') }}
+      </h3>
+      <Combobox
+        v-model="clientId"
+        :label="t('cart.client')"
+        :placeholder="t('cart.chooseClient')"
+        :search-placeholder="t('clients.searchPlaceholder')"
+        :empty-text="t('common.noMatches')"
+        :options="clientOptions"
+        clearable
+      />
+      <Combobox
+        v-model="paymentMethod"
+        :label="t('cart.payment')"
+        :placeholder="t('orders.edit.noPayment')"
+        :search-placeholder="t('common.search')"
+        :empty-text="t('common.noMatches')"
+        :options="paymentOptions"
+        :add-label="t('profile.addPayment')"
+        clearable
+        @add="paymentAddOpen = true"
+      />
+
+      <NumberInput
+        v-model="discountModel"
+        :label="t('cart.discount')"
+        :hint="t('cart.discountHint')"
+        :min="0"
+        :max="100"
+        suffix="%"
+      />
+
+      <p class="text-xs text-faint">
+        {{ t('cart.expensesLater') }}
+      </p>
+    </section>
+
     <template #footer>
       <div class="flex flex-col gap-3">
-        <Combobox
-          v-model="clientId"
-          :label="t('cart.client')"
-          :placeholder="t('cart.chooseClient')"
-          :search-placeholder="t('clients.searchPlaceholder')"
-          :empty-text="t('common.noMatches')"
-          :options="clientOptions"
-          clearable
-        />
-        <Combobox
-          v-model="paymentMethod"
-          :label="t('cart.payment')"
-          :placeholder="t('orders.edit.noPayment')"
-          :search-placeholder="t('common.search')"
-          :empty-text="t('common.noMatches')"
-          :options="paymentOptions"
-          :add-label="t('profile.addPayment')"
-          clearable
-          @add="paymentAddOpen = true"
-        />
-
-        <NumberInput
-          v-model="discountModel"
-          :label="t('cart.discount')"
-          :min="0"
-          :max="100"
-          suffix="%"
-        />
-
-        <p class="text-xs text-faint">
-          {{ t('cart.expensesLater') }}
-        </p>
-
         <dl class="flex flex-col gap-1.5 rounded-lg border border-line-soft bg-surface p-3 text-sm">
           <div class="flex justify-between">
             <dt class="text-muted">

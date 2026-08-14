@@ -55,8 +55,14 @@ export function useCart() {
     set: (v: number) => (cart.discount = Math.min(100, Math.max(0, v || 0))),
   })
 
+  /** Unit price after this line's own discount, before the order's. */
+  function lineNet(line: CartLine) {
+    return applyDiscount(line.unitPrice, line.discount)
+  }
+
+  /** What the customer actually pays per unit: both discounts, in order. */
   function linePrice(line: CartLine) {
-    return applyDiscount(line.unitPrice, discountPct.value)
+    return applyDiscount(lineNet(line), discountPct.value)
   }
 
   const totals = computed(() =>
@@ -155,8 +161,9 @@ export function useCart() {
         paymentMethod: cart.paymentMethod,
         currency: currency.displayCurrency,
         discount: discountPct.value,
-        // Store gross prices; the order-level discount reduces the total, so
-        // the discount stays visible and editable after the sale.
+        // Store gross prices and both discounts as percentages; the totals are
+        // derived from them, so every reduction stays visible and editable
+        // after the sale instead of being baked into a number.
         items: cart.lines.map((l) => ({
           product_id: l.product.id,
           batch_id: l.batch?.id ?? null,
@@ -165,6 +172,7 @@ export function useCart() {
           qty: l.qty,
           unit_price: l.unitPrice,
           unit_cost: l.unitCost,
+          discount: l.discount,
         })),
       })
       cart.clear()
@@ -185,6 +193,7 @@ export function useCart() {
     totals,
     discountPct,
     discountModel,
+    lineNet,
     linePrice,
     submitting,
     error,

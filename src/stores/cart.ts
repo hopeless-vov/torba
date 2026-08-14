@@ -56,7 +56,9 @@ export const useCartStore = defineStore('cart', () => {
       qty: want,
       stockQty: input.stockQty ?? 0,
       unitPrice: input.unitPrice,
+      listPrice: input.unitPrice,
       unitCost: input.unitCost,
+      discount: 0,
     })
   }
 
@@ -68,6 +70,24 @@ export const useCartStore = defineStore('cart', () => {
       return
     }
     line.qty = qty
+  }
+
+  /**
+   * Sell this line at another price — higher or lower than the catalog says.
+   * `listPrice` keeps the original around so the override stays visible and
+   * revertable, and so it is obvious the change was deliberate.
+   */
+  function setPrice(key: string, price: number) {
+    const line = lines.value.find((l) => l.key === key)
+    if (!line) return
+    line.unitPrice = Math.max(0, price || 0)
+  }
+
+  /** Percentage off this one line, on top of whatever the order gets. */
+  function setDiscount(key: string, pct: number) {
+    const line = lines.value.find((l) => l.key === key)
+    if (!line) return
+    line.discount = Math.min(100, Math.max(0, pct || 0))
   }
 
   /**
@@ -124,6 +144,8 @@ export const useCartStore = defineStore('cart', () => {
     hasBackorder,
     addLine,
     setQty,
+    setPrice,
+    setDiscount,
     setBatch,
     remove,
     clear,

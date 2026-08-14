@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/ui'
 import type { OrderPatch, OrderStatus } from '@/types/database'
 import type { OrderView } from '@/types/models'
 import { computeOrderTotals } from '@/utils/orders'
+import { applyDiscount } from '@/utils/pricing'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -29,11 +30,12 @@ export function useOrders() {
 
   const views = computed<OrderView[]>(() =>
     store.orders.map((o) => {
-      const items = o.items.map((i) => ({
-        ...i,
-        lineSale: i.qty * i.unit_price,
-        lineCost: i.qty * i.unit_cost,
-      }))
+      // Lines carry their own discount; `unitNet` is what one unit actually
+      // went out at, before the order-level discount reduces the total.
+      const items = o.items.map((i) => {
+        const unitNet = applyDiscount(i.unit_price, i.discount ?? 0)
+        return { ...i, unitNet, lineSale: i.qty * unitNet, lineCost: i.qty * i.unit_cost }
+      })
       const totals = computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost, o.discount)
       return {
         ...o,
