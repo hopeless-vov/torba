@@ -446,6 +446,15 @@ add no charting dependency. `TrendBars` stacks a period's series into one bar
 puts the numbers in the legend, so the colours never have to be told apart on
 their own.
 
+The revenue chart takes a **from/to date range**. The bucket width follows from
+how wide the range is rather than being a second thing to choose: up to 45 days
+a column is one day, up to two years one month, beyond that one year. Empty
+periods stay in place so a gap in trade reads as a gap, and once there are more
+columns than labels can fit, only every nth label is drawn — the rest are
+reached by hovering the bar. Dates are compared as `YYYY-MM-DD` strings against
+`created_at`, the same way the orders filter does it, so a timezone offset can
+never move an order into the neighbouring bucket.
+
 Two of them carry most of the interaction weight:
 
 - **`Combobox`** — a `Select` with a filter box and keyboard navigation, and the same

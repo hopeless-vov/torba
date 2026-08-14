@@ -4,11 +4,12 @@ import type { CompositionSlice } from '@/components/ui/CompositionBar.vue'
 import CompositionBar from '@/components/ui/CompositionBar.vue'
 import DataTable, { type Column } from '@/components/ui/DataTable.vue'
 import StatCard from '@/components/ui/StatCard.vue'
+import TextInput from '@/components/ui/TextInput.vue'
 import type { BarPoint, BarSeries, BarTone } from '@/components/ui/TrendBars.vue'
 import TrendBars from '@/components/ui/TrendBars.vue'
 import { useCurrency } from '@/composables/use-currency'
-import type { BurningRow } from '@/composables/use-dashboard'
-import { useDashboard } from '@/composables/use-dashboard'
+import type { BurningRow, Granularity } from '@/composables/use-dashboard'
+import { defaultRange, useDashboard } from '@/composables/use-dashboard'
 import { useInventoryStore } from '@/stores/inventory'
 import type { BatchStatus } from '@/types/models'
 import { formatDate } from '@/utils/format'
@@ -20,7 +21,25 @@ const { t, locale } = useI18n()
 const router = useRouter()
 const { format } = useCurrency()
 const inventory = useInventoryStore()
-const { stats, burning, monthly, stockByStatus } = useDashboard()
+const { stats, burning, range, granularity, resetRange, trend, stockByStatus } = useDashboard()
+
+// Bind each bound separately: `range` is one object, and v-model on a field
+// has to write a new one for the computed chain to notice.
+const from = computed({
+  get: () => range.value.from,
+  set: (v: string) => (range.value = { ...range.value, from: v }),
+})
+const to = computed({
+  get: () => range.value.to,
+  set: (v: string) => (range.value = { ...range.value, to: v }),
+})
+
+const rangeIsDefault = computed(() => {
+  const base = defaultRange()
+  return range.value.from === base.from && range.value.to === base.to
+})
+
+const rangeIsBackwards = computed(() => !!from.value && !!to.value && from.value > to.value)
 
 // Revenue splits into what the goods cost and what was left over, so the two
 // segments stack to the bar's full height instead of competing on two scales.
@@ -29,13 +48,21 @@ const trendSeries = computed<BarSeries[]>(() => [
   { key: 'profit', label: t('dashboard.trend.profit'), tone: 'accent' },
 ])
 
+// The label says what a column *is*, so it follows the bucket width: a day
+// column needs the day, a year column needs only the year.
+const LABEL_FORMAT: Record<Granularity, Intl.DateTimeFormatOptions> = {
+  day: { day: 'numeric', month: 'short' },
+  month: { month: 'short' },
+  year: { year: 'numeric' },
+}
+
 const trendPoints = computed<BarPoint[]>(() => {
-  const month = new Intl.DateTimeFormat(locale.value, { month: 'short' })
-  return monthly.value.map((m) => ({
-    key: m.key,
-    label: month.format(new Date(m.year, m.month, 1)),
-    values: { cost: m.cost, profit: m.profit },
-    total: m.revenue,
+  const label = new Intl.DateTimeFormat(locale.value, LABEL_FORMAT[granularity.value])
+  return trend.value.map((p) => ({
+    key: p.key,
+    label: label.format(new Date(p.year, p.month, p.day)),
+    values: { cost: p.cost, profit: p.profit },
+    total: p.revenue,
   }))
 })
 
@@ -106,13 +133,50 @@ const columns = computed<Column[]>(() => [
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
       <section class="flex flex-col gap-4 rounded-xl border border-line bg-panel p-5">
-        <div class="flex items-baseline gap-2">
-          <h2 class="text-sm font-semibold text-fg">
-            {{ t('dashboard.trend.title') }}
-          </h2>
-          <span class="text-xs text-faint">{{ t('dashboard.trend.subtitle') }}</span>
+        <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+          <div class="flex items-baseline gap-2">
+            <h2 class="text-sm font-semibold text-fg">
+              {{ t('dashboard.trend.title') }}
+            </h2>
+            <span class="text-xs text-faint">
+              {{ t(`dashboard.trend.by.${granularity}`) }}
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-end gap-1.5">
+            <div class="w-36">
+              <TextInput
+                v-model="from"
+                type="date"
+                :label="t('orders.dateFrom')"
+              />
+            </div>
+            <div class="w-36">
+              <TextInput
+                v-model="to"
+                type="date"
+                :label="t('orders.dateTo')"
+              />
+            </div>
+            <button
+              v-if="!rangeIsDefault"
+              type="button"
+              class="flex h-9 shrink-0 cursor-pointer items-center rounded-lg border border-line px-2.5 text-xs text-muted transition-colors hover:border-line-hover hover:text-fg"
+              @click="resetRange"
+            >
+              {{ t('dashboard.trend.reset') }}
+            </button>
+          </div>
         </div>
+
+        <p
+          v-if="rangeIsBackwards"
+          class="py-10 text-center text-sm text-warn"
+        >
+          {{ t('dashboard.trend.backwards') }}
+        </p>
         <TrendBars
+          v-else
           :points="trendPoints"
           :series="trendSeries"
           :format-value="format"

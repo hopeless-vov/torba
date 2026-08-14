@@ -108,8 +108,14 @@
       "status": "Status"
     },
     "trend": {
-      "title": "Revenue by month",
-      "subtitle": "last 6 months",
+      "title": "Revenue",
+      "by": {
+        "day": "by day",
+        "month": "by month",
+        "year": "by year"
+      },
+      "reset": "Last 6 months",
+      "backwards": "The “from” date is later than the “to” date — swap them.",
       "cost": "Cost",
       "profit": "Profit",
       "empty": "No orders in this period yet"

@@ -81,38 +81,115 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('useDashboard monthly', () => {
-  it('always returns six buckets, oldest first, ending on the current month', () => {
+describe('useDashboard trend', () => {
+  it('opens on the last six months, oldest first, ending on the current one', () => {
     const { dashboard } = harness()
-    const keys = dashboard.monthly.value.map((m) => m.key)
-    expect(keys).toEqual(['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'])
+    expect(dashboard.range.value).toEqual({ from: '2026-03-01', to: '2026-08-13' })
+    expect(dashboard.granularity.value).toBe('month')
+    expect(dashboard.trend.value.map((m) => m.key)).toEqual([
+      '2026-03',
+      '2026-04',
+      '2026-05',
+      '2026-06',
+      '2026-07',
+      '2026-08',
+    ])
   })
 
   it('sums revenue, cost and profit into the month the order was placed', () => {
     const { orders, dashboard } = harness()
     orders.orders = [
       order('2026-08-02T10:00:00Z', 2, 100, 60), // revenue 200, cost 120, profit 80
-      order('2026-08-20T10:00:00Z', 1, 50, 20), // revenue 50, cost 20, profit 30
+      order('2026-08-10T10:00:00Z', 1, 50, 20), // revenue 50, cost 20, profit 30
       order('2026-07-01T10:00:00Z', 1, 10, 4),
     ]
 
-    const august = dashboard.monthly.value.at(-1)!
+    const august = dashboard.trend.value.at(-1)!
     expect(august.revenue).toBeCloseTo(250, 4)
     expect(august.cost).toBeCloseTo(140, 4)
     expect(august.profit).toBeCloseTo(110, 4)
     expect(august.orders).toBe(2)
 
-    const july = dashboard.monthly.value.at(-2)!
+    const july = dashboard.trend.value.at(-2)!
     expect(july.revenue).toBeCloseTo(10, 4)
     expect(july.orders).toBe(1)
   })
 
-  // Anything before the window would otherwise land in the first bucket and
+  // Anything outside the window would otherwise land in an edge bucket and
   // silently inflate it.
-  it('ignores orders older than the window', () => {
+  it('ignores orders outside the chosen range', () => {
     const { orders, dashboard } = harness()
-    orders.orders = [order('2024-01-05T10:00:00Z', 5, 100, 10)]
-    expect(dashboard.monthly.value.every((m) => m.orders === 0)).toBe(true)
+    orders.orders = [
+      order('2024-01-05T10:00:00Z', 5, 100, 10), // before
+      order('2026-08-31T10:00:00Z', 5, 100, 10), // after the default `to`
+    ]
+    expect(dashboard.trend.value.every((m) => m.orders === 0)).toBe(true)
+  })
+
+  it('follows a range the user picks', () => {
+    const { orders, dashboard } = harness()
+    orders.orders = [order('2025-04-10T10:00:00Z', 1, 100, 40)]
+    dashboard.range.value = { from: '2025-03-01', to: '2025-05-31' }
+
+    expect(dashboard.trend.value.map((m) => m.key)).toEqual(['2025-03', '2025-04', '2025-05'])
+    expect(dashboard.trend.value[1].orders).toBe(1)
+  })
+
+  // A short window with one bar per month would say almost nothing, so the
+  // columns become days; a very wide one would be unreadable by month.
+  it('picks the bucket width from how wide the range is', () => {
+    const { dashboard } = harness()
+
+    dashboard.range.value = { from: '2026-08-01', to: '2026-08-07' }
+    expect(dashboard.granularity.value).toBe('day')
+    expect(dashboard.trend.value.map((d) => d.key)).toEqual([
+      '2026-08-01',
+      '2026-08-02',
+      '2026-08-03',
+      '2026-08-04',
+      '2026-08-05',
+      '2026-08-06',
+      '2026-08-07',
+    ])
+
+    dashboard.range.value = { from: '2020-01-01', to: '2026-08-13' }
+    expect(dashboard.granularity.value).toBe('year')
+    expect(dashboard.trend.value.map((d) => d.key)).toEqual([
+      '2020',
+      '2021',
+      '2022',
+      '2023',
+      '2024',
+      '2025',
+      '2026',
+    ])
+  })
+
+  // Buckets start at the period boundary even when the range starts mid-way,
+  // so a column always covers a whole month/year.
+  it('snaps the first bucket to the start of its period', () => {
+    const { dashboard } = harness()
+    dashboard.range.value = { from: '2026-01-17', to: '2026-04-02' }
+    expect(dashboard.granularity.value).toBe('month')
+    expect(dashboard.trend.value.map((m) => m.key)).toEqual([
+      '2026-01',
+      '2026-02',
+      '2026-03',
+      '2026-04',
+    ])
+  })
+
+  it('draws nothing when the range runs backwards', () => {
+    const { dashboard } = harness()
+    dashboard.range.value = { from: '2026-08-01', to: '2026-07-01' }
+    expect(dashboard.trend.value).toEqual([])
+  })
+
+  it('goes back to the default six months on reset', () => {
+    const { dashboard } = harness()
+    dashboard.range.value = { from: '2020-01-01', to: '2020-02-01' }
+    dashboard.resetRange()
+    expect(dashboard.range.value).toEqual({ from: '2026-03-01', to: '2026-08-13' })
   })
 })
 

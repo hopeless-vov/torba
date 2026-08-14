@@ -51,6 +51,29 @@ describe('TrendBars', () => {
     expect(wrapper.findAll('[style*="height"]')).toHaveLength(0)
   })
 
+  // A wide date range means many columns; drawing every label would just
+  // produce a smear, so only every nth is written out.
+  it('thins the axis labels once there are too many columns', () => {
+    const many = Array.from({ length: 30 }, (_, i) => point(`d${i}`, 1, 1))
+    const wrapper = mount(TrendBars, {
+      props: { points: many, series, formatValue: money, emptyText: 'empty' },
+    })
+    const labels = wrapper.findAll('[data-slot="axis-label"]').map((n) => n.text())
+    // One slot per column either way — the axis keeps its shape.
+    expect(labels).toHaveLength(30)
+    // 30 columns → every 3rd is written, starting at the first.
+    expect(labels.filter(Boolean)).toEqual(['d0', 'd3', 'd6', 'd9', 'd12', 'd15', 'd18', 'd21', 'd24', 'd27'])
+  })
+
+  it('labels every column while they still fit', () => {
+    const few = Array.from({ length: 6 }, (_, i) => point(`m${i}`, 1, 1))
+    const wrapper = mount(TrendBars, {
+      props: { points: few, series, formatValue: money, emptyText: 'empty' },
+    })
+    const labels = wrapper.findAll('[data-slot="axis-label"]').map((n) => n.text())
+    expect(labels).toEqual(['m0', 'm1', 'm2', 'm3', 'm4', 'm5'])
+  })
+
   it('labels both series in the legend, so colour is never the only cue', () => {
     const wrapper = mount(TrendBars, {
       props: { points: [point('jan', 1, 1)], series, formatValue: money, emptyText: 'empty' },

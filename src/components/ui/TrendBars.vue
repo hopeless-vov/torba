@@ -41,6 +41,16 @@ const FILL: Record<BarTone, string> = {
 const max = computed(() => Math.max(...props.points.map((p) => p.total), 0))
 const isEmpty = computed(() => max.value <= 0)
 
+// A wide range means many columns. The bars themselves stay readable as they
+// thin out, but the labels collide long before that — so past a dozen or so
+// only every nth is drawn, and the rest are reached by hovering.
+const labelEvery = computed(() => Math.max(1, Math.ceil(props.points.length / 12)))
+const dense = computed(() => props.points.length > 14)
+
+function showsLabel(index: number) {
+  return index % labelEvery.value === 0
+}
+
 /** Height of one segment as a percentage of the tallest column. */
 function heightOf(value: number) {
   if (max.value <= 0 || value <= 0) return '0%'
@@ -75,10 +85,11 @@ function heightOf(value: number) {
 
     <div
       v-else
-      class="flex h-44 items-end gap-2 sm:gap-3"
+      class="flex h-44 items-end"
+      :class="dense ? 'gap-0.5' : 'gap-2 sm:gap-3'"
     >
       <div
-        v-for="point in points"
+        v-for="(point, index) in points"
         :key="point.key"
         class="group relative flex h-full min-w-0 flex-1 flex-col justify-end gap-2"
       >
@@ -93,7 +104,12 @@ function heightOf(value: number) {
           />
         </div>
 
-        <span class="shrink-0 truncate text-center text-xs text-faint">{{ point.label }}</span>
+        <span
+          data-slot="axis-label"
+          class="h-4 shrink-0 truncate text-center text-xs text-faint"
+        >
+          {{ showsLabel(index) ? point.label : '' }}
+        </span>
 
         <!-- Hover detail. Pointer-events off so it never eats the hover that
              produced it. -->
