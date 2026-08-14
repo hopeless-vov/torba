@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AppSidebar from '@/components/AppSidebar.vue'
 import AppTopbar from '@/components/AppTopbar.vue'
-import CartDrawer from '@/components/CartDrawer.vue'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
@@ -40,10 +39,9 @@ watch(
   async (companyId, previous) => {
     // A cart holds products, prices and a client from the organization it was
     // filled in; carrying it across a switch would check out one company's
-    // goods against another's stock. The open drawer goes with it.
+    // goods against another's stock.
     if (previous && previous !== companyId) {
       cart.clear()
-      cart.toggle(false)
       ui.setSearch('')
     }
     if (!companyId) return
@@ -75,6 +73,5 @@ watch(
         </RouterView>
       </main>
     </div>
-    <CartDrawer />
   </div>
 </template>

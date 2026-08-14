@@ -221,6 +221,10 @@ const columns = computed<Column[]>(() => [
         :rows="burning"
         row-key="id"
         :loading="inventory.loading"
+        :page-size="8"
+        :prev-label="t('common.prevPage')"
+        :next-label="t('common.nextPage')"
+        max-height="26rem"
       >
         <template #cell-name="{ row }">
           <div class="flex flex-col">

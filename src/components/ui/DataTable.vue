@@ -2,7 +2,7 @@
 import Checkbox from '@/components/ui/Checkbox.vue'
 import Icon from '@/components/ui/Icon.vue'
 import { tv } from 'tailwind-variants'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 export interface Column {
   key: string
@@ -28,6 +28,17 @@ const props = withDefaults(
     selectable?: boolean
     /** Adds a leading chevron column that reveals the `expanded` slot. */
     expandable?: boolean
+    /**
+     * Caps how tall the table may grow (any CSS length). Past it the rows
+     * scroll inside the table and the header sticks, so the toolbar above
+     * and the pager below stay put instead of being scrolled away.
+     */
+    maxHeight?: string
+    /** Rows per page. 0 — the default — puts every row on one page. */
+    pageSize?: number
+    /** Pager button tooltips. Required once `pageSize` is set. */
+    prevLabel?: string
+    nextLabel?: string
   }>(),
   {
     rowKey: 'id',
@@ -35,6 +46,10 @@ const props = withDefaults(
     loading: false,
     selectable: false,
     expandable: false,
+    maxHeight: undefined,
+    pageSize: 0,
+    prevLabel: undefined,
+    nextLabel: undefined,
   },
 )
 
@@ -54,9 +69,40 @@ function keyOf(row: T) {
   return String(row[props.rowKey])
 }
 
-const visibleKeys = computed(() => props.rows.map(keyOf))
+// ── paging ──
+// Kept inside the table: a page is a way of looking at the rows, not a fact
+// about them, so no view has to hold a page number it does not otherwise care
+// about. Filtering happens above and simply hands over a shorter list.
+const page = ref(1)
+
+const pageCount = computed(() =>
+  props.pageSize > 0 ? Math.max(1, Math.ceil(props.rows.length / props.pageSize)) : 1,
+)
+// A narrower filter can leave the current page past the end.
+const currentPage = computed(() => Math.min(page.value, pageCount.value))
+
+const paged = computed(() => {
+  if (props.pageSize <= 0) return props.rows
+  const start = (currentPage.value - 1) * props.pageSize
+  return props.rows.slice(start, start + props.pageSize)
+})
+
+const firstOnPage = computed(() => (currentPage.value - 1) * props.pageSize + 1)
+const lastOnPage = computed(() => Math.min(props.rows.length, currentPage.value * props.pageSize))
+
+watch(pageCount, (count) => {
+  if (page.value > count) page.value = count
+})
+
+function goTo(next: number) {
+  page.value = Math.min(Math.max(1, next), pageCount.value)
+}
+
+// Select-all ticks the page in front of the user, never rows on a page they
+// have not seen — the bulk bar must not act on more than it says.
+const visibleKeys = computed(() => paged.value.map(keyOf))
 const allSelected = computed(
-  () => props.rows.length > 0 && visibleKeys.value.every((k) => selected.value.includes(k)),
+  () => paged.value.length > 0 && visibleKeys.value.every((k) => selected.value.includes(k)),
 )
 const someSelected = computed(() => selected.value.length > 0 && !allSelected.value)
 
@@ -105,9 +151,21 @@ const cell = tv({
 
 <template>
   <div class="w-full">
-    <div class="hidden overflow-x-auto md:block">
+    <div
+      class="hidden overflow-x-auto md:block"
+      :class="maxHeight && 'overflow-y-auto'"
+      :style="maxHeight ? { maxHeight } : undefined"
+    >
       <table class="w-full border-collapse">
-        <thead>
+        <!-- Sticky so a scrolled table still says what its columns are. The
+             opaque background is what keeps the rows from showing through. -->
+        <!-- The rule under a sticky header has to be a shadow: a collapsed
+             table's border belongs to the cell grid, and scrolling takes it
+             with the rows. -->
+        <thead
+          class="bg-panel"
+          :class="maxHeight && 'sticky top-0 z-10 shadow-[inset_0_-1px_0_var(--color-line-soft)]'"
+        >
           <tr class="border-b border-line-soft">
             <th
               v-if="selectable"
@@ -169,7 +227,7 @@ const cell = tv({
 
         <tbody v-else>
           <template
-            v-for="row in rows"
+            v-for="row in paged"
             :key="String(row[rowKey])"
           >
             <tr
@@ -262,9 +320,11 @@ const cell = tv({
     <div
       v-else
       class="flex flex-col divide-y divide-line-soft md:hidden"
+      :class="maxHeight && 'overflow-y-auto'"
+      :style="maxHeight ? { maxHeight } : undefined"
     >
       <div
-        v-for="row in rows"
+        v-for="row in paged"
         :key="String(row[rowKey])"
         class="flex flex-col gap-2.5 p-4"
         :class="[
@@ -352,5 +412,48 @@ const cell = tv({
       v-if="rows.length === 0 && !loading"
       name="empty"
     />
+
+    <!-- Pager. Nothing to say while everything fits on one page, so it only
+         appears once it is doing something. Positions are numerals and read
+         the same in either language; only the two buttons carry words. -->
+    <div
+      v-if="pageCount > 1"
+      data-slot="pagination"
+      class="flex items-center justify-between gap-3 border-t border-line-soft px-4 py-3"
+    >
+      <span class="font-mono text-xs text-faint tabular-nums">
+        {{ `${firstOnPage}–${lastOnPage} / ${rows.length}` }}
+      </span>
+
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          :title="prevLabel"
+          :disabled="currentPage <= 1"
+          class="flex size-8 items-center justify-center rounded-lg border border-line text-muted cursor-pointer transition-colors hover:border-line-hover hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
+          @click="goTo(currentPage - 1)"
+        >
+          <Icon
+            icon="fa-solid fa-chevron-left"
+            size="xs"
+          />
+        </button>
+        <span class="px-2 font-mono text-xs text-muted tabular-nums">
+          {{ `${currentPage} / ${pageCount}` }}
+        </span>
+        <button
+          type="button"
+          :title="nextLabel"
+          :disabled="currentPage >= pageCount"
+          class="flex size-8 items-center justify-center rounded-lg border border-line text-muted cursor-pointer transition-colors hover:border-line-hover hover:text-fg disabled:cursor-not-allowed disabled:opacity-40"
+          @click="goTo(currentPage + 1)"
+        >
+          <Icon
+            icon="fa-solid fa-chevron-right"
+            size="xs"
+          />
+        </button>
+      </div>
+    </div>
   </div>
 </template>

@@ -357,10 +357,18 @@ are stored as they were entered (`order_items.unit_price` gross,
 screen can show the list price struck through beside what the line actually went
 out at, and the totals stay recomputable rather than baked in.
 
-The cart drawer keeps the product picker, the lines and the order settings
-(client, payment method, order discount) in the **scrolling** area; only the
-totals and the checkout button are pinned to the footer, so the footer never
-squeezes the product list out of view.
+**The cart is a page** (`/cart`), not a drawer. The `+` on a catalog or warehouse
+row adds the line and **stays where it is** — a toast confirms what went in and
+the counter in the top bar (and the sidebar link) carries the running total, so
+picking ten products costs ten clicks and no navigation. Going to the cart is
+the user's own move; the page then holds the whole job at once: the product
+picker, the lines, the order settings (client, payment method, order discount)
+and a summary that sticks beside the list on a wide screen. Placing the order
+clears the cart and lands on the order list, where the new order is waiting.
+
+Selling is a **member's** job upwards: a viewer has no cart link in either the
+sidebar or the top bar, `/cart` bounces them to the dashboard, and the checkout
+button is gated on `canTrade` in case a role changes mid-session.
 
 Deleting an order goes through `delete_orders`, which **returns the goods to their
 batches** before removing it (capped at what each batch was delivered with). Every
@@ -471,7 +479,7 @@ Two of them carry most of the interaction weight:
 - **`EmptyState`** — the icon + title + hint shown when a table has no rows. Its
   default slot takes **action buttons**, so every empty screen offers the obvious next
   step: import/new-product on the catalog, new-batch on the warehouse, new-client on
-  clients, open-the-cart on orders (or clear-range when a date filter emptied it).
+  clients, go-to-the-cart on orders (or clear-range when a date filter emptied it).
 - **`DataTable`** — columns in, rows in, one slot per cell. `selectable` adds a
   leading checkbox column with a select-all header (wired to
   [`use-selection`](src/composables/use-selection.ts) and a bulk delete bar),
@@ -481,6 +489,18 @@ Two of them carry most of the interaction weight:
   per-view duplication. One column opts into the card heading via `card: 'title'`
   (falls back to the first column); the conventional `actions` column moves into
   the card's header instead of listing as a row.
+
+  `maxHeight` caps how tall it may grow: past that the rows scroll **inside** the
+  table with the header stuck to the top (as a shadow, not a border — a collapsed
+  table's border scrolls away with the cells), so the toolbar above and the pager
+  below stay in place. `pageSize` pages the rows, and the pager appears only once
+  there is more than one page: positions read as numerals (`1–25 / 120`, `2 / 5`),
+  which need no translation, and only the two arrows carry words, passed in as
+  `prevLabel` / `nextLabel`. Paging is the table's own state — no view holds a page
+  number — and a narrower filter clamps it back rather than stranding the user on an
+  empty page. **Select-all ticks the current page only**, so the bulk bar can never
+  act on rows the user has not seen. Current sizes: 25 (catalog, warehouse), 20
+  (orders), 8 (the dashboard's expiring-stock table).
 
 Search is **per page**, in each toolbar next to that page's filters, with a
 placeholder naming what it matches (orders, for instance, search by number, client,
@@ -539,9 +559,9 @@ parsing**), Pinia stores (cart — including backorders and switching a line's
 batch — and currency), the composable logic (`useCatalog`, `useWarehouse`
 grouping, `useCurrency` conversion, `useSelection`), and the API layer (mocked
 Supabase client). `views.test.ts` mounts Catalog, Warehouse, Orders, Links and the
-cart drawer against seeded stores, so a broken template or missing slot fails in CI
-rather than in the browser. A Playwright smoke test in `tests/e2e/` verifies the
-auth gate.
+cart page against seeded stores, so a broken template or missing slot fails in CI
+rather than in the browser, and `data-table.test.ts` covers paging and the height
+cap on their own. A Playwright smoke test in `tests/e2e/` verifies the auth gate.
 
 ```bash
 npm run test:unit:run   # unit

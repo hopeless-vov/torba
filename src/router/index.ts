@@ -42,6 +42,14 @@ const routes: RouteRecordRaw[] = [
       { path: 'warehouse', name: 'warehouse', component: () => import('@/views/WarehouseView.vue') },
       { path: 'clients', name: 'clients', component: () => import('@/views/ClientsView.vue') },
       { path: 'orders', name: 'orders', component: () => import('@/views/OrdersView.vue') },
+      {
+        // Selling is a member's job upwards; a viewer has no cart at all, so
+        // the link is never offered and the URL bounces to the dashboard.
+        path: 'cart',
+        name: 'cart',
+        meta: { minRole: 'member' },
+        component: () => import('@/views/CartView.vue'),
+      },
       { path: 'rates', name: 'rates', component: () => import('@/views/RatesView.vue') },
       { path: 'links', name: 'links', component: () => import('@/views/LinksView.vue') },
       {

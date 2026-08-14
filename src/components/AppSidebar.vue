@@ -4,6 +4,7 @@ import Avatar from '@/components/ui/Avatar.vue'
 import Icon from '@/components/ui/Icon.vue'
 import { usePermissions } from '@/composables/use-permissions'
 import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
 import { useInventoryStore } from '@/stores/inventory'
 import { useUiStore } from '@/stores/ui'
 import { batchStatus } from '@/utils/batch-status'
@@ -18,8 +19,9 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const inventory = useInventoryStore()
+const cart = useCartStore()
 const ui = useUiStore()
-const { canManageMembers } = usePermissions()
+const { canManageMembers, canTrade } = usePermissions()
 
 // The off-canvas nav (below `lg`) closes on navigation and on Escape — above
 // `lg` the sidebar is always visible and this state has no visual effect.
@@ -36,9 +38,9 @@ const warehouseWarnings = computed(
     }).length,
 )
 
-// Everyone may read every screen except member management, which is an
-// administrator's. A page hidden here is also refused by the route guard, so
-// this only spares lower roles a link they could not act on.
+// Everyone may read every screen except the cart and member management. A
+// page hidden here is also refused by the route guard, so this only spares
+// lower roles a link they could not act on.
 const nav = computed(() =>
   [
     { name: 'dashboard', label: t('nav.dashboard'), icon: 'fa-solid fa-table-cells-large' },
@@ -52,6 +54,13 @@ const nav = computed(() =>
     },
     { name: 'clients', label: t('nav.clients'), icon: 'fa-solid fa-users' },
     { name: 'orders', label: t('nav.orders'), icon: 'fa-solid fa-arrow-right-arrow-left' },
+    {
+      name: 'cart',
+      label: t('nav.cart'),
+      icon: 'fa-solid fa-basket-shopping',
+      count: cart.count || undefined,
+      show: canTrade.value,
+    },
     { name: 'rates', label: t('nav.rates'), icon: 'fa-solid fa-hryvnia-sign' },
     { name: 'links', label: t('nav.links'), icon: 'fa-solid fa-layer-group' },
     { name: 'members', label: t('nav.members'), icon: 'fa-solid fa-users', show: canManageMembers.value },

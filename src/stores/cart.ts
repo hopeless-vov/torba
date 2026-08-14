@@ -7,13 +7,15 @@ import { computed, ref } from 'vue'
 // specific warehouse batch. Prices are held in the current display
 // currency; the order is snapshotted from these at checkout.
 //
+// The cart has no open/closed state: it is a page of its own (`/cart`), so
+// where the user is looking is the router's business, not the store's.
+//
 // Quantity is never capped by stock: anything in the catalog can be sold,
 // and a line above `stockQty` goes out as a backorder (the database draws
-// down what exists and leaves the rest — see migration 0004). The drawer
+// down what exists and leaves the rest — see migration 0004). The cart page
 // flags such lines so the shortfall is visible before checkout.
 export const useCartStore = defineStore('cart', () => {
   const lines = ref<CartLine[]>([])
-  const open = ref(false)
   const clientId = ref<string | null>(null)
   const paymentMethod = ref<string | null>(null)
   // Discount override for this order. `null` = follow the selected client's
@@ -129,13 +131,8 @@ export const useCartStore = defineStore('cart', () => {
     discount.value = null
   }
 
-  function toggle(next?: boolean) {
-    open.value = next ?? !open.value
-  }
-
   return {
     lines,
-    open,
     clientId,
     paymentMethod,
     discount,
@@ -149,6 +146,5 @@ export const useCartStore = defineStore('cart', () => {
     setBatch,
     remove,
     clear,
-    toggle,
   }
 })

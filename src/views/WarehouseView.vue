@@ -271,6 +271,10 @@ async function deleteSelected() {
         row-key="id"
         :selectable="canTrade"
         :loading="inventory.loading"
+        :page-size="25"
+        :prev-label="t('common.prevPage')"
+        :next-label="t('common.nextPage')"
+        max-height="calc(100dvh - 17rem)"
       >
         <template #cell-name="{ row }">
           <div
@@ -361,6 +365,10 @@ async function deleteSelected() {
         row-key="id"
         expandable
         :loading="inventory.loading"
+        :page-size="25"
+        :prev-label="t('common.prevPage')"
+        :next-label="t('common.nextPage')"
+        max-height="calc(100dvh - 17rem)"
       >
         <template #cell-name="{ row }">
           <div class="flex flex-col">

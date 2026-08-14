@@ -116,21 +116,32 @@ const today = formatDate(new Date())
         />
       </button>
 
-      <button
+      <!-- A link, not a panel: the cart is a page, and the counter is how a
+           user who is still picking knows what is waiting there. -->
+      <RouterLink
         v-if="canTrade"
-        type="button"
+        :to="{ name: 'cart' }"
         :title="t('nav.cart')"
-        class="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-line px-3 text-sm text-fg transition-colors hover:bg-hover"
-        @click="cart.toggle(true)"
+        class="flex h-9 items-center gap-2 rounded-lg border px-3 text-sm transition-colors"
+        :class="
+          cart.count > 0
+            ? 'border-accent-line bg-accent-soft text-fg'
+            : 'border-line text-fg hover:bg-hover'
+        "
       >
         <Icon
           icon="fa-solid fa-basket-shopping"
           size="sm"
-          class="text-faint"
+          :class="cart.count > 0 ? 'text-accent' : 'text-faint'"
         />
         <span class="hidden sm:inline">{{ t('nav.cart') }}</span>
-        <span class="text-faint tabular-nums">{{ cart.count }}</span>
-      </button>
+        <!-- An empty cart has nothing to report; the badge appears when it
+             does, which is what makes it worth glancing at. -->
+        <span
+          v-if="cart.count > 0"
+          class="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs text-on-accent tabular-nums"
+        >{{ cart.count }}</span>
+      </RouterLink>
     </div>
   </header>
 </template>

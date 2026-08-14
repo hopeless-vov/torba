@@ -25,7 +25,9 @@
     "clearSelection": "Clear selection",
     "none": "none",
     "pcs": "pcs",
-    "emptyValue": "—"
+    "emptyValue": "—",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -419,8 +421,13 @@
     }
   },
   "cart": {
-    "title": "Cart",
+    "subtitle": "The order you are putting together",
     "itemsCount": "{count} items",
+    "addTitle": "Add products",
+    "linesTitle": "In the cart",
+    "clearAll": "Empty the cart",
+    "alreadyIn": "in cart: {count}",
+    "batch": "Batch",
     "fromStock": "From stock",
     "fromCatalog": "From catalog",
     "pickerSearch": "Search product…",
@@ -466,6 +473,7 @@
     "saved": "Saved",
     "deleted": "Deleted",
     "orderPlaced": "Order placed",
+    "addedToCart": "Added: {name}. {count} items in the cart.",
     "rateUpdated": "Rate updated",
     "statusUpdated": "Status updated"
   },

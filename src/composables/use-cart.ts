@@ -26,6 +26,11 @@ import { useI18n } from 'vue-i18n'
 // deliveries of the same product with different expiry dates
 // distinguishable — and the user can move a line to another batch. A
 // quantity above what is on hand goes out as a backorder.
+//
+// Adding never navigates. The user is picking through a list; taking them
+// to the cart on every "+" would cost them their place. The line is added,
+// a toast says so, and the counter in the top bar carries the running
+// total until they choose to go there.
 export function useCart() {
   const cart = useCartStore()
   const auth = useAuthStore()
@@ -86,6 +91,18 @@ export function useCart() {
     return Math.max(0, line.qty - line.stockQty)
   }
 
+  // What the picker reports back: a row the user already added says so,
+  // instead of looking untouched and inviting a second click.
+  /** Units of a product already in the cart, across all of its lines. */
+  function inCart(productId: string): number {
+    return cart.lines.filter((l) => l.product.id === productId).reduce((sum, l) => sum + l.qty, 0)
+  }
+
+  /** Units already taken from one specific batch. */
+  function inCartFromBatch(batchId: string): number {
+    return cart.lines.filter((l) => l.batch?.id === batchId).reduce((sum, l) => sum + l.qty, 0)
+  }
+
   // Display prices for a product, in the active currency. Cost and retail each
   // carry their own currency; the brand supplier rate still overrides the table
   // for a cost in the brand's catalog currency.
@@ -95,6 +112,11 @@ export function useCart() {
     const retail =
       product.retail_amount != null ? convertBetween(product.retail_amount, product.retail_currency) : purchase
     return { purchase, retail }
+  }
+
+  /** Confirms the line landed, and says how much is waiting in the cart. */
+  function announce(name: string) {
+    toast.success(t('toasts.addedToCart', { name, count: cart.count }))
   }
 
   function addFromCatalog(product: ProductView) {
@@ -107,10 +129,10 @@ export function useCart() {
       unitCost: product.purchase,
       stockQty: batch ? batch.remaining_qty : product.inStock,
     })
-    cart.toggle(true)
+    announce(product.name)
   }
 
-  // Used by the in-drawer "from catalog" picker, where prices still need
+  // Used by the cart page's "from catalog" picker, where prices still need
   // to be resolved from the brand rate.
   function addProduct(product: ProductRow) {
     const { purchase, retail } = pricesFor(product)
@@ -123,7 +145,7 @@ export function useCart() {
       unitCost: purchase,
       stockQty: batch ? batch.remaining_qty : (inventory.stockByProduct.get(product.id) ?? 0),
     })
-    cart.toggle(true)
+    announce(product.name)
   }
 
   /** Add a line tied to one specific warehouse batch (one expiry date). */
@@ -139,7 +161,7 @@ export function useCart() {
       unitCost: purchase,
       stockQty: batch.remaining_qty,
     })
-    cart.toggle(true)
+    announce(product.name)
   }
 
   /** Ship this line from a different batch — i.e. a different expiry date. */
@@ -149,9 +171,11 @@ export function useCart() {
     cart.setBatch(line.key, batch, batch.remaining_qty)
   }
 
-  async function checkout() {
+  /** Places the order. Returns whether it went through, so the caller can
+   *  decide where to send the user next. */
+  async function checkout(): Promise<boolean> {
     const companyId = auth.companyId
-    if (cart.isEmpty || !companyId) return
+    if (cart.isEmpty || !companyId) return false
     submitting.value = true
     error.value = null
     try {
@@ -176,13 +200,14 @@ export function useCart() {
         })),
       })
       cart.clear()
-      cart.toggle(false)
       await Promise.all([orders.load(companyId), inventory.load(companyId)])
       toast.success(t('toasts.orderPlaced'))
+      return true
     } catch (e) {
       const message = e instanceof Error ? e.message : ''
       toast.error(t('errors.save'))
       error.value = message
+      return false
     } finally {
       submitting.value = false
     }
@@ -199,6 +224,8 @@ export function useCart() {
     error,
     batchesFor,
     shortfall,
+    inCart,
+    inCartFromBatch,
     addFromCatalog,
     addProduct,
     addFromBatch,

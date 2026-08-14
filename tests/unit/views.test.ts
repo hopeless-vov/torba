@@ -1,7 +1,6 @@
 import type { BatchRow } from '@/api/batches'
 import type { OrderRow } from '@/api/orders'
 import type { ProductRow } from '@/api/products'
-import CartDrawer from '@/components/CartDrawer.vue'
 import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import uk from '@/locales/uk.json'
 import { useAuthStore } from '@/stores/auth'
@@ -11,14 +10,16 @@ import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
 import type { Brand, Client, Company, MembershipRole, OrderItem } from '@/types/database'
+import CartView from '@/views/CartView.vue'
 import CatalogView from '@/views/CatalogView.vue'
 import ClientsView from '@/views/ClientsView.vue'
 import LinksView from '@/views/LinksView.vue'
 import OrdersView from '@/views/OrdersView.vue'
 import WarehouseView from '@/views/WarehouseView.vue'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 // Render smoke tests: every screen is mounted against seeded stores so a
@@ -129,6 +130,21 @@ function seedRole(role: MembershipRole = 'owner') {
   auth.activeCompanyId = 'c'
 }
 
+// Views navigate (the cart sends a placed order to the order list, an empty
+// order list points at the cart), so they need a router to inject. A memory
+// one with the two named targets is enough — nothing here follows a link.
+function testRouter() {
+  const blank = { template: '<div />' }
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'dashboard', component: blank },
+      { path: '/orders', name: 'orders', component: blank },
+      { path: '/cart', name: 'cart', component: blank },
+    ],
+  })
+}
+
 function render(component: Parameters<typeof mount>[0], role: MembershipRole = 'owner') {
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -148,7 +164,7 @@ function render(component: Parameters<typeof mount>[0], role: MembershipRole = '
   useClientsStore().clients = [client]
   useOrdersStore().orders = [order]
 
-  return mount(component, { global: { plugins: [pinia, i18n] } })
+  return mount(component, { global: { plugins: [pinia, i18n, testRouter()] } })
 }
 
 beforeEach(() => {
@@ -245,19 +261,23 @@ describe('OrdersView', () => {
     expect(document.body.textContent).toContain('Львів, НП №30')
   })
 
-  it('offers an open-cart action when there are no orders', async () => {
+  // Nothing to show yet, so the screen hands the user the one thing that
+  // creates an order — the cart, which is now a page to go to.
+  it('sends the user to the cart when there are no orders', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
+    const router = testRouter()
     seedRole()
     useOrdersStore().orders = []
-    const cart = useCartStore()
 
-    const wrapper = mount(OrdersView, { global: { plugins: [pinia, i18n] } })
+    const wrapper = mount(OrdersView, { global: { plugins: [pinia, i18n, router] } })
     const openCart = wrapper.findAll('button').find((b) => b.text() === uk.orders.openCart)
     expect(openCart).toBeTruthy()
     await openCart?.trigger('click')
-    expect(cart.open).toBe(true)
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('cart')
   })
 
   it('opens the product info card from an order line', async () => {
@@ -335,19 +355,10 @@ describe('LinksView', () => {
   })
 })
 
-describe('CartDrawer', () => {
+describe('CartView', () => {
   it('shows the expiry picker and the backorder warning per line', async () => {
-    const pinia = createPinia()
-    setActivePinia(pinia)
-    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
-    seedRole()
-    useInventoryStore().products = [product]
-    useInventoryStore().batches = [batch({ id: 'ba1' })]
-    useClientsStore().clients = [client]
-
-    const cart = useCartStore()
-    cart.toggle(true)
-    cart.addLine({
+    const wrapper = render(CartView)
+    useCartStore().addLine({
       product,
       brand,
       batch: batch({ id: 'ba1' }),
@@ -356,88 +367,59 @@ describe('CartDrawer', () => {
       qty: 50,
       stockQty: 32,
     })
+    await wrapper.vm.$nextTick()
 
-    mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
-    const rendered = document.body.textContent ?? ''
-
-    expect(rendered).toContain('01.01.2999') // the batch's expiry, in the line
-    expect(rendered).toContain('бракує 18') // 50 ordered, 32 on hand
+    expect(wrapper.text()).toContain('01.01.2999') // the batch's expiry, in the line
+    expect(wrapper.text()).toContain('бракує 18') // 50 ordered, 32 on hand
   })
 
-  // The topbar and catalog/warehouse rows already keep a viewer from ever
-  // opening the cart in practice; this is the drawer's own lock in case a
-  // line survives a mid-session role change.
+  // The route guard and the hidden nav links already keep a viewer off this
+  // page; this is its own lock in case a line survives a role change.
   it('hides the checkout button for a viewer', () => {
-    const pinia = createPinia()
-    setActivePinia(pinia)
-    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
-    seedRole('viewer')
-    useInventoryStore().products = [product]
-    useInventoryStore().batches = [batch({ id: 'ba1' })]
-    useClientsStore().clients = [client]
-
-    const cart = useCartStore()
-    cart.toggle(true)
-    cart.addLine({
-      product,
-      brand,
-      batch: batch({ id: 'ba1' }),
-      unitPrice: 145,
-      unitCost: 87,
-      qty: 1,
-      stockQty: 32,
-    })
-
-    const wrapper = mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
+    const wrapper = render(CartView, 'viewer')
     expect(wrapper.text()).not.toContain(uk.cart.checkout)
   })
 
-  // The footer is pinned, so anything parked there is height the product
-  // list never gets. Only the decision itself belongs in it.
-  it('keeps the order settings in the scrolling body, not the footer', () => {
-    const pinia = createPinia()
-    setActivePinia(pinia)
-    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
-    seedRole()
-    useInventoryStore().products = [product]
-    useClientsStore().clients = [client]
+  // Picking and settling the terms are one job now, so both live on the page
+  // at once — no panel to open, nothing pinned over the product list.
+  it('puts the picker, the lines and the order terms on one page', () => {
+    const wrapper = render(CartView)
+    expect(wrapper.text()).toContain(uk.cart.addTitle)
+    expect(wrapper.text()).toContain(uk.cart.linesTitle)
+    expect(wrapper.text()).toContain(uk.cart.client)
+    expect(wrapper.text()).toContain(uk.cart.payment)
+    expect(wrapper.text()).toContain(uk.cart.checkout)
+    // The empty cart says so rather than showing an empty list.
+    expect(wrapper.text()).toContain(uk.cart.empty)
+  })
 
-    const cart = useCartStore()
-    cart.toggle(true)
-    cart.addLine({ product, brand, unitPrice: 145, unitCost: 87, qty: 1, stockQty: 5 })
-    mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
+  // A row the user already added says so, instead of looking untouched and
+  // inviting a second click.
+  it('marks a product that is already in the cart', async () => {
+    const wrapper = render(CartView)
+    expect(wrapper.text()).not.toContain('у кошику: 2')
 
-    const body = document.querySelector('[data-slot="drawer-body"]')?.textContent ?? ''
-    const footer = document.querySelector('[data-slot="drawer-footer"]')?.textContent ?? ''
+    useCartStore().addLine({ product, brand, unitPrice: 145, unitCost: 87, qty: 2, stockQty: 5 })
+    await wrapper.vm.$nextTick()
 
-    expect(body).toContain(uk.cart.client)
-    expect(body).toContain(uk.cart.payment)
-    expect(footer).not.toContain(uk.cart.client)
-    expect(footer).toContain(uk.cart.checkout)
+    expect(wrapper.text()).toContain('у кошику: 2')
   })
 
   it('lets a line be re-priced and discounted, and offers the catalog price back', async () => {
-    const pinia = createPinia()
-    setActivePinia(pinia)
-    const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
-    seedRole()
-    useInventoryStore().products = [product]
-    useClientsStore().clients = [client]
-
+    const wrapper = render(CartView)
     const cart = useCartStore()
-    cart.toggle(true)
     cart.addLine({ product, brand, unitPrice: 145, unitCost: 87, qty: 1, stockQty: 5 })
-    const wrapper = mount(CartDrawer, { global: { plugins: [pinia, i18n] } })
+    await wrapper.vm.$nextTick()
 
-    expect(document.body.textContent).toContain(uk.cart.unitPrice)
+    expect(wrapper.text()).toContain(uk.cart.unitPrice)
     // Nothing overridden yet, so no undo is offered.
-    expect(document.body.textContent).not.toContain('повернути ціну')
+    expect(wrapper.text()).not.toContain('повернути ціну')
 
     cart.setPrice('p1', 200)
     cart.setDiscount('p1', 10)
     await wrapper.vm.$nextTick()
 
-    expect(document.body.textContent).toContain('повернути ціну')
+    expect(wrapper.text()).toContain('повернути ціну')
     expect(cart.lines[0].listPrice).toBe(145)
   })
 })

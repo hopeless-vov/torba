@@ -231,6 +231,10 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
         row-key="id"
         :selectable="canTrade"
         :loading="inventory.loading"
+        :page-size="25"
+        :prev-label="t('common.prevPage')"
+        :next-label="t('common.nextPage')"
+        max-height="calc(100dvh - 17rem)"
       >
         <template #cell-sku="{ row }">
           <span class="text-faint">{{ (row as ProductView).sku }}</span>

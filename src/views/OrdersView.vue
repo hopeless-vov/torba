@@ -19,7 +19,6 @@ import { useCurrency } from '@/composables/use-currency'
 import { useOrders } from '@/composables/use-orders'
 import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
-import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
@@ -29,13 +28,14 @@ import type { OrderView } from '@/types/models'
 import { formatDate, formatPercent } from '@/utils/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
+const router = useRouter()
 const { format, formatFrom } = useCurrency()
 const reference = useReferenceStore()
 const clients = useClientsStore()
 const ordersStore = useOrdersStore()
-const cart = useCartStore()
 const ui = useUiStore()
 const { canTrade } = usePermissions()
 const {
@@ -308,6 +308,10 @@ function destination(order: OrderView) {
         expandable
         clickable
         :loading="ordersStore.loading"
+        :page-size="20"
+        :prev-label="t('common.prevPage')"
+        :next-label="t('common.nextPage')"
+        max-height="calc(100dvh - 26rem)"
         @row-click="openDetails($event as OrderView)"
       >
         <template #cell-number="{ row }">
@@ -479,7 +483,7 @@ function destination(order: OrderView) {
               v-else-if="canTrade"
               variant="primary"
               icon="fa-solid fa-basket-shopping"
-              @click="cart.toggle(true)"
+              @click="router.push({ name: 'cart' })"
             >
               {{ t('orders.openCart') }}
             </Button>

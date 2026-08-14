@@ -25,7 +25,9 @@
     "clearSelection": "Зняти вибір",
     "none": "немає",
     "pcs": "шт",
-    "emptyValue": "—"
+    "emptyValue": "—",
+    "prevPage": "Попередня сторінка",
+    "nextPage": "Наступна сторінка"
   },
   "nav": {
     "dashboard": "Дашборд",
@@ -419,8 +421,13 @@
     }
   },
   "cart": {
-    "title": "Кошик",
+    "subtitle": "Замовлення, яке ви збираєте",
     "itemsCount": "{count} поз.",
+    "addTitle": "Додати товари",
+    "linesTitle": "У кошику",
+    "clearAll": "Очистити кошик",
+    "alreadyIn": "у кошику: {count}",
+    "batch": "Партія",
     "fromStock": "Зі складу",
     "fromCatalog": "З каталогу",
     "pickerSearch": "Пошук товару…",
@@ -466,6 +473,7 @@
     "saved": "Збережено",
     "deleted": "Видалено",
     "orderPlaced": "Замовлення оформлено",
+    "addedToCart": "Додано: {name}. У кошику {count} поз.",
     "rateUpdated": "Курс оновлено",
     "statusUpdated": "Статус оновлено"
   },
