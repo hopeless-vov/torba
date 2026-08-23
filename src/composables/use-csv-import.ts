@@ -6,9 +6,40 @@ import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
 import type { NewProduct } from '@/types/database'
-import { type ParsedPriceList,parsePriceListCsv } from '@/utils/csv'
-import { computed, ref } from 'vue'
+import type { CsvField, CsvMapping, CsvTable } from '@/utils/csv'
+import { CSV_FIELDS, decodeCsv, extractProducts, guessMapping, readCsvTable } from '@/utils/csv'
+import { safeStorage } from '@/utils/storage'
+import { computed, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
+
+// The mapping a user confirmed for a supplier, kept per brand: the next price
+// list from the same supplier then needs no answering at all. It lives in
+// local storage rather than the database because it describes a file, not the
+// company — being wrong costs one dropdown, and being unshared costs nothing.
+const MAPPING_KEY = 'torba:csv-mapping'
+
+/** How long a cell may be when it is only there to show what a column holds. */
+const SAMPLE_LENGTH = 24
+
+function blankMapping(): CsvMapping {
+  return { sku: null, name: null, volume: null, cost: null, retail: null, category: null }
+}
+
+function rememberedMapping(brandId: string): CsvMapping | null {
+  const raw = safeStorage.get(`${MAPPING_KEY}:${brandId}`)
+  if (!raw) return null
+  try {
+    const stored = JSON.parse(raw) as Partial<Record<CsvField, unknown>>
+    const mapping = blankMapping()
+    for (const field of CSV_FIELDS) {
+      const column = stored[field]
+      mapping[field] = typeof column === 'number' && column >= 0 ? column : null
+    }
+    return mapping
+  } catch {
+    return null
+  }
+}
 
 export function useCsvImport() {
   const auth = useAuthStore()
@@ -20,13 +51,35 @@ export function useCsvImport() {
   const step = ref<1 | 2>(1)
   const brandId = ref('')
   const fileName = ref('')
-  const parsed = ref<ParsedPriceList | null>(null)
+  // Shallow: a parsed file is thousands of cells that are only ever replaced
+  // wholesale, and making every one of them reactive would cost for nothing.
+  const table = shallowRef<CsvTable | null>(null)
+  const mapping = ref<CsvMapping>(blankMapping())
   const applyRate = ref(true)
   const importing = ref(false)
   const error = ref<string | null>(null)
   const importedCount = ref<number | null>(null)
 
+  // Products follow from the mapping, so correcting a column re-reads the
+  // whole file at once — the preview and the counts can never lag behind it.
+  const parsed = computed(() => (table.value ? extractProducts(table.value, mapping.value) : null))
   const productCount = computed(() => parsed.value?.products.length ?? 0)
+  const preview = computed(() => parsed.value?.products.slice(0, 3) ?? [])
+
+  /** The file's columns, named by their header and shown with a sample cell. */
+  const columnOptions = computed(() => {
+    const source = table.value
+    if (!source) return []
+    return Array.from({ length: source.columns }, (_, i) => {
+      const title = source.headers[i]?.trim() || t('csv.column', { n: i + 1 })
+      const sample = source.rows
+        .slice(source.headerRow + 1)
+        .map((row) => (row[i] ?? '').trim())
+        .find((value) => value.length > 0)
+      const short = sample && sample.length > SAMPLE_LENGTH ? `${sample.slice(0, SAMPLE_LENGTH)}…` : sample
+      return { value: String(i), label: short ? `${title} · ${short}` : title }
+    })
+  })
 
   // Categories present in the file that don't yet exist for this company.
   const newCategories = computed(() => {
@@ -43,26 +96,50 @@ export function useCsvImport() {
     return result
   })
 
+  /**
+   * Point a field at a column. A column can only mean one thing, so claiming
+   * one releases it from wherever it was — otherwise a correction quietly
+   * leaves the same column feeding two fields.
+   */
+  function setColumn(field: CsvField, column: number | null) {
+    const next = { ...mapping.value }
+    if (column != null) {
+      for (const other of CSV_FIELDS) if (next[other] === column) next[other] = null
+    }
+    next[field] = column
+    mapping.value = next
+  }
+
   async function parseFile(file: File) {
     error.value = null
     fileName.value = file.name
     try {
-      const text = await file.text()
-      const result = parsePriceListCsv(text)
-      if (result.products.length === 0) {
+      const next = readCsvTable(decodeCsv(await file.arrayBuffer()))
+      if (next.rows.length === 0) {
         error.value = 'errorEmpty'
-        parsed.value = null
+        table.value = null
         return
       }
-      parsed.value = result
+      table.value = next
+
+      // What the user confirmed for this supplier last time wins — but only
+      // while it still finds products; a changed file falls back to the
+      // headers, and either way the next step shows what was chosen.
+      const remembered = brandId.value ? rememberedMapping(brandId.value) : null
+      const usable = remembered && extractProducts(next, remembered).products.length > 0
+      mapping.value = usable && remembered ? remembered : guessMapping(next)
+
+      // Not fatal any more: the columns are the next step's business, and the
+      // user can point them at the right places by hand.
+      if (productCount.value === 0) error.value = 'errorColumns'
     } catch {
       error.value = 'errorParse'
-      parsed.value = null
+      table.value = null
     }
   }
 
   async function runImport() {
-    if (!auth.companyId || !brandId.value || !parsed.value) return
+    if (!auth.companyId || !brandId.value || !parsed.value || productCount.value === 0) return
     importing.value = true
     error.value = null
     try {
@@ -110,6 +187,9 @@ export function useCsvImport() {
 
       if (willApplyRate && brand) await brandsApi.updateRate(brand, parsed.value.rate as number)
 
+      // It worked, so this is the layout of that supplier's files.
+      safeStorage.set(`${MAPPING_KEY}:${brandId.value}`, JSON.stringify(mapping.value))
+
       await Promise.all([reference.load(companyId), inventory.load(companyId)])
       importedCount.value = inserted.length
       toast.success(t('csv.done', { count: inserted.length }))
@@ -125,7 +205,8 @@ export function useCsvImport() {
     step.value = 1
     brandId.value = ''
     fileName.value = ''
-    parsed.value = null
+    table.value = null
+    mapping.value = blankMapping()
     applyRate.value = true
     importing.value = false
     error.value = null
@@ -136,6 +217,11 @@ export function useCsvImport() {
     step,
     brandId,
     fileName,
+    table,
+    mapping,
+    columnOptions,
+    preview,
+    setColumn,
     parsed,
     applyRate,
     importing,

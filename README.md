@@ -308,13 +308,36 @@ language toggle.
 
 ## CSV Import
 
-The catalog imports the supplier price-list CSVs (Colorescience / iS Clinical /
-Histolab). The parser in [`src/utils/csv.ts`](src/utils/csv.ts) handles their real
-shape — title/warning rows, a `Курс:` rate cell, category section headers, quoted
-multiline product names, `"2 269,50"`-style UAH numbers, and `—`/empty retail
-prices. Import is a two-step wizard: pick a brand + file, then review (product count,
-new categories to create, and an optional brand-rate update) and confirm. UAH columns
-in the file are ignored — prices are recomputed from the brand rate.
+The catalog imports supplier price lists. Nothing about the file is assumed:
+[`src/utils/csv.ts`](src/utils/csv.ts) sniffs the delimiter (comma, semicolon or
+tab — a Ukrainian Excel writes semicolons), and `decodeCsv` reads the encoding off
+the bytes, honouring a BOM and falling back to **windows-1251** when strict UTF-8
+rejects them. Cyrillic in cp1251 is not valid UTF-8, so that failure is an answer
+rather than another guess.
+
+What cannot be known is which column means what, so it is **guessed and then
+shown**. `readCsvTable` scores the first rows to find the header wherever the
+supplier buried it under title and warning rows; `guessMapping` matches header
+words to our fields (retail before cost, so "Рек. ціна" is not read as the purchase
+price), and a file with no header falls back to the order every supplier has used
+so far. `extractProducts` then turns rows into products through that mapping —
+which means reading the UAH column instead of the USD one is a mapping away, not a
+code change.
+
+Import is a two-step wizard: pick a brand + file, then **correct the columns** —
+six dropdowns, each column named by its header and a sample of what is under it —
+with a live preview of the first rows beside the product count, new categories to
+create and an optional brand-rate update. The preview is the point: an import
+upserts by SKU, so a column read wrongly would overwrite the catalog. A mapping
+that imported successfully is remembered per brand in local storage, so the next
+price list from the same supplier needs no answering at all; if it stops finding
+products, the headers are read afresh.
+
+Still handled, because the real files need it: a `Курс:` rate cell, category
+section headers (a row that is only a first cell, used when the file has no
+category column), quoted multiline product names, `"2 269,50"`-style numbers and
+`—`/empty retail prices. UAH columns are ignored by default — prices are
+recomputed from the brand rate.
 
 ---
 
@@ -572,9 +595,10 @@ Two-column form modals (`ProductFormModal`, `OrderEditModal`, `BatchModal`,
 
 Unit tests live in `tests/unit/` and cover the pure utilities (pricing, batch
 status and FIFO ordering, batch numbering, order totals, formatting, **CSV
-parsing**), Pinia stores (cart — including backorders and switching a line's
+parsing** — delimiters, encodings, header detection and column guessing), Pinia stores (cart — including backorders and switching a line's
 batch — and currency), the composable logic (`useCatalog`, `useWarehouse`
-grouping, `useCurrency` conversion, `useSelection`), and the API layer (mocked
+grouping, `useCurrency` conversion, `useSelection`, `useCsvImport` column
+mapping), and the API layer (mocked
 Supabase client). `views.test.ts` mounts Catalog, Warehouse, Orders, Links and the
 cart page against seeded stores, so a broken template or missing slot fails in CI
 rather than in the browser, and `data-table.test.ts` covers paging and the height

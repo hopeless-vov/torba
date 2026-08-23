@@ -82,7 +82,7 @@ const panel = tv({
             </button>
           </div>
 
-          <div class="px-5 py-5">
+          <div class="max-h-[70dvh] overflow-y-auto px-5 py-5">
             <slot />
           </div>
 

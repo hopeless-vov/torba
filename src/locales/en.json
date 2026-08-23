@@ -187,7 +187,7 @@
   "csv": {
     "title": "Import CSV",
     "step1": "Step 1 of 2 · File and brand",
-    "step2": "Step 2 of 2 · Review",
+    "step2": "Step 2 of 2 · Columns and review",
     "brandForImport": "Brand to import into",
     "chooseBrand": "Choose a brand",
     "noFile": "No file selected",
@@ -195,6 +195,20 @@
     "fileSelected": "File: {name}",
     "detectedRate": "Detected rate: {rate} per 1 USD",
     "willImport": "Products to import: {count}",
+    "mappingTitle": "Column mapping",
+    "mappingHint": "Check what maps to what. The import updates products by SKU, so a wrong column overwrites the catalog.",
+    "fields": {
+      "sku": "SKU",
+      "name": "Name",
+      "volume": "Volume",
+      "cost": "Purchase price",
+      "retail": "Recommended price",
+      "category": "Category"
+    },
+    "column": "Column {n}",
+    "notInFile": "— not in the file",
+    "previewTitle": "First rows under this mapping",
+    "noRows": "This mapping yields no products — check the columns.",
     "reviewImport": "Products to import",
     "reviewSkipped": "Rows skipped",
     "skipped": "Rows skipped: {count}",
@@ -205,6 +219,7 @@
     "done": "Imported products: {count}",
     "errorParse": "Could not read the file.",
     "errorEmpty": "No products found in the file.",
+    "errorColumns": "Could not recognise the columns — set them by hand in the next step.",
     "errorNoBrand": "Choose a brand first."
   },
   "warehouse": {
