@@ -471,6 +471,15 @@ reached by hovering the bar. Dates are compared as `YYYY-MM-DD` strings against
 `created_at`, the same way the orders filter does it, so a timezone offset can
 never move an order into the neighbouring bucket.
 
+Under the chart, **Куди пішли гроші** opens up its cost segment for the same
+period: what the goods themselves cost, what packaging cost and what delivery
+cost, each as its own figure and its share of the total. Goods keep the chart's
+neutral colour so the two read as the same quantity; packaging and delivery are
+the outlay the company adds on top, and seeing them apart is the point — those
+are the costs that can be worked on without touching supply. Both come off the
+same `ordersInRange` list the chart uses, converted from each order's own
+currency, so the chart and the split can never disagree about the period.
+
 Two of them carry most of the interaction weight:
 
 - **`Combobox`** — a `Select` with a filter box and keyboard navigation, and the same

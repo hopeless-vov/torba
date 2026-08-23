@@ -50,7 +50,13 @@ function harness() {
   return ctx
 }
 
-function order(createdAt: string, qty: number, price: number, cost: number): OrderRow {
+function order(
+  createdAt: string,
+  qty: number,
+  price: number,
+  cost: number,
+  extras: Partial<OrderRow> = {},
+): OrderRow {
   return {
     id: `o-${createdAt}`,
     company_id: 'c',
@@ -65,6 +71,7 @@ function order(createdAt: string, qty: number, price: number, cost: number): Ord
     created_at: createdAt,
     client: null,
     items: [{ qty, unit_price: price, unit_cost: cost } as OrderItem],
+    ...extras,
   } as unknown as OrderRow
 }
 
@@ -266,5 +273,55 @@ describe('useDashboard stats', () => {
     expect(stats.criticalCount).toBe(1)
     expect(stats.criticalWithin90).toBe(2)
     expect(stats.expiringUnits).toBe(10)
+  })
+})
+
+describe('useDashboard spending', () => {
+  it('splits what the period cost into goods, packaging and delivery', () => {
+    const { orders, dashboard } = harness()
+    orders.orders = [
+      order('2026-07-10T10:00:00Z', 2, 500, 300, { delivery_cost: 80, packaging_cost: 20 }),
+      order('2026-08-01T10:00:00Z', 1, 400, 250, { delivery_cost: 60, packaging_cost: 15 }),
+    ]
+
+    expect(dashboard.spending.value).toEqual({
+      goods: 850, // 2 × 300 + 250
+      packaging: 35,
+      delivery: 140,
+      total: 1025,
+    })
+  })
+
+  // The split answers for the same window as the chart above it, so an older
+  // order must not creep into the total.
+  it('counts only the orders inside the range', () => {
+    const { orders, dashboard } = harness()
+    orders.orders = [
+      order('2026-01-05T10:00:00Z', 1, 500, 300, { delivery_cost: 80, packaging_cost: 20 }),
+      order('2026-08-01T10:00:00Z', 1, 400, 250, { delivery_cost: 60, packaging_cost: 15 }),
+    ]
+
+    expect(dashboard.spending.value.total).toBe(325)
+
+    dashboard.range.value = { from: '2026-01-01', to: '2026-08-13' }
+    expect(dashboard.spending.value.total).toBe(725)
+  })
+
+  // A discount comes off the sale, never off what was already paid out.
+  it('leaves the order discount out of the cost', () => {
+    const { orders, dashboard } = harness()
+    orders.orders = [
+      order('2026-08-01T10:00:00Z', 1, 400, 250, { delivery_cost: 60, packaging_cost: 15, discount: 50 }),
+    ]
+
+    expect(dashboard.spending.value.total).toBe(325)
+  })
+
+  it('counts nothing when the range runs backwards', () => {
+    const { orders, dashboard } = harness()
+    orders.orders = [order('2026-08-01T10:00:00Z', 1, 400, 250, { delivery_cost: 60, packaging_cost: 15 })]
+    dashboard.range.value = { from: '2026-08-10', to: '2026-08-01' }
+
+    expect(dashboard.spending.value.total).toBe(0)
   })
 })

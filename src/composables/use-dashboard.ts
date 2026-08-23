@@ -41,6 +41,15 @@ export interface DateRange {
   to: string
 }
 
+/** Where the money of a period went, in the active display currency. */
+export interface Spending {
+  /** What the goods themselves cost — the sum of the lines' unit costs. */
+  goods: number
+  packaging: number
+  delivery: number
+  total: number
+}
+
 export interface StatusSlice {
   status: BatchStatus
   units: number
@@ -184,6 +193,17 @@ export function useDashboard() {
     range.value = defaultRange()
   }
 
+  // Everything sold inside the window, shared by the chart and the spending
+  // split so the two can never disagree about what "the period" is.
+  const ordersInRange = computed(() => {
+    const { from, to } = range.value
+    if (!from || !to || from > to) return []
+    return orders.orders.filter((o) => {
+      const day = o.created_at.slice(0, 10)
+      return day >= from && day <= to
+    })
+  })
+
   // Trade over the chosen range, bucketed by when the order was placed. Empty
   // periods are kept so a gap reads as a gap rather than closing up. Every
   // order is converted from the currency it was sold in, so the bars stay
@@ -219,10 +239,8 @@ export function useDashboard() {
       else cursor.setUTCFullYear(cursor.getUTCFullYear() + 1)
     }
 
-    for (const order of orders.orders) {
-      const day = order.created_at.slice(0, 10)
-      if (day < from || day > to) continue
-      const bucket = buckets.get(keyOf(day, step))
+    for (const order of ordersInRange.value) {
+      const bucket = buckets.get(keyOf(order.created_at.slice(0, 10), step))
       if (!bucket) continue
       const totals = computeOrderTotals(order.items, order.delivery_cost, order.packaging_cost, order.discount)
       bucket.revenue += convertBetween(totals.saleTotal, order.currency)
@@ -232,6 +250,25 @@ export function useDashboard() {
     }
 
     return [...buckets.values()]
+  })
+
+  // The cost side of the trend chart, broken into where the money actually
+  // went. Goods are what was bought to fill the orders; delivery and packaging
+  // are the company's own outlay on top, tracked per order and worth seeing
+  // apart — they are the two a business can act on without touching supply.
+  const spending = computed<Spending>(() => {
+    let goods = 0
+    let packaging = 0
+    let delivery = 0
+
+    for (const order of ordersInRange.value) {
+      const totals = computeOrderTotals(order.items, order.delivery_cost, order.packaging_cost, order.discount)
+      goods += convertBetween(totals.goodsCost, order.currency)
+      packaging += convertBetween(order.packaging_cost, order.currency)
+      delivery += convertBetween(order.delivery_cost, order.currency)
+    }
+
+    return { goods, packaging, delivery, total: goods + packaging + delivery }
   })
 
   // How the units on the shelf split across expiry states.
@@ -248,5 +285,5 @@ export function useDashboard() {
     return [...slices.values()]
   })
 
-  return { stats, burning, range, granularity, resetRange, trend, stockByStatus }
+  return { stats, burning, range, granularity, resetRange, trend, spending, stockByStatus }
 }

@@ -12,6 +12,7 @@ import { useReferenceStore } from '@/stores/reference'
 import type { Brand, Client, Company, MembershipRole, OrderItem } from '@/types/database'
 import CartView from '@/views/CartView.vue'
 import CatalogView from '@/views/CatalogView.vue'
+import DashboardView from '@/views/DashboardView.vue'
 import ClientsView from '@/views/ClientsView.vue'
 import LinksView from '@/views/LinksView.vue'
 import OrdersView from '@/views/OrdersView.vue'
@@ -421,5 +422,30 @@ describe('CartView', () => {
 
     expect(wrapper.text()).toContain('повернути ціну')
     expect(cart.lines[0].listPrice).toBe(145)
+  })
+})
+
+describe('DashboardView', () => {
+  // The split follows the chart's range, and the seeded order carries a fixed
+  // date — dating it now keeps the case inside the default six months however
+  // long after it the suite runs.
+  it('breaks the period cost into goods, packaging and delivery', async () => {
+    const wrapper = render(DashboardView)
+    useOrdersStore().orders = [{ ...order, created_at: new Date().toISOString() }]
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain(uk.dashboard.spending.title)
+    expect(text).toContain(uk.dashboard.spending.goods)
+    expect(text).toContain(uk.dashboard.spending.packaging)
+    expect(text).toContain(uk.dashboard.spending.delivery)
+  })
+
+  it('says so when the period holds no spending at all', async () => {
+    const wrapper = render(DashboardView)
+    useOrdersStore().orders = []
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.dashboard.spending.empty)
   })
 })

@@ -122,6 +122,15 @@
       "profit": "Profit",
       "empty": "No orders in this period yet"
     },
+    "spending": {
+      "title": "Where the money went",
+      "subtitle": "over the chosen period",
+      "goods": "Goods",
+      "packaging": "Packaging",
+      "delivery": "Shipping",
+      "total": "Total",
+      "empty": "Nothing was spent in this period"
+    },
     "stock": {
       "title": "Stock by expiry",
       "subtitle": "units on hand",

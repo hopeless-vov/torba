@@ -21,7 +21,8 @@ const { t, locale } = useI18n()
 const router = useRouter()
 const { format } = useCurrency()
 const inventory = useInventoryStore()
-const { stats, burning, range, granularity, resetRange, trend, stockByStatus } = useDashboard()
+const { stats, burning, range, granularity, resetRange, trend, spending, stockByStatus } =
+  useDashboard()
 
 // Bind each bound separately: `range` is one object, and v-model on a field
 // has to write a new one for the computed chain to notice.
@@ -65,6 +66,20 @@ const trendPoints = computed<BarPoint[]>(() => {
     total: p.revenue,
   }))
 })
+
+// Where the period's money went. Goods stay neutral — the same colour the
+// trend chart gives cost — so the two read as the same quantity, with the
+// company's own outlay picked out beside it.
+const spendingSlices = computed<CompositionSlice[]>(() => [
+  { key: 'goods', label: t('dashboard.spending.goods'), value: spending.value.goods, tone: 'neutral' },
+  {
+    key: 'packaging',
+    label: t('dashboard.spending.packaging'),
+    value: spending.value.packaging,
+    tone: 'violet',
+  },
+  { key: 'delivery', label: t('dashboard.spending.delivery'), value: spending.value.delivery, tone: 'info' },
+])
 
 // The same tones the batch badges use, so a colour means the same thing on
 // the dashboard as it does in the warehouse table.
@@ -198,6 +213,30 @@ const columns = computed<Column[]>(() => [
         />
       </section>
     </div>
+
+    <!-- The cost half of the chart above, opened up: same period, same
+         currency, but split by where the money actually went. -->
+    <section class="flex flex-col gap-4 rounded-xl border border-line bg-panel p-5">
+      <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div class="flex items-baseline gap-2">
+          <h2 class="text-sm font-semibold text-fg">
+            {{ t('dashboard.spending.title') }}
+          </h2>
+          <span class="text-xs text-faint">{{ t('dashboard.spending.subtitle') }}</span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span class="text-xs text-faint">{{ t('dashboard.spending.total') }}</span>
+          <span class="font-mono text-sm font-semibold text-fg tabular-nums">
+            {{ format(spending.total) }}
+          </span>
+        </div>
+      </div>
+      <CompositionBar
+        :slices="spendingSlices"
+        :format-value="format"
+        :empty-text="t('dashboard.spending.empty')"
+      />
+    </section>
 
     <div class="rounded-xl border border-line bg-panel">
       <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
