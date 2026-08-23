@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useInventoryStore } from '@/stores/inventory'
 import { useUiStore } from '@/stores/ui'
-import { batchStatus } from '@/utils/batch-status'
+import { isAtRisk } from '@/utils/batch-status'
 import { useEventListener } from '@vueuse/core'
 import { AnimatePresence, Motion } from 'motion-v'
 import { computed, watch } from 'vue'
@@ -30,13 +30,9 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   if (e.key === 'Escape' && ui.sidebarOpen) ui.closeSidebar()
 })
 
-const warehouseWarnings = computed(
-  () =>
-    inventory.batches.filter((b) => {
-      const s = batchStatus(b.expiry_date)
-      return s === 'expired' || s === 'critical'
-    }).length,
-)
+// Sold-out batches are left out: the badge is a to-do list, and a closed
+// delivery is nothing the user can act on.
+const warehouseWarnings = computed(() => inventory.batches.filter((b) => isAtRisk(b)).length)
 
 // Everyone may read every screen except the cart and member management. A
 // page hidden here is also refused by the route guard, so this only spares

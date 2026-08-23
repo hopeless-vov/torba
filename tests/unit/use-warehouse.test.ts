@@ -124,3 +124,40 @@ describe('useWarehouse grouped', () => {
     expect(warehouse.grouped.value[0].remaining).toBe(4)
   })
 })
+
+describe('useWarehouse stock filter', () => {
+  it('opens on what is still on the shelf', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [
+      batch({ id: 'b-1', remaining_qty: 4 }),
+      batch({ id: 'b-2', received_qty: 6, remaining_qty: 0 }),
+    ]
+    expect(warehouse.filtered.value.map((r) => r.id)).toEqual(['b-1'])
+  })
+
+  it('shows the closed deliveries on request', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [
+      batch({ id: 'b-1', remaining_qty: 4 }),
+      batch({ id: 'b-2', received_qty: 6, remaining_qty: 0 }),
+    ]
+
+    warehouse.stockFilter.value = 'out'
+    expect(warehouse.filtered.value.map((r) => r.id)).toEqual(['b-2'])
+
+    warehouse.stockFilter.value = 'all'
+    expect(warehouse.filtered.value.map((r) => r.id)).toEqual(['b-1', 'b-2'])
+  })
+
+  // Nothing left of any delivery means the product is off the shelf, so it
+  // has no place in a list of what is in stock.
+  it('leaves a fully sold product out of the product view', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [batch({ id: 'b-1', received_qty: 6, remaining_qty: 0 })]
+
+    expect(warehouse.grouped.value).toHaveLength(0)
+
+    warehouse.stockFilter.value = 'all'
+    expect(warehouse.grouped.value).toHaveLength(1)
+  })
+})

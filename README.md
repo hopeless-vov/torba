@@ -333,6 +333,14 @@ expands to show how much sits under each expiry date — that is how you see bot
 same **add-to-cart** button as the catalog, so stock can be sold straight from the
 warehouse — the cart line is pinned to that exact batch (and its expiry date).
 
+**A batch sold to the last unit leaves the shelf.** It stays in the books, but it
+is a closed delivery, not stock: it raises no expiry warning in the sidebar badge,
+takes no place in the dashboard's expiry table or stock mix, and is hidden from the
+warehouse by default. The **Наявність** filter (in the filter sheet) switches
+between *Є на складі* — the default — *Розпродані* and *Усі партії*, so the history
+is always one choice away. The predicate itself is
+[`isAtRisk`](src/utils/batch-status.ts), shared by the badge and the dashboard.
+
 ## Orders & stock
 
 Placing an order goes through the `create_order` Postgres function (see

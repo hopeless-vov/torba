@@ -34,6 +34,7 @@ const {
   filtered,
   grouped,
   statusFilter,
+  stockFilter,
   brandFilter,
   createBatch,
   updateBatch,
@@ -69,6 +70,14 @@ const statusTabs = computed(() => [
   { value: 'almost', label: t('status.batch.almost') },
   { value: 'ok', label: t('status.batch.ok') },
   { value: 'expired', label: t('status.batch.expired') },
+])
+
+// Sold-out batches are hidden by default — they are closed deliveries, not
+// stock — but the whole history is one choice away.
+const stockOptions = computed(() => [
+  { value: 'in', label: t('warehouse.stock.in') },
+  { value: 'out', label: t('warehouse.stock.out') },
+  { value: 'all', label: t('warehouse.stock.all') },
 ])
 
 const brandOptions = computed(() => [
@@ -218,7 +227,9 @@ async function deleteSelected() {
         :title="t('common.filters')"
         :label="t('common.filters')"
         :done-label="t('common.filtersApply')"
-        :count="Number(brandFilter !== 'all') + Number(statusFilter !== 'all')"
+        :count="
+          Number(brandFilter !== 'all') + Number(statusFilter !== 'all') + Number(stockFilter !== 'in')
+        "
       >
         <!-- Status is a tab strip at md+, but inside the sheet it reads better
              as a plain list of choices. -->
@@ -227,6 +238,11 @@ async function deleteSelected() {
           class="md:hidden"
           :label="t('warehouse.cols.status')"
           :options="statusTabs"
+        />
+        <Select
+          v-model="stockFilter"
+          :label="t('warehouse.stock.label')"
+          :options="stockOptions"
         />
         <Combobox
           v-model="brandFilter"

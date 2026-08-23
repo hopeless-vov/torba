@@ -41,6 +41,9 @@ export interface WarehouseGroup {
   batches: WarehouseRow[]
 }
 
+/** Whether a batch still has stock behind it. */
+export type StockFilter = 'in' | 'out' | 'all'
+
 // Worst → best, so a group inherits its most urgent batch.
 const STATUS_SEVERITY: Record<BatchStatus, number> = {
   expired: 0,
@@ -58,6 +61,10 @@ export function useWarehouse() {
   const { t } = useI18n()
 
   const statusFilter = ref<'all' | BatchStatus>('all')
+  // A batch sold to the last unit stays in the books but leaves the shelf, so
+  // the warehouse opens on what can still be sold; the filter is how the user
+  // looks back at closed deliveries.
+  const stockFilter = ref<StockFilter>('in')
   const brandFilter = ref('all')
   const groupByProduct = ref(false)
 
@@ -83,6 +90,8 @@ export function useWarehouse() {
     const q = ui.search.trim().toLowerCase()
     return rows.value.filter((r) => {
       if (statusFilter.value !== 'all' && r.status !== statusFilter.value) return false
+      if (stockFilter.value === 'in' && r.remaining <= 0) return false
+      if (stockFilter.value === 'out' && r.remaining > 0) return false
       if (brandFilter.value !== 'all' && r.brandId !== brandFilter.value) return false
       if (q && !`${r.name} ${r.sku} ${r.batch}`.toLowerCase().includes(q)) return false
       return true
@@ -177,6 +186,7 @@ export function useWarehouse() {
     filtered,
     grouped,
     statusFilter,
+    stockFilter,
     brandFilter,
     groupByProduct,
     createBatch,

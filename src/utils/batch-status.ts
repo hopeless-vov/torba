@@ -38,6 +38,20 @@ export function compareByExpiry(
   return (a.created_at ?? '').localeCompare(b.created_at ?? '')
 }
 
+/**
+ * A batch worth warning about: it still holds stock and is expired or close
+ * to it. A batch sold to the last unit has left the shelf, so nothing on it
+ * can go off and no badge should ask the user to deal with it.
+ */
+export function isAtRisk(
+  batch: { expiry_date: string | null; remaining_qty: number },
+  today: string | Date = new Date(),
+): boolean {
+  if (batch.remaining_qty <= 0) return false
+  const status = batchStatus(batch.expiry_date, today)
+  return status === 'expired' || status === 'critical'
+}
+
 export function batchStatus(expiry: string | null, today: string | Date = new Date()): BatchStatus {
   const days = daysUntil(expiry, today)
   if (days == null) return 'ok'

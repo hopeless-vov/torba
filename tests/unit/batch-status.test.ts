@@ -1,4 +1,4 @@
-import { batchStatus, compareByExpiry, daysUntil } from '@/utils/batch-status'
+import { batchStatus, compareByExpiry, daysUntil, isAtRisk } from '@/utils/batch-status'
 import { describe, expect, it } from 'vitest'
 
 const TODAY = '2026-07-28'
@@ -53,5 +53,25 @@ describe('compareByExpiry', () => {
     ].sort(compareByExpiry)
 
     expect(sorted.map((b) => b.created_at)).toEqual(['2026-03-11', '2026-05-02'])
+  })
+})
+
+describe('isAtRisk', () => {
+  const stocked = (expiry: string | null, remaining = 5) => ({ expiry_date: expiry, remaining_qty: remaining })
+
+  it('warns about stock that is expired or close to it', () => {
+    expect(isAtRisk(stocked(plusDays(-1)), TODAY)).toBe(true)
+    expect(isAtRisk(stocked(plusDays(30)), TODAY)).toBe(true)
+  })
+
+  it('says nothing about stock with time left', () => {
+    expect(isAtRisk(stocked(plusDays(200)), TODAY)).toBe(false)
+    expect(isAtRisk(stocked(null), TODAY)).toBe(false)
+  })
+
+  // Sold to the last unit: the delivery is closed, and an expiry date on an
+  // empty shelf is not something anyone can act on.
+  it('ignores a batch with nothing left, however overdue', () => {
+    expect(isAtRisk(stocked(plusDays(-400), 0), TODAY)).toBe(false)
   })
 })

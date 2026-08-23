@@ -209,6 +209,12 @@
       "batches": "By batch",
       "products": "By product"
     },
+    "stock": {
+      "label": "Stock",
+      "in": "In stock",
+      "out": "Sold out",
+      "all": "All batches"
+    },
     "cols": {
       "product": "Product",
       "batch": "Batch №",

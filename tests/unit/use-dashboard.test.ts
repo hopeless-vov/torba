@@ -234,3 +234,37 @@ describe('useDashboard stockByStatus', () => {
     ])
   })
 })
+
+describe('useDashboard burning', () => {
+  it('puts the soonest expiry at the top', () => {
+    const { inventory, dashboard } = harness()
+    inventory.batches = [batch('b1', '2027-01-01', 5), batch('b2', '2026-09-01', 2)]
+    expect(dashboard.burning.value.map((r) => r.id)).toEqual(['b2', 'b1'])
+  })
+
+  // Selling the last unit closes the batch: there is no shelf life left to
+  // report, so it leaves the table instead of sitting in it at zero.
+  it('drops a batch once it is sold out', () => {
+    const { inventory, dashboard } = harness()
+    inventory.batches = [batch('b1', '2026-01-01', 0), batch('b2', '2026-09-01', 2)]
+    expect(dashboard.burning.value.map((r) => r.id)).toEqual(['b2'])
+  })
+})
+
+describe('useDashboard stats', () => {
+  it('counts only the stock that can still go off', () => {
+    const { inventory, dashboard } = harness()
+    inventory.batches = [
+      batch('b1', '2026-01-01', 0), // expired, but sold to the last unit
+      batch('b2', '2026-01-02', 4), // expired and still on the shelf
+      batch('b3', '2026-09-15', 6), // 33 days → critical
+      batch('b4', '2029-01-01', 9), // years out
+    ]
+
+    const stats = dashboard.stats.value
+    expect(stats.expiredCount).toBe(1)
+    expect(stats.criticalCount).toBe(1)
+    expect(stats.criticalWithin90).toBe(2)
+    expect(stats.expiringUnits).toBe(10)
+  })
+})

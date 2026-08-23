@@ -94,12 +94,17 @@ export function useDashboard() {
   const reference = useReferenceStore()
   const { convertBetween, costToDisplay } = useCurrency()
 
-  const enriched = computed(() =>
-    inventory.batches.map((b) => ({
-      batch: b,
-      status: batchStatus(b.expiry_date),
-      daysLeft: daysUntil(b.expiry_date),
-    })),
+  // A sold-out batch is history, not stock: nothing is left on the shelf to
+  // go off, so it raises no warning, takes no place in the expiry table and
+  // does not dilute the mix. Everything below counts what can still be sold.
+  const onShelf = computed(() =>
+    inventory.batches
+      .filter((b) => b.remaining_qty > 0)
+      .map((b) => ({
+        batch: b,
+        status: batchStatus(b.expiry_date),
+        daysLeft: daysUntil(b.expiry_date),
+      })),
   )
 
   const stats = computed(() => {
@@ -109,7 +114,7 @@ export function useDashboard() {
     let criticalUnits = 0
     let stockValue = 0
 
-    for (const { batch, status } of enriched.value) {
+    for (const { batch, status } of onShelf.value) {
       const brand = reference.brandsById.get(batch.product?.brand_id ?? '') ?? null
       const unitCost = costToDisplay(batch.product?.cost_amount ?? 0, batch.product?.cost_currency ?? 'USD', brand)
       stockValue += batch.remaining_qty * unitCost
@@ -154,7 +159,7 @@ export function useDashboard() {
   })
 
   const burning = computed<BurningRow[]>(() =>
-    enriched.value
+    onShelf.value
       .filter((e) => e.batch.expiry_date)
       .sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0))
       .slice(0, 10)
@@ -229,14 +234,12 @@ export function useDashboard() {
     return [...buckets.values()]
   })
 
-  // How the units on the shelf split across expiry states. Batches with
-  // nothing left are not stock, so they do not dilute the picture.
+  // How the units on the shelf split across expiry states.
   const stockByStatus = computed<StatusSlice[]>(() => {
     const slices = new Map<BatchStatus, StatusSlice>(
       STATUS_ORDER.map((status) => [status, { status, units: 0, batches: 0 }]),
     )
-    for (const { batch, status } of enriched.value) {
-      if (batch.remaining_qty <= 0) continue
+    for (const { batch, status } of onShelf.value) {
       const slice = slices.get(status)
       if (!slice) continue
       slice.units += batch.remaining_qty
