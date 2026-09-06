@@ -68,6 +68,8 @@ export function useCatalog() {
     ui.setSearch('')
   }
 
+  // Only for the retry button and the CSV import, which really does change
+  // the whole catalogue. Everything below puts back the one row it touched.
   async function reload() {
     if (auth.companyId) await inventory.load(auth.companyId)
   }
@@ -75,8 +77,7 @@ export function useCatalog() {
   async function createProduct(payload: Omit<NewProduct, 'company_id'>) {
     if (!auth.companyId) return
     try {
-      await productsApi.create({ ...payload, company_id: auth.companyId })
-      await reload()
+      inventory.upsertProduct(await productsApi.create({ ...payload, company_id: auth.companyId }))
       toast.success(t('toasts.saved'))
     } catch (e) {
       toast.error(t('errors.save'))
@@ -86,8 +87,7 @@ export function useCatalog() {
 
   async function updateProduct(id: string, patch: ProductPatch) {
     try {
-      await productsApi.update(id, patch)
-      await reload()
+      inventory.upsertProduct(await productsApi.update(id, patch))
       toast.success(t('toasts.saved'))
     } catch (e) {
       toast.error(t('errors.save'))
@@ -96,15 +96,14 @@ export function useCatalog() {
   }
 
   async function toggleActive(id: string, isActive: boolean) {
-    await productsApi.update(id, { is_active: isActive })
-    await reload()
+    inventory.upsertProduct(await productsApi.update(id, { is_active: isActive }))
   }
 
   async function removeProducts(ids: string[]) {
     if (ids.length === 0) return
     try {
       await productsApi.removeMany(ids)
-      await reload()
+      inventory.removeProducts(ids)
       toast.success(t('toasts.deleted'))
     } catch {
       toast.error(t('errors.delete'))

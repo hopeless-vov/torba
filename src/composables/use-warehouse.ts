@@ -159,8 +159,7 @@ export function useWarehouse() {
   async function createBatch(payload: Omit<NewBatch, 'company_id'>) {
     if (!auth.companyId) return
     try {
-      await batchesApi.create({ ...payload, company_id: auth.companyId })
-      await reload()
+      inventory.upsertBatch(await batchesApi.create({ ...payload, company_id: auth.companyId }))
       toast.success(t('toasts.saved'))
     } catch (e) {
       toast.error(t('errors.save'))
@@ -170,8 +169,7 @@ export function useWarehouse() {
 
   async function updateBatch(id: string, patch: BatchPatch) {
     try {
-      await batchesApi.update(id, patch)
-      await reload()
+      inventory.upsertBatch(await batchesApi.update(id, patch))
       toast.success(t('toasts.saved'))
     } catch (e) {
       toast.error(t('errors.save'))
@@ -183,7 +181,7 @@ export function useWarehouse() {
     if (ids.length === 0) return
     try {
       await batchesApi.removeMany(ids)
-      await reload()
+      inventory.removeBatches(ids)
       toast.success(t('toasts.deleted'))
     } catch {
       toast.error(t('errors.delete'))

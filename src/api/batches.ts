@@ -18,21 +18,25 @@ export const batchesApi = {
     return (data ?? []) as unknown as BatchRow[]
   },
 
-  create: async (batch: NewBatch): Promise<Batch> => {
-    const { data, error } = await supabase.from('batches').insert(batch).select('*').single()
+  create: async (batch: NewBatch): Promise<BatchRow> => {
+    const { data, error } = await supabase
+      .from('batches')
+      .insert(batch)
+      .select(SELECT_WITH_PRODUCT)
+      .single()
     if (error) throw error
-    return data as Batch
+    return data as unknown as BatchRow
   },
 
-  update: async (id: string, patch: BatchPatch): Promise<Batch> => {
+  update: async (id: string, patch: BatchPatch): Promise<BatchRow> => {
     const { data, error } = await supabase
       .from('batches')
       .update(patch)
       .eq('id', id)
-      .select('*')
+      .select(SELECT_WITH_PRODUCT)
       .single()
     if (error) throw error
-    return data as Batch
+    return data as unknown as BatchRow
   },
 
   remove: async (id: string): Promise<void> => {

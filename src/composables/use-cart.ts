@@ -179,7 +179,7 @@ export function useCart() {
     submitting.value = true
     error.value = null
     try {
-      await ordersApi.place({
+      const placedId = await ordersApi.place({
         companyId,
         clientId: cart.clientId,
         paymentMethod: cart.paymentMethod,
@@ -200,7 +200,11 @@ export function useCart() {
         })),
       })
       cart.clear()
-      await Promise.all([orders.load(companyId), inventory.load(companyId)])
+      // The sale drew stock down across batches the RPC does not report, so
+      // the warehouse is read back in full — but the order list only gains
+      // the one order that was just placed.
+      const [placed] = await Promise.all([ordersApi.get(placedId), inventory.load(companyId)])
+      orders.upsert(placed)
       toast.success(t('toasts.orderPlaced'))
       return true
     } catch (e) {

@@ -468,6 +468,20 @@ See [`CLAUDE.md`](CLAUDE.md) for the full list. In short:
 6. All user-visible text comes from `src/locales/*.json` (both `uk` and `en`).
 7. Only theme color tokens — no arbitrary color values.
 
+### Saving one row does not reload the company
+
+Every mutation used to end in a full `load()` — editing one batch refetched every
+product and every batch the company owns. The API's `create`/`update` return the row
+**with its joins**, exactly as the store holds it, and the stores put it back where a
+fresh load would have left it: products newest first, batches ordered by expiry.
+Deleting products drops their batches locally too, because the database cascades and
+the shelf must not show stock of a product that no longer exists.
+
+Two flows still read the warehouse back in full, and should: **placing an order** and
+**deleting one** move stock across batches the RPC does not name (`create_order` /
+`delete_orders`). Even there, only the warehouse is reloaded — the order list gains
+or loses the one order involved.
+
 ---
 
 ## The UI Kit

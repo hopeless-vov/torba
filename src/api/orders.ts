@@ -91,26 +91,38 @@ export const ordersApi = {
     return data as unknown as OrderRow
   },
 
-  update: async (id: string, patch: OrderPatch): Promise<Order> => {
+  // One order with its client and lines — what the store holds, so a freshly
+  // placed order can join the list without refetching every other one.
+  get: async (id: string): Promise<OrderRow> => {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(SELECT_WITH_RELATIONS)
+      .eq('id', id)
+      .single()
+    if (error) throw error
+    return data as unknown as OrderRow
+  },
+
+  update: async (id: string, patch: OrderPatch): Promise<OrderRow> => {
     const { data, error } = await supabase
       .from('orders')
       .update(patch)
       .eq('id', id)
-      .select('*')
+      .select(SELECT_WITH_RELATIONS)
       .single()
     if (error) throw error
-    return data as Order
+    return data as unknown as OrderRow
   },
 
-  setStatus: async (id: string, status: OrderStatus): Promise<Order> => {
+  setStatus: async (id: string, status: OrderStatus): Promise<OrderRow> => {
     const { data, error } = await supabase
       .from('orders')
       .update({ status })
       .eq('id', id)
-      .select('*')
+      .select(SELECT_WITH_RELATIONS)
       .single()
     if (error) throw error
-    return data as Order
+    return data as unknown as OrderRow
   },
 
   remove: async (id: string, companyId: string): Promise<void> => {

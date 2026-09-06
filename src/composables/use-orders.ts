@@ -111,8 +111,7 @@ export function useOrders() {
 
   async function setStatus(id: string, status: OrderStatus) {
     try {
-      await ordersApi.setStatus(id, status)
-      if (auth.companyId) await store.load(auth.companyId)
+      store.upsert(await ordersApi.setStatus(id, status))
       toast.success(t('toasts.statusUpdated'))
     } catch {
       toast.error(t('errors.save'))
@@ -121,8 +120,7 @@ export function useOrders() {
 
   async function updateOrder(id: string, patch: OrderPatch) {
     try {
-      await ordersApi.update(id, patch)
-      if (auth.companyId) await store.load(auth.companyId)
+      store.upsert(await ordersApi.update(id, patch))
       toast.success(t('toasts.saved'))
     } catch (e) {
       toast.error(t('errors.save'))
@@ -134,14 +132,16 @@ export function useOrders() {
     await removeOrders([id])
   }
 
-  // Deleting returns the goods to their batches (delete_orders in
-  // migration 0004), so the warehouse has to be reloaded too.
+  // Deleting returns the goods to their batches (delete_orders in migration
+  // 0004) across batches we cannot name from here, so the warehouse — and
+  // only the warehouse — still has to be read back in full.
   async function removeOrders(ids: string[]) {
     const companyId = auth.companyId
     if (ids.length === 0 || !companyId) return
     try {
       await ordersApi.removeMany(ids, companyId)
-      await Promise.all([store.load(companyId), inventory.load(companyId)])
+      store.removeLocal(ids)
+      await inventory.load(companyId)
       toast.success(t('toasts.deleted'))
     } catch (e) {
       toast.error(t('errors.delete'))

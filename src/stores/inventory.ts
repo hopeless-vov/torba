@@ -1,5 +1,6 @@
 import { batchesApi, type BatchRow } from '@/api/batches'
 import { type ProductRow,productsApi } from '@/api/products'
+import { compareByExpiry } from '@/utils/batch-status'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
@@ -35,6 +36,36 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
   }
 
+  // Saving one row used to refetch the whole company. These put the row the
+  // server just handed back where the list keeps it, in the order `list`
+  // would have returned it — products newest first, batches by expiry.
+  function upsertProduct(row: ProductRow) {
+    const i = products.value.findIndex((p) => p.id === row.id)
+    if (i >= 0) products.value[i] = row
+    else products.value.unshift(row)
+  }
+
+  // Products cascade to their batches in the database (see 0001), so the
+  // shelf has to lose them here too — otherwise the warehouse shows stock of
+  // a product that no longer exists until the next full load.
+  function removeProducts(ids: string[]) {
+    const gone = new Set(ids)
+    products.value = products.value.filter((p) => !gone.has(p.id))
+    batches.value = batches.value.filter((b) => !gone.has(b.product_id))
+  }
+
+  function upsertBatch(row: BatchRow) {
+    const i = batches.value.findIndex((b) => b.id === row.id)
+    if (i >= 0) batches.value[i] = row
+    else batches.value.push(row)
+    batches.value.sort(compareByExpiry)
+  }
+
+  function removeBatches(ids: string[]) {
+    const gone = new Set(ids)
+    batches.value = batches.value.filter((b) => !gone.has(b.id))
+  }
+
   function reset() {
     products.value = []
     batches.value = []
@@ -42,5 +73,18 @@ export const useInventoryStore = defineStore('inventory', () => {
     error.value = null
   }
 
-  return { products, batches, loading, error, loaded, stockByProduct, load, reset }
+  return {
+    products,
+    batches,
+    loading,
+    error,
+    loaded,
+    stockByProduct,
+    load,
+    upsertProduct,
+    removeProducts,
+    upsertBatch,
+    removeBatches,
+    reset,
+  }
 })

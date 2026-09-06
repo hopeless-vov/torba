@@ -19,21 +19,25 @@ export const productsApi = {
     return (data ?? []) as unknown as ProductRow[]
   },
 
-  create: async (product: NewProduct): Promise<Product> => {
-    const { data, error } = await supabase.from('products').insert(product).select('*').single()
+  create: async (product: NewProduct): Promise<ProductRow> => {
+    const { data, error } = await supabase
+      .from('products')
+      .insert(product)
+      .select(SELECT_WITH_RELATIONS)
+      .single()
     if (error) throw error
-    return data as Product
+    return data as unknown as ProductRow
   },
 
-  update: async (id: string, patch: ProductPatch): Promise<Product> => {
+  update: async (id: string, patch: ProductPatch): Promise<ProductRow> => {
     const { data, error } = await supabase
       .from('products')
       .update(patch)
       .eq('id', id)
-      .select('*')
+      .select(SELECT_WITH_RELATIONS)
       .single()
     if (error) throw error
-    return data as Product
+    return data as unknown as ProductRow
   },
 
   remove: async (id: string): Promise<void> => {
