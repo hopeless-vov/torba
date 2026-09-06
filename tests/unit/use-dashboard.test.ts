@@ -325,3 +325,40 @@ describe('useDashboard spending', () => {
     expect(dashboard.spending.value.total).toBe(0)
   })
 })
+
+describe('useDashboard stock value', () => {
+  // Stock is worth what it cost, and two deliveries of one product can have
+  // cost different money — the promotional one must not be valued at the
+  // catalogue price it never sold at.
+  function priced(id: string, remaining: number, cost: number | null): BatchRow {
+    return {
+      id,
+      product_id: 'p1',
+      expiry_date: '2027-01-01',
+      remaining_qty: remaining,
+      cost_amount: cost,
+      cost_currency: cost == null ? null : 'UAH',
+      product: {
+        id: 'p1',
+        brand_id: null,
+        cost_amount: 1500,
+        cost_currency: 'UAH',
+        brand: null,
+      },
+    } as unknown as BatchRow
+  }
+
+  it('values each batch at its own purchase price', () => {
+    const { inventory, dashboard } = harness()
+    inventory.batches = [priced('b1', 2, 1192), priced('b2', 3, 1500)]
+
+    expect(dashboard.stats.value.stockValue).toBe(2 * 1192 + 3 * 1500)
+  })
+
+  it('values a batch without a price of its own at the catalogue price', () => {
+    const { inventory, dashboard } = harness()
+    inventory.batches = [priced('b1', 2, null)]
+
+    expect(dashboard.stats.value.stockValue).toBe(3000)
+  })
+})

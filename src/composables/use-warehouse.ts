@@ -1,7 +1,9 @@
 import { batchesApi } from '@/api/batches'
+import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
+import { useReferenceStore } from '@/stores/reference'
 import { useUiStore } from '@/stores/ui'
 import type { BatchPatch, NewBatch } from '@/types/database'
 import type { BatchStatus } from '@/types/models'
@@ -21,6 +23,7 @@ export interface WarehouseRow {
   remaining: number // still on the shelf
   received: number // how many arrived in this delivery
   sold: number // received − remaining
+  cost: number // what one unit of *this* delivery cost, in display currency
   status: BatchStatus
   daysLeft: number | null
 }
@@ -35,6 +38,7 @@ export interface WarehouseGroup {
   received: number
   sold: number
   batchesCount: number
+  stockValue: number // what the remaining units cost, at each batch's own price
   status: BatchStatus // worst status among the batches that still hold stock
   nearestExpiry: string | null
   daysLeft: number | null
@@ -55,7 +59,9 @@ const STATUS_SEVERITY: Record<BatchStatus, number> = {
 
 export function useWarehouse() {
   const inventory = useInventoryStore()
+  const reference = useReferenceStore()
   const ui = useUiStore()
+  const { batchCostToDisplay } = useCurrency()
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
@@ -81,6 +87,11 @@ export function useWarehouse() {
       remaining: b.remaining_qty,
       received: b.received_qty,
       sold: Math.max(0, b.received_qty - b.remaining_qty),
+      // A delivery bought on promotion keeps its own cost here, so the shelf
+      // can say what is left at which price rather than one blended figure.
+      cost: b.product
+        ? batchCostToDisplay(b, b.product, reference.brandsById.get(b.product.brand_id ?? '') ?? null)
+        : 0,
       status: batchStatus(b.expiry_date),
       daysLeft: daysUntil(b.expiry_date),
     })),
@@ -131,6 +142,7 @@ export function useWarehouse() {
           received: sorted.reduce((sum, b) => sum + b.received, 0),
           sold: sorted.reduce((sum, b) => sum + b.sold, 0),
           batchesCount: sorted.length,
+          stockValue: sorted.reduce((sum, b) => sum + b.remaining * b.cost, 0),
           status: worst.status,
           nearestExpiry: nearest.expiry,
           daysLeft: nearest.daysLeft,

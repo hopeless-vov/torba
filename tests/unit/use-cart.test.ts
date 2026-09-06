@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
 import { useCurrencyStore } from '@/stores/currency'
+import { useInventoryStore } from '@/stores/inventory'
+import type { BatchRow } from '@/api/batches'
 import type { Client, Company, Product } from '@/types/database'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -117,5 +119,87 @@ describe('useCart checkout', () => {
     expect(payload.items).toEqual([
       expect.objectContaining({ qty: 3, unit_price: 180, unit_cost: 100, discount: 15 }),
     ])
+  })
+})
+
+// One product, two deliveries that cost different money: a full-price one at
+// 1500 and a promotional one at 1192. Which one ships decides the margin.
+const priced = {
+  id: 'p1',
+  sku: 'A-1',
+  name: 'Alpha',
+  brand_id: null,
+  cost_amount: 1500,
+  cost_currency: 'UAH',
+  retail_amount: 2000,
+  retail_currency: 'UAH',
+} as Product
+
+function batchOf(id: string, cost: number | null): BatchRow {
+  return {
+    id,
+    company_id: 'c',
+    product_id: 'p1',
+    batch_number: id,
+    delivery_date: '2026-06-01',
+    expiry_date: id === 'promo' ? '2027-01-01' : '2027-06-01',
+    received_qty: 10,
+    remaining_qty: 10,
+    cost_amount: cost,
+    cost_currency: cost == null ? null : 'UAH',
+    created_at: '2026-06-01',
+    product: { ...priced, brand: null },
+  } as unknown as BatchRow
+}
+
+describe('useCart batch cost', () => {
+  it('sells a promotional delivery at what that delivery cost', () => {
+    const { cart, use } = harness()
+    use.addFromBatch(batchOf('promo', 1192))
+
+    expect(cart.lines[0].unitCost).toBe(1192)
+  })
+
+  it('falls back to the catalogue price for a batch without one', () => {
+    const { cart, use } = harness()
+    use.addFromBatch(batchOf('old', null))
+
+    expect(cart.lines[0].unitCost).toBe(1500)
+  })
+
+  // Handing over the other delivery instead has to move the cost with it, or
+  // the sale reports a margin it never made.
+  it('re-prices the line when it is moved onto another batch', () => {
+    const { cart, use } = harness()
+    const inventory = useInventoryStore()
+    inventory.batches = [batchOf('promo', 1192), batchOf('full', 1500)]
+
+    use.addFromBatch(batchOf('promo', 1192))
+    expect(cart.lines[0].unitCost).toBe(1192)
+
+    use.selectBatch(cart.lines[0], 'full')
+    expect(cart.lines[0].unitCost).toBe(1500)
+  })
+
+  it('sends the batch’s cost to the order, so the margin is the real one', async () => {
+    const { use } = harness()
+    use.addFromBatch(batchOf('promo', 1192))
+    await use.checkout()
+
+    expect(api.place).toHaveBeenCalledWith(expect.objectContaining({
+      items: [expect.objectContaining({ unit_cost: 1192, batch_id: 'promo' })],
+    }))
+  })
+
+  // A line added from the catalogue draws FIFO, so it costs what the batch it
+  // will actually ship from costs.
+  it('prices a catalogue line from the batch it would ship from', () => {
+    const { cart, use } = harness()
+    const inventory = useInventoryStore()
+    inventory.batches = [batchOf('promo', 1192)]
+
+    use.addProduct({ ...priced, brand: null, category: null } as never)
+
+    expect(cart.lines[0].unitCost).toBe(1192)
   })
 })

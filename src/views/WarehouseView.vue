@@ -15,6 +15,7 @@ import Select from '@/components/ui/Select.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
+import { useCurrency } from '@/composables/use-currency'
 import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
 import { useWarehouse, type WarehouseGroup, type WarehouseRow } from '@/composables/use-warehouse'
@@ -31,6 +32,7 @@ const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const ui = useUiStore()
 const { addFromBatch } = useCart()
+const { format } = useCurrency()
 const {
   filtered,
   grouped,
@@ -104,6 +106,13 @@ const batchColumns = computed<Column[]>(() => [
     hint: t('warehouse.hint.remaining'),
   },
   {
+    key: 'cost',
+    label: t('warehouse.cols.cost'),
+    align: 'right',
+    mono: true,
+    hint: t('warehouse.hint.cost'),
+  },
+  {
     key: 'received',
     label: t('warehouse.cols.received'),
     align: 'right',
@@ -130,6 +139,13 @@ const groupColumns = computed<Column[]>(() => [
     align: 'right',
     mono: true,
     hint: t('warehouse.hint.totalRemaining'),
+  },
+  {
+    key: 'stockValue',
+    label: t('warehouse.cols.stockValue'),
+    align: 'right',
+    mono: true,
+    hint: t('warehouse.hint.stockValue'),
   },
   {
     key: 'received',
@@ -328,6 +344,9 @@ async function confirmDelete() {
             :class="(row as WarehouseRow).remaining > 0 ? 'text-fg' : 'text-faint'"
           >{{ (row as WarehouseRow).remaining }}</span>
         </template>
+        <template #cell-cost="{ row }">
+          <span class="text-muted">{{ format((row as WarehouseRow).cost) }}</span>
+        </template>
         <template #cell-received="{ row }">
           <span class="text-muted">{{ (row as WarehouseRow).received }}</span>
         </template>
@@ -420,6 +439,9 @@ async function confirmDelete() {
             :class="(row as WarehouseGroup).remaining > 0 ? 'text-fg' : 'text-faint'"
           >{{ `${(row as WarehouseGroup).remaining} ${t('common.pcs')}` }}</span>
         </template>
+        <template #cell-stockValue="{ row }">
+          <span class="text-fg">{{ format((row as WarehouseGroup).stockValue) }}</span>
+        </template>
         <template #cell-received="{ row }">
           <span class="text-muted">{{ (row as WarehouseGroup).received }}</span>
         </template>
@@ -456,7 +478,10 @@ async function confirmDelete() {
                 :status="batch.status"
                 :days-left="batch.daysLeft"
               />
-              <span class="ml-auto shrink-0 font-mono text-sm text-fg tabular-nums">
+              <span class="ml-auto shrink-0 font-mono text-xs text-faint tabular-nums">
+                {{ format(batch.cost) }}
+              </span>
+              <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
                 {{ `${batch.remaining} / ${batch.received} ${t('common.pcs')}` }}
               </span>
               <template v-if="canTrade">

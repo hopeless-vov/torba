@@ -98,7 +98,7 @@ export function useDashboard() {
   const auth = useAuthStore()
   const orders = useOrdersStore()
   const reference = useReferenceStore()
-  const { convertBetween, costToDisplay } = useCurrency()
+  const { convertBetween, batchCostToDisplay } = useCurrency()
 
   // A sold-out batch is history, not stock: nothing is left on the shelf to
   // go off, so it raises no warning, takes no place in the expiry table and
@@ -153,7 +153,9 @@ export function useDashboard() {
 
     for (const { batch, status } of onShelf.value) {
       const brand = reference.brandsById.get(batch.product?.brand_id ?? '') ?? null
-      const unitCost = costToDisplay(batch.product?.cost_amount ?? 0, batch.product?.cost_currency ?? 'USD', brand)
+      // Each batch at its own purchase price: a promotional delivery is worth
+      // what it cost, not what the catalogue says the product costs.
+      const unitCost = batch.product ? batchCostToDisplay(batch, batch.product, brand) : 0
       stockValue += batch.remaining_qty * unitCost
       if (status === 'expired') {
         expired += 1

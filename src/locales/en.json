@@ -28,6 +28,7 @@
     "none": "none",
     "pcs": "pcs",
     "emptyValue": "—",
+    "approx": "≈ {amount}",
     "prevPage": "Previous page",
     "nextPage": "Next page"
   },
@@ -247,18 +248,22 @@
       "delivery": "Received on",
       "expiry": "Expiry",
       "remaining": "Left",
+      "cost": "Purchase price",
       "received": "Received",
       "sold": "Sold",
       "batches": "Batches",
       "totalRemaining": "Total in stock",
+      "stockValue": "Value on hand",
       "nearestExpiry": "Nearest expiry",
       "status": "Status"
     },
     "hint": {
       "remaining": "How many units of this batch are still on the shelf",
+      "cost": "What one unit of this delivery cost — a promotion here does not distort the rest of the shelf",
       "received": "How many units arrived in this delivery",
       "sold": "Received minus left — how many already went to clients",
-      "totalRemaining": "Sum of what is left across every batch of this product"
+      "totalRemaining": "Sum of what is left across every batch of this product",
+      "stockValue": "What the remaining units cost — each batch at its own purchase price"
     },
     "empty": "Warehouse is empty",
     "emptyHint": "Add a batch to a catalog product.",
@@ -355,7 +360,7 @@
       "address": "Ships to",
       "note": "Note",
       "goods": "Goods sale",
-      "unitPrice": "Unit price",
+    "unitPrice": "Unit price",
       "lineDiscounts": "Per-product discounts",
       "lineTotal": "Total",
       "viewProduct": "View product",
@@ -468,6 +473,7 @@
     "discount": "Order discount",
     "discountHint": "Applies to the whole order, on top of any per-product discounts.",
     "orderSection": "Order",
+    "unitCost": "cost {cost}/unit",
     "unitPrice": "Price",
     "lineDiscount": "Discount",
     "netUnit": "after discount: {price} / pc",

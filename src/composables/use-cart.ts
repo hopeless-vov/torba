@@ -10,7 +10,7 @@ import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
-import type { Product } from '@/types/database'
+import type { Batch, Product } from '@/types/database'
 import type { CartLine, ProductView } from '@/types/models'
 import { compareByExpiry } from '@/utils/batch-status'
 import { computeOrderTotals } from '@/utils/orders'
@@ -39,7 +39,7 @@ export function useCart() {
   const orders = useOrdersStore()
   const clients = useClientsStore()
   const reference = useReferenceStore()
-  const { convertBetween, costToDisplay } = useCurrency()
+  const { convertBetween, costToDisplay, batchCostToDisplay } = useCurrency()
   const toast = useToast()
   const { t } = useI18n()
 
@@ -75,6 +75,17 @@ export function useCart() {
       cart.lines.map((l) => ({ qty: l.qty, unit_price: linePrice(l), unit_cost: l.unitCost })),
     ),
   )
+
+  /**
+   * What one unit drawn from this batch cost us, in the display currency.
+   * The batch's own purchase price when it has one — a promotional delivery
+   * must not be sold at the full-price delivery's margin — and the product's
+   * catalogue price otherwise.
+   */
+  function batchCost(product: Product, batch: Batch | null): number {
+    const brand = product.brand_id ? (reference.brandsById.get(product.brand_id) ?? null) : null
+    return batchCostToDisplay(batch, product, brand)
+  }
 
   /** Every batch of a product, FIFO-ordered — the expiry choices for a line. */
   function batchesFor(productId: string): BatchRow[] {
@@ -126,7 +137,7 @@ export function useCart() {
       brand: product.brand,
       batch,
       unitPrice: product.retail ?? product.purchase,
-      unitCost: product.purchase,
+      unitCost: batchCost(product, batch),
       stockQty: batch ? batch.remaining_qty : product.inStock,
     })
     announce(product.name)
@@ -135,14 +146,14 @@ export function useCart() {
   // Used by the cart page's "from catalog" picker, where prices still need
   // to be resolved from the brand rate.
   function addProduct(product: ProductRow) {
-    const { purchase, retail } = pricesFor(product)
+    const { retail } = pricesFor(product)
     const batch = fifoBatch(product.id)
     cart.addLine({
       product,
       brand: product.brand,
       batch,
       unitPrice: retail,
-      unitCost: purchase,
+      unitCost: batchCost(product, batch),
       stockQty: batch ? batch.remaining_qty : (inventory.stockByProduct.get(product.id) ?? 0),
     })
     announce(product.name)
@@ -152,13 +163,13 @@ export function useCart() {
   function addFromBatch(batch: BatchRow) {
     const product = batch.product
     if (!product) return
-    const { purchase, retail } = pricesFor(product)
+    const { retail } = pricesFor(product)
     cart.addLine({
       product,
       brand: null,
       batch,
       unitPrice: retail,
-      unitCost: purchase,
+      unitCost: batchCost(product, batch),
       stockQty: batch.remaining_qty,
     })
     announce(product.name)
@@ -168,7 +179,7 @@ export function useCart() {
   function selectBatch(line: CartLine, batchId: string) {
     const batch = batchesFor(line.product.id).find((b) => b.id === batchId)
     if (!batch) return
-    cart.setBatch(line.key, batch, batch.remaining_qty)
+    cart.setBatch(line.key, batch, batch.remaining_qty, batchCost(line.product, batch))
   }
 
   /** Places the order. Returns whether it went through, so the caller can
@@ -227,6 +238,7 @@ export function useCart() {
     submitting,
     error,
     batchesFor,
+    batchCost,
     shortfall,
     inCart,
     inCartFromBatch,

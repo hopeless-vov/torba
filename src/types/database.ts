@@ -158,6 +158,10 @@ export interface Batch {
   expiry_date: string | null
   received_qty: number
   remaining_qty: number
+  // What this delivery cost per unit, in the currency it was paid in. Null
+  // falls back to the product's catalogue price — see 0017 and `costOf`.
+  cost_amount: number | null
+  cost_currency: string | null
   created_at: string
 }
 

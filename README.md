@@ -46,7 +46,8 @@ trigger, the profile-identity lockdown, a self-heal bootstrap RPC, the atomic
 `create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, user-defined
 currencies, order-level and per-line discounts, the supplier/market rate split,
-per-product price currencies, and the brand↔category links) lives in
+per-product price currencies, per-batch purchase prices, and the brand↔category
+links) lives in
 [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
@@ -58,7 +59,8 @@ Apply **all files, in order**:
   `0008_product_currency.sql`, `0009_drop_paid_status.sql`,
   `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
-  `0014_invitation_preview.sql`, `0015_order_item_discount.sql`.
+  `0014_invitation_preview.sql`, `0015_order_item_discount.sql`,
+  `0017_batch_cost.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -135,6 +137,15 @@ the company without touching a single product.
 `SECURITY DEFINER`, so the table policies do not apply inside them — without
 the check a viewer could place and delete orders through the functions while
 being unable to touch the tables directly.
+
+**`0017` puts the purchase price on the batch.** Cost lived on the product: one
+price for every delivery of it, ever. Real buying does not work that way — the same
+refill arrives at 1500 ₴ one month and at 1192 ₴ on a promotion the next, and both
+sit on the shelf together. `batches.cost_amount` + `cost_currency` mirror the
+product's pair, including the supplier-rate resolution, and are **nullable**: null
+means "the product's catalogue price", so every existing batch reports exactly what
+it reported before. Nothing already sold moves — `order_items.unit_cost` is
+snapshotted at checkout.
 
 **`0015` gives a single line its own discount.** `0005` discounts the order as
 a whole, which covers "this client gets 10% off everything" but not a clearance
@@ -282,7 +293,17 @@ distribution needs all three:
 product form; cost defaults to the brand's catalog currency, retail to the base). A
 cost in the brand's catalog currency is still resolved through the **supplier rate**
 (`costToDisplay` → `functionalCost`), so bumping a supplier's rate reflows that brand's
-cost; a cost in any other currency goes through the market table instead. **Order**
+cost; a cost in any other currency goes through the market table instead.
+
+**A batch may override the cost.** The product's price is the *catalogue* price — what
+a delivery normally costs — and a batch that came in cheaper (or dearer) carries its
+own `cost_amount` + `cost_currency`, resolved the same way. [`costOf`](src/utils/pricing.ts)
+picks between them and `batchCostToDisplay` converts, so one rule holds everywhere:
+**a sale costs what the delivery it ships from cost**. The cart prices a line from its
+batch and re-prices it when the line is moved to another; the warehouse shows the price
+per batch and what the remaining units are worth; the dashboard values stock the same
+way. Since `order_items.unit_cost` is snapshotted at checkout, a later price change
+never rewrites the margin of a sale already made. **Order**
 amounts snapshot in the order's currency. Nothing is stored in a display-converted
 form, so switching the display or base currency never rewrites data.
 
@@ -343,11 +364,19 @@ recomputed from the brand rate.
 
 ## Warehouse
 
-A **batch** is one delivery of one product, with its own expiry date. Three
-quantities describe it: **Отримано** (how many arrived), **Залишок** (how many are
-still on the shelf) and **Продано** (the difference — what already went to clients).
-Batch numbers are **generated** from the product's SKU (`FRY-500-01`, `FRY-500-02`;
-see [`utils/batch-number`](src/utils/batch-number.ts)), so nothing has to be typed.
+A **batch** is one delivery of one product, with its own expiry date **and its own
+purchase price**. Three quantities describe it: **Отримано** (how many arrived),
+**Залишок** (how many are still on the shelf) and **Продано** (the difference — what
+already went to clients). Batch numbers are **generated** from the product's SKU
+(`FRY-500-01`, `FRY-500-02`; see [`utils/batch-number`](src/utils/batch-number.ts)),
+so nothing has to be typed.
+
+**Ціна закупки** is per delivery. The form prefills it from the product's catalogue
+price — most deliveries do come in at it — and a promotional one is typed over that;
+entered in a currency other than the books', the field says underneath what it comes
+to. The batches table shows the price per delivery, the per-product view shows
+**Вартість залишку** (what is left, each batch at its own price), and the dashboard's
+stock value follows the same rule.
 
 The warehouse has two views. **За партіями** lists every delivery separately.
 **За товаром** collapses them into one row per product with the total stock, which
@@ -355,6 +384,11 @@ expands to show how much sits under each expiry date — that is how you see bot
 "how much do I have" and "which of it expires when". Every batch row carries the
 same **add-to-cart** button as the catalog, so stock can be sold straight from the
 warehouse — the cart line is pinned to that exact batch (and its expiry date).
+
+The batch a line ships from is also what it **cost**: the picker in the cart names
+each delivery by its expiry date, what is left of it and its price, and moving a line
+onto another delivery re-prices the cost with it — otherwise the sale would report a
+margin it never made.
 
 **A batch sold to the last unit leaves the shelf.** It stays in the books, but it
 is a closed delivery, not stock: it raises no expiry warning in the sidebar badge,

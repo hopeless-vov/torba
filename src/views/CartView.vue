@@ -37,6 +37,7 @@ const {
   submitting,
   checkout,
   batchesFor,
+  batchCost,
   shortfall,
   inCart,
   inCartFromBatch,
@@ -105,7 +106,9 @@ function batchOptions(line: CartLine) {
     .filter((b) => b.remaining_qty > 0 || b.id === line.batch?.id)
     .map((b) => ({
       value: b.id,
-      label: `${formatDate(b.expiry_date)} · ${b.remaining_qty} ${t('common.pcs')}`,
+      // Date, what is left of it, and what it cost us — the three things that
+      // decide which delivery to hand over.
+      label: `${formatDate(b.expiry_date)} · ${b.remaining_qty} ${t('common.pcs')} · ${format(batchCost(line.product, b))}`,
     }))
 }
 
@@ -344,10 +347,12 @@ async function placeOrder() {
                 </div>
               </div>
 
-              <div
-                v-if="line.discount > 0 || line.unitPrice !== line.listPrice || shortfall(line) > 0"
-                class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs"
-              >
+              <!-- What this line cost us is always worth showing: it is the
+                   batch's own purchase price, and switching batches moves it. -->
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+                <span class="text-faint">
+                  {{ t('cart.unitCost', { cost: format(line.unitCost) }) }}
+                </span>
                 <span
                   v-if="line.discount > 0"
                   class="text-muted"

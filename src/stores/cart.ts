@@ -96,14 +96,19 @@ export const useCartStore = defineStore('cart', () => {
    * Move a line onto another batch of the same product — this is how the
    * user chooses which expiry date to ship. Landing on a batch that is
    * already in the cart merges the two lines.
+   *
+   * Batches can have cost different money, so shipping from another one
+   * changes what this sale cost us: `unitCost` follows the batch, or the
+   * margin would be reported against a delivery that is not going out.
    */
-  function setBatch(key: string, batch: Batch | null, stockQty: number) {
+  function setBatch(key: string, batch: Batch | null, stockQty: number, unitCost?: number) {
     const line = lines.value.find((l) => l.key === key)
     if (!line) return
 
     const nextKey = lineKey(line.product.id, batch?.id ?? null)
     if (nextKey === key) {
       line.stockQty = stockQty
+      if (unitCost != null) line.unitCost = unitCost
       return
     }
 
@@ -118,6 +123,7 @@ export const useCartStore = defineStore('cart', () => {
     line.batch = batch
     line.stockQty = stockQty
     line.key = nextKey
+    if (unitCost != null) line.unitCost = unitCost
   }
 
   function remove(key: string) {

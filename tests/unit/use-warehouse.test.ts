@@ -10,8 +10,24 @@ import { defineComponent } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { describe, expect, it } from 'vitest'
 
-const alpha = { id: 'p1', sku: 'A-1', name: 'Alpha', brand_id: 'b1' } as Product
-const beta = { id: 'p2', sku: 'B-1', name: 'Beta', brand_id: 'b2' } as Product
+// Costs are in the base currency and the brands are not seeded, so a batch
+// reports exactly the number it was given — which is what these assert.
+const alpha = {
+  id: 'p1',
+  sku: 'A-1',
+  name: 'Alpha',
+  brand_id: null,
+  cost_amount: 1500,
+  cost_currency: 'UAH',
+} as Product
+const beta = {
+  id: 'p2',
+  sku: 'B-1',
+  name: 'Beta',
+  brand_id: null,
+  cost_amount: 900,
+  cost_currency: 'UAH',
+} as Product
 
 // Far enough out that the expiry bucket stays 'ok' regardless of when the
 // suite runs; the near dates below are deliberately already expired.
@@ -24,6 +40,8 @@ function batch(over: Partial<BatchRow> & { id: string }): BatchRow {
     expiry_date: '2999-01-01',
     received_qty: 10,
     remaining_qty: 10,
+    cost_amount: null,
+    cost_currency: null,
     created_at: '2026-01-01',
     product: { ...alpha, brand: null } as BatchRow['product'],
     ...over,
@@ -159,5 +177,33 @@ describe('useWarehouse stock filter', () => {
 
     warehouse.stockFilter.value = 'all'
     expect(warehouse.grouped.value).toHaveLength(1)
+  })
+})
+
+describe('useWarehouse cost', () => {
+  it('reports what this delivery cost, not what the catalogue says', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [batch({ id: 'b-1', cost_amount: 1192, cost_currency: 'UAH' })]
+
+    expect(warehouse.filtered.value[0].cost).toBe(1192)
+  })
+
+  it('falls back to the catalogue price for an older batch', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [batch({ id: 'b-1' })]
+
+    expect(warehouse.filtered.value[0].cost).toBe(1500)
+  })
+
+  // "How much stock do I have, and at what cost" — each delivery at its own
+  // price, which is the whole reason the price lives on the batch.
+  it('values a product’s stock at each batch’s own price', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [
+      batch({ id: 'b-1', remaining_qty: 2, cost_amount: 1192, cost_currency: 'UAH' }),
+      batch({ id: 'b-2', remaining_qty: 3, cost_amount: 1500, cost_currency: 'UAH' }),
+    ]
+
+    expect(warehouse.grouped.value[0].stockValue).toBe(2 * 1192 + 3 * 1500)
   })
 })

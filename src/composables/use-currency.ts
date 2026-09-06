@@ -4,6 +4,7 @@ import { useCurrencyStore } from '@/stores/currency'
 import { useReferenceStore } from '@/stores/reference'
 import type { Brand } from '@/types/database'
 import { CURRENCY_SYMBOLS, formatAmount } from '@/utils/format'
+import { costOf } from '@/utils/pricing'
 import { computed } from 'vue'
 
 // Three distinct rates, kept separate:
@@ -126,6 +127,22 @@ export function useCurrency() {
     return convertBetween(costAmount, costCurrency, to)
   }
 
+  /**
+   * What one unit of a batch cost, in the display currency — the batch's own
+   * purchase price when it has one, the product's otherwise. Same conversion
+   * as any cost: a price in the brand's catalog currency goes through that
+   * brand's supplier rate, anything else through the market rate.
+   */
+  function batchCostToDisplay(
+    batch: { cost_amount: number | null; cost_currency: string | null } | null | undefined,
+    product: { cost_amount: number; cost_currency: string },
+    brand: Brand | null | undefined,
+    to: string = code.value,
+  ): number {
+    const { amount, currency } = costOf(batch, product)
+    return costToDisplay(amount, currency, brand, to)
+  }
+
   function format(amount: number, digits?: number): string {
     return formatAmount(amount, symbol.value, digits ?? digitsFor(code.value))
   }
@@ -176,6 +193,7 @@ export function useCurrency() {
     toDisplay,
     functionalCost,
     costToDisplay,
+    batchCostToDisplay,
     format,
     formatIn,
     formatFrom,
