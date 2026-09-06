@@ -140,6 +140,18 @@ export function useWarehouse() {
       .sort((a, b) => STATUS_SEVERITY[a.status] - STATUS_SEVERITY[b.status] || a.name.localeCompare(b.name))
   })
 
+  // Nothing on the shelf at all, or nothing the filters let through. Note
+  // that the default stock filter already hides sold-out batches, so clearing
+  // has to open the warehouse right up for the answer to be honest.
+  const total = computed(() => rows.value.length)
+
+  function clearFilters() {
+    statusFilter.value = 'all'
+    stockFilter.value = 'all'
+    brandFilter.value = 'all'
+    ui.setSearch('')
+  }
+
   async function reload() {
     if (auth.companyId) await inventory.load(auth.companyId)
   }
@@ -181,6 +193,9 @@ export function useWarehouse() {
   return {
     filtered,
     grouped,
+    total,
+    clearFilters,
+    reload,
     statusFilter,
     stockFilter,
     brandFilter,

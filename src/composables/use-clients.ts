@@ -39,6 +39,12 @@ export function useClients() {
     return views.value.filter((c) => `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q))
   })
 
+  const total = computed(() => store.clients.length)
+
+  function clearFilters() {
+    ui.setSearch('')
+  }
+
   async function reload() {
     if (auth.companyId) await store.load(auth.companyId)
   }
@@ -76,5 +82,5 @@ export function useClients() {
     }
   }
 
-  return { filtered, createClient, updateClient, removeClient, reload }
+  return { filtered, total, clearFilters, createClient, updateClient, removeClient, reload }
 }

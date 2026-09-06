@@ -58,6 +58,16 @@ export function useCatalog() {
     })
   })
 
+  // What an empty table means: nothing in the catalogue at all, or filters
+  // that match nothing. The unfiltered count is what tells the two apart.
+  const total = computed(() => inventory.products.length)
+
+  function clearFilters() {
+    brandFilter.value = 'all'
+    categoryFilter.value = 'all'
+    ui.setSearch('')
+  }
+
   async function reload() {
     if (auth.companyId) await inventory.load(auth.companyId)
   }
@@ -103,6 +113,8 @@ export function useCatalog() {
 
   return {
     filtered,
+    total,
+    clearFilters,
     brandFilter,
     categoryFilter,
     discount,

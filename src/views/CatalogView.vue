@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import CsvImportModal from '@/components/CsvImportModal.vue'
+import ListFallback from '@/components/ListFallback.vue'
 import ProductFormModal from '@/components/ProductFormModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
@@ -37,6 +38,9 @@ const { code, format, formatIn } = useCurrency()
 const { addFromCatalog } = useCart()
 const {
   filtered,
+  total,
+  clearFilters,
+  reload,
   brandFilter,
   categoryFilter,
   discount,
@@ -346,7 +350,14 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
         </template>
 
         <template #empty>
+          <ListFallback
+            v-if="inventory.error || total > 0"
+            :state="inventory.error ? 'error' : 'noMatches'"
+            @retry="reload"
+            @clear="clearFilters"
+          />
           <EmptyState
+            v-else
             icon="fa-solid fa-box-open"
             :title="t('catalog.empty')"
             :hint="t('catalog.emptyHint')"

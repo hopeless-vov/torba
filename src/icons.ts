@@ -6,6 +6,7 @@ import {
   faArrowRight,
   faArrowRightArrowLeft,
   faArrowRightFromBracket,
+  faArrowRotateRight,
   faBagShopping,
   faBars,
   faBasketShopping,
@@ -57,6 +58,7 @@ import {
 
 export const appIcons = [
   faArrowRight,
+  faArrowRotateRight,
   faArrowRightArrowLeft,
   faArrowRightFromBracket,
   faBagShopping,

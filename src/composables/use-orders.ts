@@ -94,6 +94,21 @@ export function useOrders() {
     return { revenue, cost, profit, margin: revenue > 0 ? profit / revenue : null }
   })
 
+  const total = computed(() => store.orders.length)
+
+  function clearFilters() {
+    statusFilter.value = 'all'
+    paymentFilter.value = 'all'
+    clientFilter.value = 'all'
+    fromDate.value = ''
+    toDate.value = ''
+    ui.setSearch('')
+  }
+
+  async function reload() {
+    if (auth.companyId) await store.load(auth.companyId)
+  }
+
   async function setStatus(id: string, status: OrderStatus) {
     try {
       await ordersApi.setStatus(id, status)
@@ -137,6 +152,9 @@ export function useOrders() {
   return {
     views,
     filtered,
+    total,
+    clearFilters,
+    reload,
     kpis,
     statusFilter,
     paymentFilter,

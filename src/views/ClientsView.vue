@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ClientCardModal from '@/components/ClientCardModal.vue'
 import ClientModal from '@/components/ClientModal.vue'
+import ListFallback from '@/components/ListFallback.vue'
 import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
@@ -12,6 +13,7 @@ import { useClients } from '@/composables/use-clients'
 import { useCurrency } from '@/composables/use-currency'
 import { useOrders } from '@/composables/use-orders'
 import { usePermissions } from '@/composables/use-permissions'
+import { useClientsStore } from '@/stores/clients'
 import { useUiStore } from '@/stores/ui'
 import type { Client, NewClient } from '@/types/database'
 import type { ClientView, OrderView } from '@/types/models'
@@ -20,7 +22,7 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const { format } = useCurrency()
-const { filtered, createClient, updateClient, removeClient } = useClients()
+const { filtered, total, clearFilters, reload, createClient, updateClient, removeClient } = useClients()
 const { canTrade } = usePermissions()
 
 // Spend is already converted into the active currency by useClients.
@@ -28,6 +30,7 @@ function spent(client: ClientView) {
   return format(client.totalSpent)
 }
 const { views: orderViews } = useOrders()
+const clients = useClientsStore()
 const ui = useUiStore()
 
 const modalOpen = ref(false)
@@ -132,7 +135,14 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
       v-if="filtered.length === 0"
       class="rounded-xl border border-line bg-panel"
     >
+      <ListFallback
+        v-if="clients.error || total > 0"
+        :state="clients.error ? 'error' : 'noMatches'"
+        @retry="reload"
+        @clear="clearFilters"
+      />
       <EmptyState
+        v-else
         icon="fa-solid fa-users"
         :title="t('clients.empty')"
         :hint="t('clients.emptyHint')"

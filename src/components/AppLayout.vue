@@ -51,7 +51,14 @@ watch(
       clients.load(companyId),
       orders.load(companyId),
     ])
-    if (results.some((r) => r.status === 'rejected')) toast.error(t('errors.load'))
+    // The stores keep their own failures now (the lists offer a retry), so a
+    // rejection is no longer the only sign one happened.
+    const failed =
+      results.some((r) => r.status === 'rejected') ||
+      !!inventory.error ||
+      !!clients.error ||
+      !!orders.error
+    if (failed) toast.error(t('errors.load'))
   },
   { immediate: true },
 )

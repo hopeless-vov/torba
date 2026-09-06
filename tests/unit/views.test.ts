@@ -9,6 +9,7 @@ import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
+import { useUiStore } from '@/stores/ui'
 import type { Brand, Client, Company, MembershipRole, OrderItem } from '@/types/database'
 import CartView from '@/views/CartView.vue'
 import CatalogView from '@/views/CatalogView.vue'
@@ -479,5 +480,55 @@ describe('deleting a single row', () => {
     await flushPromises()
 
     expect(document.body.textContent).toContain(uk.catalog.deleteMessage.replace('{count}', '1'))
+  })
+})
+
+// An empty table has three quite different meanings, and all three used to
+// render as "add your first one".
+describe('why a list is empty', () => {
+  it('says the load failed, and offers to try again', async () => {
+    const wrapper = render(CatalogView)
+    const inventory = useInventoryStore()
+    inventory.products = []
+    inventory.error = 'network down'
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.errors.load)
+    expect(wrapper.text()).toContain(uk.common.retry)
+    expect(wrapper.text()).not.toContain(uk.catalog.empty)
+  })
+
+  it('tells a filter that matched nothing apart from an empty warehouse', async () => {
+    const wrapper = render(WarehouseView)
+    useUiStore().setSearch('такого товару немає')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.common.noMatches)
+    expect(wrapper.text()).toContain(uk.common.clearFilters)
+    expect(wrapper.text()).not.toContain(uk.warehouse.emptyHint)
+  })
+
+  it('still greets a genuinely empty warehouse with the first-run state', async () => {
+    const wrapper = render(WarehouseView)
+    useInventoryStore().batches = []
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.warehouse.empty)
+    expect(wrapper.text()).not.toContain(uk.common.clearFilters)
+  })
+
+  // The default stock filter hides sold-out batches, so a warehouse that has
+  // sold out looks empty while it is not. Clearing has to open it right up.
+  it('clears the filter that hides sold-out batches', async () => {
+    const wrapper = render(WarehouseView)
+    useInventoryStore().batches = [batch({ id: 'ba1', received_qty: 6, remaining_qty: 0 })]
+    await flushPromises()
+    expect(wrapper.text()).toContain(uk.common.noMatches)
+
+    const clear = wrapper.findAll('button').find((b) => b.text() === uk.common.clearFilters)
+    await clear?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
   })
 })

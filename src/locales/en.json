@@ -21,6 +21,8 @@
     "filters": "Filters",
     "filtersApply": "Show results",
     "noMatches": "Nothing found",
+    "noMatchesHint": "Try a different search, or drop the filters.",
+    "clearFilters": "Clear filters",
     "deleteSelected": "Delete selected",
     "clearSelection": "Clear selection",
     "none": "none",
@@ -329,8 +331,6 @@
     },
     "empty": "No orders yet",
     "openCart": "Open the cart",
-    "emptyRange": "No orders in this range",
-    "emptyRangeHint": "Try another date range or clear it.",
     "deleteTitle": "Delete orders?",
     "deleteMessage": "{count} orders will be deleted. Goods taken from batches go back to the warehouse. This cannot be undone.",
     "edit": {
@@ -511,6 +511,7 @@
   },
   "errors": {
     "load": "Could not load data.",
+    "loadHint": "Check the connection and try again.",
     "save": "Could not save changes.",
     "delete": "Could not delete."
   },

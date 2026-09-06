@@ -2,6 +2,7 @@
 import BatchModal from '@/components/BatchModal.vue'
 import BatchStatusBadge from '@/components/BatchStatusBadge.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import ListFallback from '@/components/ListFallback.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
@@ -33,6 +34,9 @@ const { addFromBatch } = useCart()
 const {
   filtered,
   grouped,
+  total,
+  clearFilters,
+  reload,
   statusFilter,
   stockFilter,
   brandFilter,
@@ -359,7 +363,14 @@ async function confirmDelete() {
           </div>
         </template>
         <template #empty>
+          <ListFallback
+            v-if="inventory.error || total > 0"
+            :state="inventory.error ? 'error' : 'noMatches'"
+            @retry="reload"
+            @clear="clearFilters"
+          />
           <EmptyState
+            v-else
             icon="fa-solid fa-warehouse"
             :title="t('warehouse.empty')"
             :hint="t('warehouse.emptyHint')"
@@ -488,7 +499,14 @@ async function confirmDelete() {
         </template>
 
         <template #empty>
+          <ListFallback
+            v-if="inventory.error || total > 0"
+            :state="inventory.error ? 'error' : 'noMatches'"
+            @retry="reload"
+            @clear="clearFilters"
+          />
           <EmptyState
+            v-else
             icon="fa-solid fa-warehouse"
             :title="t('warehouse.empty')"
             :hint="t('warehouse.emptyHint')"

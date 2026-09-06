@@ -519,7 +519,15 @@ Two of them carry most of the interaction weight:
 - **`EmptyState`** — the icon + title + hint shown when a table has no rows. Its
   default slot takes **action buttons**, so every empty screen offers the obvious next
   step: import/new-product on the catalog, new-batch on the warehouse, new-client on
-  clients, go-to-the-cart on orders (or clear-range when a date filter emptied it).
+  clients, go-to-the-cart on orders.
+- **`ListFallback`** — the other two reasons a list can be empty, neither of which
+  is "nothing added yet" and neither of which may read like it. The **load failed**
+  (the stores keep the failure, and the state offers a retry) or the **filters match
+  nothing** (it offers to clear them). Views tell the three apart by the unfiltered
+  count: `store.error` → error, `total > 0` → no matches, otherwise the view's own
+  first-run state. On the warehouse, clearing also drops the default stock filter,
+  which hides sold-out batches — otherwise a warehouse that has sold out reads as one
+  that was never stocked.
 - **`DataTable`** — columns in, rows in, one slot per cell. `selectable` adds a
   leading checkbox column with a select-all header (wired to
   [`use-selection`](src/composables/use-selection.ts) and a bulk delete bar),

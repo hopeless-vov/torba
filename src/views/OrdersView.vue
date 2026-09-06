@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import ListFallback from '@/components/ListFallback.vue'
 import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import OrderEditModal from '@/components/OrderEditModal.vue'
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
@@ -40,6 +41,9 @@ const ui = useUiStore()
 const { canTrade } = usePermissions()
 const {
   filtered,
+  total,
+  clearFilters,
+  reload,
   kpis,
   statusFilter,
   paymentFilter,
@@ -467,20 +471,19 @@ function destination(order: OrderView) {
         </template>
 
         <template #empty>
+          <ListFallback
+            v-if="ordersStore.error || total > 0"
+            :state="ordersStore.error ? 'error' : 'noMatches'"
+            @retry="reload"
+            @clear="clearFilters"
+          />
           <EmptyState
+            v-else
             icon="fa-solid fa-arrow-right-arrow-left"
-            :title="hasDateRange ? t('orders.emptyRange') : t('orders.empty')"
-            :hint="hasDateRange ? t('orders.emptyRangeHint') : undefined"
+            :title="t('orders.empty')"
           >
             <Button
-              v-if="hasDateRange"
-              icon="fa-solid fa-xmark"
-              @click="clearDateRange"
-            >
-              {{ t('orders.clearDates') }}
-            </Button>
-            <Button
-              v-else-if="canTrade"
+              v-if="canTrade"
               variant="primary"
               icon="fa-solid fa-basket-shopping"
               @click="router.push({ name: 'cart' })"
