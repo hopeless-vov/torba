@@ -9,7 +9,7 @@ import type { OrderPatch, OrderStatus } from '@/types/database'
 import type { OrderView } from '@/types/models'
 import { computeOrderTotals } from '@/utils/orders'
 import { applyDiscount } from '@/utils/pricing'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 export function useOrders() {
@@ -27,6 +27,18 @@ export function useOrders() {
   // Inclusive 'YYYY-MM-DD' bounds; either side may be left blank (open-ended).
   const fromDate = ref('')
   const toDate = ref('')
+
+  // Filtering to an earlier day than the store holds has to fetch it first,
+  // or the list would answer out of what happens to be loaded and show a
+  // period of real trade as empty.
+  watch(fromDate, (day) => {
+    if (auth.companyId) void store.ensureFrom(auth.companyId, day || null)
+  })
+
+  /** Read the rest of the history in — what the list footer offers. */
+  async function loadAll() {
+    if (auth.companyId) await store.ensureFrom(auth.companyId, null)
+  }
 
   const views = computed<OrderView[]>(() =>
     store.orders.map((o) => {
@@ -155,6 +167,7 @@ export function useOrders() {
     total,
     clearFilters,
     reload,
+    loadAll,
     kpis,
     statusFilter,
     paymentFilter,

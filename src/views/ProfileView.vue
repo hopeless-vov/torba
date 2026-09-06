@@ -11,7 +11,7 @@ import { useClientsStore } from '@/stores/clients'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -38,6 +38,11 @@ const lastSignIn = computed(() => {
   const date = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   return `${date} · ${time}`
+})
+
+// The order tally is all-time, and the store holds a recent window.
+onMounted(() => {
+  if (auth.companyId) void orders.ensureFrom(auth.companyId, null)
 })
 
 const stats = computed(() => [

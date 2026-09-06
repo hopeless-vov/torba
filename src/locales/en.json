@@ -97,7 +97,7 @@
       "stockValue": "Stock value",
       "stockValueHint": "at purchase price",
       "profit": "Net profit",
-      "profitHint": "across {count} orders"
+      "profitHint": "across {count} orders in the period"
     },
     "burning": {
       "title": "Expiring soonest",
@@ -329,6 +329,8 @@
     "menu": {
       "details": "Details"
     },
+    "loadedFrom": "Showing orders from {date}",
+    "loadAll": "Show all",
     "empty": "No orders yet",
     "openCart": "Open the cart",
     "deleteTitle": "Delete orders?",

@@ -44,6 +44,7 @@ const {
   total,
   clearFilters,
   reload,
+  loadAll,
   kpis,
   statusFilter,
   paymentFilter,
@@ -493,6 +494,23 @@ function destination(order: OrderView) {
           </EmptyState>
         </template>
       </DataTable>
+
+      <!-- The list opens on a recent window rather than every order ever
+           placed. Saying so is the difference between a fast screen and a
+           screen that has quietly lost the older half of the history. -->
+      <p
+        v-if="ordersStore.loadedFrom"
+        class="flex flex-wrap items-center justify-center gap-2 border-t border-line-soft px-4 py-3 text-xs text-faint"
+      >
+        {{ t('orders.loadedFrom', { date: formatDate(ordersStore.loadedFrom) }) }}
+        <button
+          type="button"
+          class="cursor-pointer text-accent transition-colors hover:underline"
+          @click="loadAll"
+        >
+          {{ t('orders.loadAll') }}
+        </button>
+      </p>
     </div>
 
     <OrderDetailsModal

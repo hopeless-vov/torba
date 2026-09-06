@@ -468,6 +468,31 @@ See [`CLAUDE.md`](CLAUDE.md) for the full list. In short:
 6. All user-visible text comes from `src/locales/*.json` (both `uk` and `en`).
 7. Only theme color tokens — no arbitrary color values.
 
+### The app opens on a window, not on everything
+
+An order carries its client and every line it sold, so the order list is the
+heaviest read in the app — and it used to be fetched whole, on every app start
+and after every sale. The store now holds a **window**: the last six months, the
+same period the dashboard opens on (both come from `periodStart` in
+[`utils/period`](src/utils/period.ts), so the chart's default range is always
+covered by what was fetched).
+
+Nothing is allowed to answer out of "whatever happens to be loaded". Screens that
+can look further back ask for it first, through `ensureFrom(companyId, day)` —
+`null` for the whole history — which widens the window and no-ops when it is
+already wide enough:
+
+- the **dashboard** watches its range, so pointing the chart at an older period
+  fetches that period before it can draw the months as empty;
+- the **orders list** watches its from-date, and says in a footer which day it is
+  showing from, with one click to read the rest in;
+- **clients** and **profile** ask for the whole history on mount, because every
+  figure there — total spent, orders ever placed — is all-time by definition.
+
+The dashboard's profit and order count now answer for the **chosen period** rather
+than for all time, which is both what the rest of that screen does and the only
+figure a window can honestly support.
+
 ### Saving one row does not reload the company
 
 Every mutation used to end in a full `load()` — editing one batch refetched every

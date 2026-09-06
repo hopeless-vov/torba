@@ -8,7 +8,7 @@ import { useUiStore } from '@/stores/ui'
 import type { NewClient } from '@/types/database'
 import type { ClientView } from '@/types/models'
 import { computeOrderTotals } from '@/utils/orders'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 export function useClients() {
@@ -19,6 +19,13 @@ export function useClients() {
   const toast = useToast()
   const { t } = useI18n()
   const { convertBetween } = useCurrency()
+
+  // Every figure on this screen is all-time — how much a client has ever
+  // spent, how many orders they have ever placed — so it is one of the few
+  // that needs the whole history rather than the recent window.
+  onMounted(() => {
+    if (auth.companyId) void orders.ensureFrom(auth.companyId, null)
+  })
 
   const views = computed<ClientView[]>(() =>
     store.clients.map((c) => {

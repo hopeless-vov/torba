@@ -26,12 +26,16 @@ async function deleteOrders(ids: string[], companyId: string): Promise<number> {
 }
 
 export const ordersApi = {
-  list: async (companyId: string): Promise<OrderRow[]> => {
-    const { data, error } = await supabase
+  // An order carries its client and every line, so the list is the heaviest
+  // read in the app. `from` ('YYYY-MM-DD', inclusive) bounds it to a period;
+  // omitting it still means the whole history, for the screens that need it.
+  list: async (companyId: string, from?: string | null): Promise<OrderRow[]> => {
+    let query = supabase
       .from('orders')
       .select(SELECT_WITH_RELATIONS)
       .eq('company_id', companyId)
-      .order('created_at', { ascending: false })
+    if (from) query = query.gte('created_at', from)
+    const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
     return (data ?? []) as unknown as OrderRow[]
   },

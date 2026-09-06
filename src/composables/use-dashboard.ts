@@ -1,11 +1,13 @@
 import { useCurrency } from '@/composables/use-currency'
+import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
 import type { BatchStatus } from '@/types/models'
 import { batchStatus, daysUntil } from '@/utils/batch-status'
 import { computeOrderTotals } from '@/utils/orders'
-import { computed, ref } from 'vue'
+import { DEFAULT_MONTHS_BACK, isoDay, periodStart } from '@/utils/period'
+import { computed, ref, watch } from 'vue'
 
 export interface BurningRow {
   id: string
@@ -59,21 +61,15 @@ export interface StatusSlice {
 /** Worst first: the point of the bar is how much stock is at risk. */
 const STATUS_ORDER: BatchStatus[] = ['expired', 'critical', 'ending', 'almost', 'ok']
 
-const DEFAULT_MONTHS_BACK = 6
-
 // Where one column stops being readable. Under a month and a half a day per
 // column is legible; past two years there are too many months to tell apart,
 // so the columns become years.
 const MAX_DAILY_SPAN = 45
 const MAX_MONTHLY_SPAN = 730
 
-const pad = (n: number) => String(n).padStart(2, '0')
-const isoDay = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-
 /** The range the dashboard opens on: this month and the five before it. */
 export function defaultRange(now = new Date()): DateRange {
-  const first = new Date(now.getFullYear(), now.getMonth() - (DEFAULT_MONTHS_BACK - 1), 1)
-  return { from: isoDay(first), to: isoDay(now) }
+  return { from: periodStart(DEFAULT_MONTHS_BACK, now), to: isoDay(now) }
 }
 
 /**
@@ -99,6 +95,7 @@ function keyOf(day: string, granularity: Granularity) {
 
 export function useDashboard() {
   const inventory = useInventoryStore()
+  const auth = useAuthStore()
   const orders = useOrdersStore()
   const reference = useReferenceStore()
   const { convertBetween, costToDisplay } = useCurrency()
@@ -114,6 +111,37 @@ export function useDashboard() {
         status: batchStatus(b.expiry_date),
         daysLeft: daysUntil(b.expiry_date),
       })),
+  )
+
+  // The window the trend chart covers. Editable from the dashboard; the
+  // column width follows from how wide it is.
+  const range = ref<DateRange>(defaultRange())
+  const granularity = computed(() => granularityFor(range.value))
+
+  function resetRange() {
+    range.value = defaultRange()
+  }
+
+  // Everything sold inside the window, shared by the chart, the figures and
+  // the spending split so they can never disagree about what "the period" is.
+  const ordersInRange = computed(() => {
+    const { from, to } = range.value
+    if (!from || !to || from > to) return []
+    return orders.orders.filter((o) => {
+      const day = o.created_at.slice(0, 10)
+      return day >= from && day <= to
+    })
+  })
+
+  // The store holds a recent window, not the whole history. Pointing the chart
+  // at an older period has to fetch it, or the columns would quietly show a
+  // month as empty when it was only unloaded.
+  watch(
+    () => range.value.from,
+    (from) => {
+      if (auth.companyId) void orders.ensureFrom(auth.companyId, from)
+    },
+    { immediate: true },
   )
 
   const stats = computed(() => {
@@ -137,8 +165,9 @@ export function useDashboard() {
     }
 
     // Each order's profit is snapshotted in its own currency; convert to
-    // the active one before summing so the figure is coherent.
-    const profit = orders.orders.reduce(
+    // the active one before summing so the figure is coherent. The period is
+    // the chart's, not "everything loaded" — which is a window now.
+    const profit = ordersInRange.value.reduce(
       (sum, o) =>
         sum +
         convertBetween(
@@ -163,7 +192,7 @@ export function useDashboard() {
       expiredUnits,
       stockValue,
       profit,
-      ordersCount: orders.orders.length,
+      ordersCount: ordersInRange.value.length,
     }
   })
 
@@ -183,26 +212,6 @@ export function useDashboard() {
         daysLeft,
       })),
   )
-
-  // The window the trend chart covers. Editable from the dashboard; the
-  // column width follows from how wide it is.
-  const range = ref<DateRange>(defaultRange())
-  const granularity = computed(() => granularityFor(range.value))
-
-  function resetRange() {
-    range.value = defaultRange()
-  }
-
-  // Everything sold inside the window, shared by the chart and the spending
-  // split so the two can never disagree about what "the period" is.
-  const ordersInRange = computed(() => {
-    const { from, to } = range.value
-    if (!from || !to || from > to) return []
-    return orders.orders.filter((o) => {
-      const day = o.created_at.slice(0, 10)
-      return day >= from && day <= to
-    })
-  })
 
   // Trade over the chosen range, bucketed by when the order was placed. Empty
   // periods are kept so a gap reads as a gap rather than closing up. Every
