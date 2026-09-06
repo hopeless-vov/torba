@@ -90,10 +90,6 @@ export function useCatalog() {
     await reload()
   }
 
-  async function removeProduct(id: string) {
-    await removeProducts([id])
-  }
-
   async function removeProducts(ids: string[]) {
     if (ids.length === 0) return
     try {
@@ -114,7 +110,6 @@ export function useCatalog() {
     createProduct,
     updateProduct,
     toggleActive,
-    removeProduct,
     removeProducts,
     reload,
   }

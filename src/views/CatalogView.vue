@@ -43,7 +43,6 @@ const {
   showInactive,
   createProduct,
   updateProduct,
-  removeProduct,
   removeProducts,
 } = useCatalog()
 
@@ -56,20 +55,29 @@ const { selected, count: selectedCount, hasSelection, clear: clearSelection } = 
 const { canTrade } = usePermissions()
 const confirmOpen = ref(false)
 const deleting = ref(false)
+// One dialog for both routes into deletion — a row menu and the bulk bar —
+// so a single product cannot be dropped on one click while ten cannot.
+const pendingDelete = ref<string[]>([])
 
 const search = computed({
   get: () => ui.search,
   set: (v: string) => ui.setSearch(v),
 })
 
-async function deleteSelected() {
+function askDelete(ids: string[]) {
+  pendingDelete.value = ids
+  confirmOpen.value = true
+}
+
+async function confirmDelete() {
   deleting.value = true
   try {
-    await removeProducts([...selected.value])
+    await removeProducts(pendingDelete.value)
     clearSelection()
     confirmOpen.value = false
   } finally {
     deleting.value = false
+    pendingDelete.value = []
   }
 }
 
@@ -123,7 +131,7 @@ function onMenu(row: ProductView, action: string) {
     editing.value = row
     formOpen.value = true
   } else if (action === 'delete') {
-    void removeProduct(row.id)
+    askDelete([row.id])
   }
 }
 
@@ -218,7 +226,7 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
       :visible="hasSelection"
       :delete-label="t('common.deleteSelected')"
       :clear-label="t('common.clearSelection')"
-      @delete="confirmOpen = true"
+      @delete="askDelete([...selected])"
       @clear="clearSelection"
     />
 
@@ -376,11 +384,11 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
     <ConfirmDialog
       v-model:open="confirmOpen"
       :title="t('catalog.deleteTitle')"
-      :message="t('catalog.deleteMessage', { count: selectedCount })"
+      :message="t('catalog.deleteMessage', { count: pendingDelete.length })"
       :confirm-label="t('common.delete')"
       :cancel-label="t('common.cancel')"
       :loading="deleting"
-      @confirm="deleteSelected"
+      @confirm="confirmDelete"
     />
   </div>
 </template>

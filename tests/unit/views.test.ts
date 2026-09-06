@@ -449,3 +449,35 @@ describe('DashboardView', () => {
     expect(wrapper.text()).toContain(uk.dashboard.spending.empty)
   })
 })
+
+// Deleting one row used to happen on the click itself, while deleting ten
+// asked first. Both routes now go through the same dialog.
+describe('deleting a single row', () => {
+  it('asks before deleting a product', async () => {
+    const wrapper = render(CatalogView)
+    await wrapper.findComponent(DropdownMenu).vm.$emit('select', 'delete')
+    await flushPromises()
+
+    expect(document.body.textContent).toContain(uk.catalog.deleteTitle)
+    expect(useInventoryStore().products).toHaveLength(1)
+  })
+
+  // A batch carries stock: deleting one writes its remaining units off the
+  // shelf, so this is the one that must never happen on a stray click.
+  it('asks before deleting a batch', async () => {
+    const wrapper = render(WarehouseView)
+    await wrapper.findComponent(DropdownMenu).vm.$emit('select', 'delete')
+    await flushPromises()
+
+    expect(document.body.textContent).toContain(uk.warehouse.deleteTitle)
+    expect(useInventoryStore().batches).toHaveLength(2)
+  })
+
+  it('counts what the dialog is actually about, not what is selected', async () => {
+    const wrapper = render(CatalogView)
+    await wrapper.findComponent(DropdownMenu).vm.$emit('select', 'delete')
+    await flushPromises()
+
+    expect(document.body.textContent).toContain(uk.catalog.deleteMessage.replace('{count}', '1'))
+  })
+})

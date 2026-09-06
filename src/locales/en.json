@@ -375,6 +375,8 @@
     "catalogIsBase": "Priced in base currency",
     "catalogIsBaseHint": "No conversion",
     "catalogIsBaseNote": "This brand sells in the base currency ({base}) — no conversion needed, rate = 1.",
+    "deleteCurrencyTitle": "Delete the {code} currency?",
+    "deleteCurrencyMessage": "Its rate leaves the table. Amounts already stored in it stay, but nothing will be left to convert them with.",
     "baseConfirmTitle": "Make {code} the base currency?",
     "baseConfirmMessage": "Prices and orders keep their own currencies and their amounts, so nothing is rewritten. Brand supplier rates are re-expressed into the new base so costs stay the same.",
     "active": "Active",

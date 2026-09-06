@@ -38,7 +38,6 @@ const {
   brandFilter,
   createBatch,
   updateBatch,
-  removeBatch,
   removeBatches,
 } = useWarehouse()
 
@@ -52,6 +51,9 @@ const { selected, count: selectedCount, hasSelection, clear: clearSelection } = 
 const { canTrade } = usePermissions()
 const confirmOpen = ref(false)
 const deleting = ref(false)
+// Deleting a batch writes its remaining units off the shelf, so every route
+// into it — the row menu, the expanded list, the bulk bar — asks first.
+const pendingDelete = ref<string[]>([])
 
 const search = computed({
   get: () => ui.search,
@@ -160,7 +162,12 @@ function openEdit(batchId: string) {
 
 function onMenu(row: WarehouseRow, action: string) {
   if (action === 'edit') openEdit(row.id)
-  else if (action === 'delete') void removeBatch(row.id)
+  else if (action === 'delete') askDelete([row.id])
+}
+
+function askDelete(ids: string[]) {
+  pendingDelete.value = ids
+  confirmOpen.value = true
 }
 
 // Sell straight from a warehouse batch, like the catalog's add-to-cart —
@@ -181,14 +188,15 @@ async function onSubmit(payload: Omit<NewBatch, 'company_id'>) {
   }
 }
 
-async function deleteSelected() {
+async function confirmDelete() {
   deleting.value = true
   try {
-    await removeBatches([...selected.value])
+    await removeBatches(pendingDelete.value)
     clearSelection()
     confirmOpen.value = false
   } finally {
     deleting.value = false
+    pendingDelete.value = []
   }
 }
 </script>
@@ -271,7 +279,7 @@ async function deleteSelected() {
       :visible="hasSelection && view === 'batches'"
       :delete-label="t('common.deleteSelected')"
       :clear-label="t('common.clearSelection')"
-      @delete="confirmOpen = true"
+      @delete="askDelete([...selected])"
       @clear="clearSelection"
     />
 
@@ -467,7 +475,7 @@ async function deleteSelected() {
                   type="button"
                   class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
                   :title="t('catalog.menu.delete')"
-                  @click="removeBatch(batch.id)"
+                  @click="askDelete([batch.id])"
                 >
                   <Icon
                     icon="fa-solid fa-trash"
@@ -508,11 +516,11 @@ async function deleteSelected() {
     <ConfirmDialog
       v-model:open="confirmOpen"
       :title="t('warehouse.deleteTitle')"
-      :message="t('warehouse.deleteMessage', { count: selectedCount })"
+      :message="t('warehouse.deleteMessage', { count: pendingDelete.length })"
       :confirm-label="t('common.delete')"
       :cancel-label="t('common.cancel')"
       :loading="deleting"
-      @confirm="deleteSelected"
+      @confirm="confirmDelete"
     />
   </div>
 </template>

@@ -167,10 +167,6 @@ export function useWarehouse() {
     }
   }
 
-  async function removeBatch(id: string) {
-    await removeBatches([id])
-  }
-
   async function removeBatches(ids: string[]) {
     if (ids.length === 0) return
     try {
@@ -191,7 +187,6 @@ export function useWarehouse() {
     groupByProduct,
     createBatch,
     updateBatch,
-    removeBatch,
     removeBatches,
   }
 }

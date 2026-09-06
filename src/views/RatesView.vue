@@ -52,6 +52,27 @@ async function confirmBase() {
   }
 }
 
+// Removing a currency takes its rate out of the table, and amounts already
+// stored in it then have nothing to be converted with — worth a question.
+const currencyConfirmOpen = ref(false)
+const pendingCurrency = ref<{ id: string; code: string } | null>(null)
+const removingCurrency = ref(false)
+function askRemoveCurrency(id: string, codeStr: string) {
+  pendingCurrency.value = { id, code: codeStr }
+  currencyConfirmOpen.value = true
+}
+async function confirmRemoveCurrency() {
+  if (!pendingCurrency.value) return
+  removingCurrency.value = true
+  try {
+    await removeCurrency(pendingCurrency.value.id)
+    currencyConfirmOpen.value = false
+  } finally {
+    removingCurrency.value = false
+    pendingCurrency.value = null
+  }
+}
+
 // ── currencies ───────────────────────────────────────────────
 type CurrencyRow = {
   code: string
@@ -242,7 +263,7 @@ async function saveBrandRate() {
                 type="button"
                 class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-danger"
                 :title="t('common.delete')"
-                @click="removeCurrency(row.id)"
+                @click="askRemoveCurrency(row.id, row.code)"
               >
                 <Icon
                   icon="fa-solid fa-xmark"
@@ -443,6 +464,16 @@ async function saveBrandRate() {
         {{ t('rates.emptyHint') }}
       </p>
     </Modal>
+
+    <ConfirmDialog
+      v-model:open="currencyConfirmOpen"
+      :title="t('rates.deleteCurrencyTitle', { code: pendingCurrency?.code ?? '' })"
+      :message="t('rates.deleteCurrencyMessage')"
+      :confirm-label="t('common.delete')"
+      :cancel-label="t('common.cancel')"
+      :loading="removingCurrency"
+      @confirm="confirmRemoveCurrency"
+    />
 
     <!-- Switch base currency -->
     <ConfirmDialog
