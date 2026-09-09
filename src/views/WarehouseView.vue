@@ -23,7 +23,7 @@ import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
 import { useUiStore } from '@/stores/ui'
 import type { Batch, NewBatch } from '@/types/database'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatPercent } from '@/utils/format'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -111,6 +111,20 @@ const batchColumns = computed<Column[]>(() => [
     align: 'right',
     mono: true,
     hint: t('warehouse.hint.cost'),
+  },
+  {
+    key: 'retail',
+    label: t('warehouse.cols.retail'),
+    align: 'right',
+    mono: true,
+    hint: t('warehouse.hint.retail'),
+  },
+  {
+    key: 'margin',
+    label: t('warehouse.cols.margin'),
+    align: 'right',
+    mono: true,
+    hint: t('warehouse.hint.marginCol'),
   },
   {
     key: 'received',
@@ -347,6 +361,21 @@ async function confirmDelete() {
         <template #cell-cost="{ row }">
           <span class="text-muted">{{ format((row as WarehouseRow).cost) }}</span>
         </template>
+        <template #cell-retail="{ row }">
+          <span
+            v-if="(row as WarehouseRow).retail != null"
+            class="text-fg"
+          >{{ format((row as WarehouseRow).retail as number) }}</span>
+          <span
+            v-else
+            class="text-faint"
+          >{{ t('common.emptyValue') }}</span>
+        </template>
+        <template #cell-margin="{ row }">
+          <span :class="(row as WarehouseRow).margin != null ? 'text-accent' : 'text-faint'">
+            {{ formatPercent((row as WarehouseRow).margin) }}
+          </span>
+        </template>
         <template #cell-received="{ row }">
           <span class="text-muted">{{ (row as WarehouseRow).received }}</span>
         </template>
@@ -479,7 +508,11 @@ async function confirmDelete() {
                 :days-left="batch.daysLeft"
               />
               <span class="ml-auto shrink-0 font-mono text-xs text-faint tabular-nums">
-                {{ format(batch.cost) }}
+                {{
+                  batch.retail != null
+                    ? `${format(batch.cost)} → ${format(batch.retail)}`
+                    : format(batch.cost)
+                }}
               </span>
               <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
                 {{ `${batch.remaining} / ${batch.received} ${t('common.pcs')}` }}

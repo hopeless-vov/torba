@@ -97,18 +97,33 @@ export const useCartStore = defineStore('cart', () => {
    * user chooses which expiry date to ship. Landing on a batch that is
    * already in the cart merges the two lines.
    *
-   * Batches can have cost different money, so shipping from another one
-   * changes what this sale cost us: `unitCost` follows the batch, or the
-   * margin would be reported against a delivery that is not going out.
+   * Batches can have cost different money and can sell for different money,
+   * so shipping from another one moves both: `unitCost` always follows the
+   * batch (it is a fact about the goods), while the sale price follows only
+   * while the user has not typed one of their own — an edited price is a
+   * decision, and re-pricing over it would undo it silently.
    */
-  function setBatch(key: string, batch: Batch | null, stockQty: number, unitCost?: number) {
+  function setBatch(
+    key: string,
+    batch: Batch | null,
+    stockQty: number,
+    unitCost?: number,
+    listPrice?: number,
+  ) {
     const line = lines.value.find((l) => l.key === key)
     if (!line) return
+
+    const repriced = (l: CartLine) => {
+      if (listPrice == null) return
+      if (l.unitPrice === l.listPrice) l.unitPrice = listPrice
+      l.listPrice = listPrice
+    }
 
     const nextKey = lineKey(line.product.id, batch?.id ?? null)
     if (nextKey === key) {
       line.stockQty = stockQty
       if (unitCost != null) line.unitCost = unitCost
+      repriced(line)
       return
     }
 
@@ -124,6 +139,7 @@ export const useCartStore = defineStore('cart', () => {
     line.stockQty = stockQty
     line.key = nextKey
     if (unitCost != null) line.unitCost = unitCost
+    repriced(line)
   }
 
   function remove(key: string) {

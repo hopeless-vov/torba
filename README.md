@@ -46,8 +46,8 @@ trigger, the profile-identity lockdown, a self-heal bootstrap RPC, the atomic
 `create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, user-defined
 currencies, order-level and per-line discounts, the supplier/market rate split,
-per-product price currencies, per-batch purchase prices, and the brand↔category
-links) lives in
+per-product price currencies, per-batch purchase and selling prices, and the
+brand↔category links) lives in
 [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
@@ -60,7 +60,7 @@ Apply **all files, in order**:
   `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
   `0014_invitation_preview.sql`, `0015_order_item_discount.sql`,
-  `0017_batch_cost.sql`.
+  `0017_batch_cost.sql`, `0018_batch_retail.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -137,6 +137,14 @@ the company without touching a single product.
 `SECURITY DEFINER`, so the table policies do not apply inside them — without
 the check a viewer could place and delete orders through the functions while
 being unable to touch the tables directly.
+
+**`0018` does the same for the selling price.** A delivery bought on promotion is
+usually passed on cheaper, and an older delivery keeps the price it went on the
+shelf at while the next one arrives dearer. `batches.retail_amount` +
+`retail_currency` mirror the product's pair and resolve through the market table
+like every other sale amount — never the supplier rate, which drives cost alone.
+Nullable, so null still means the catalogue price, and `order_items.unit_price`
+stays snapshotted at checkout.
 
 **`0017` puts the purchase price on the batch.** Cost lived on the product: one
 price for every delivery of it, ever. Real buying does not work that way — the same
@@ -295,15 +303,20 @@ cost in the brand's catalog currency is still resolved through the **supplier ra
 (`costToDisplay` → `functionalCost`), so bumping a supplier's rate reflows that brand's
 cost; a cost in any other currency goes through the market table instead.
 
-**A batch may override the cost.** The product's price is the *catalogue* price — what
-a delivery normally costs — and a batch that came in cheaper (or dearer) carries its
-own `cost_amount` + `cost_currency`, resolved the same way. [`costOf`](src/utils/pricing.ts)
-picks between them and `batchCostToDisplay` converts, so one rule holds everywhere:
-**a sale costs what the delivery it ships from cost**. The cart prices a line from its
-batch and re-prices it when the line is moved to another; the warehouse shows the price
-per batch and what the remaining units are worth; the dashboard values stock the same
-way. Since `order_items.unit_cost` is snapshotted at checkout, a later price change
-never rewrites the margin of a sale already made. **Order**
+**A batch may override both prices.** The product's pair is the *catalogue* price —
+what a delivery normally costs and normally sells for — and a batch that came in
+cheaper, or goes out cheaper, carries its own `cost_amount` / `retail_amount` (each
+with its currency). [`costOf` and `retailOf`](src/utils/pricing.ts) pick between batch
+and product, `batchCostToDisplay` / `batchRetailToDisplay` convert, so one rule holds
+everywhere: **a sale costs, and earns, what the delivery it ships from does.**
+
+The cart prices a line from its batch and moves both figures when the line is handed
+to another delivery — except a price the user typed, which stays: that is a decision,
+and re-pricing over it would undo it silently (the *list* price still moves, so
+"reset" offers the new batch's). The warehouse shows cost, retail and the margin
+between them per delivery; the dashboard values stock at each batch's own cost. Since
+`order_items` snapshots both `unit_cost` and `unit_price` at checkout, changing a
+price later never rewrites a sale already made. **Order**
 amounts snapshot in the order's currency. Nothing is stored in a display-converted
 form, so switching the display or base currency never rewrites data.
 
@@ -371,12 +384,13 @@ already went to clients). Batch numbers are **generated** from the product's SKU
 (`FRY-500-01`, `FRY-500-02`; see [`utils/batch-number`](src/utils/batch-number.ts)),
 so nothing has to be typed.
 
-**Ціна закупки** is per delivery. The form prefills it from the product's catalogue
-price — most deliveries do come in at it — and a promotional one is typed over that;
-entered in a currency other than the books', the field says underneath what it comes
-to. The batches table shows the price per delivery, the per-product view shows
-**Вартість залишку** (what is left, each batch at its own price), and the dashboard's
-stock value follows the same rule.
+**Ціна закупки** and **Роздрібна ціна** are per delivery. The form prefills both from
+the product's catalogue prices — most deliveries do come in and go out at them — and a
+promotional one is typed over that; the cost field says underneath what it comes to in
+the books' currency, and the retail field says what the pair earns. The batches table
+carries all three (cost, retail, **Маржа**), the per-product view shows **Вартість
+залишку** (what is left, each batch at its own cost), and the dashboard's stock value
+follows the same rule.
 
 The warehouse has two views. **За партіями** lists every delivery separately.
 **За товаром** collapses them into one row per product with the total stock, which
@@ -385,10 +399,10 @@ expands to show how much sits under each expiry date — that is how you see bot
 same **add-to-cart** button as the catalog, so stock can be sold straight from the
 warehouse — the cart line is pinned to that exact batch (and its expiry date).
 
-The batch a line ships from is also what it **cost**: the picker in the cart names
-each delivery by its expiry date, what is left of it and its price, and moving a line
-onto another delivery re-prices the cost with it — otherwise the sale would report a
-margin it never made.
+The batch a line ships from is also what it **cost and earns**: the picker in the cart
+names each delivery by its expiry date, what is left of it, and what it cost against
+what it sells for, and moving a line onto another delivery carries both figures with
+it — otherwise the sale would report a margin it never made.
 
 **A batch sold to the last unit leaves the shelf.** It stays in the books, but it
 is a closed delivery, not stock: it raises no expiry warning in the sidebar badge,

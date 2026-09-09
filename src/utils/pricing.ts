@@ -28,6 +28,21 @@ export function costOf(
   return { amount: batch.cost_amount, currency: batch.cost_currency ?? product.cost_currency }
 }
 
+/**
+ * Which selling price applies to a batch — its own when it carries one, the
+ * product's otherwise. A delivery bought on promotion is often passed on
+ * cheaper, and the one on the shelf is the one being sold.
+ */
+export function retailOf(
+  batch: { retail_amount: number | null; retail_currency: string | null } | null | undefined,
+  product: { retail_amount: number | null; retail_currency: string },
+): { amount: number | null; currency: string } {
+  if (batch?.retail_amount == null) {
+    return { amount: product.retail_amount, currency: product.retail_currency }
+  }
+  return { amount: batch.retail_amount, currency: batch.retail_currency ?? product.retail_currency }
+}
+
 /** Clamp a discount to 0..100 and apply it to an amount. */
 export function applyDiscount(amount: number, discountPct: number): number {
   const pct = Math.min(100, Math.max(0, discountPct))

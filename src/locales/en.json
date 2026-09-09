@@ -249,6 +249,8 @@
       "expiry": "Expiry",
       "remaining": "Left",
       "cost": "Purchase price",
+      "retail": "Retail price",
+      "margin": "Margin",
       "received": "Received",
       "sold": "Sold",
       "batches": "Batches",
@@ -260,6 +262,9 @@
     "hint": {
       "remaining": "How many units of this batch are still on the shelf",
       "cost": "What one unit of this delivery cost — a promotion here does not distort the rest of the shelf",
+      "retail": "What this particular delivery sells for. Empty — the catalogue price.",
+      "margin": "margin {margin}",
+      "marginCol": "What one unit of this delivery earns",
       "received": "How many units arrived in this delivery",
       "sold": "Received minus left — how many already went to clients",
       "totalRemaining": "Sum of what is left across every batch of this product",

@@ -1,4 +1,4 @@
-import { applyDiscount, computeMargin, convertPrice, costOf } from '@/utils/pricing'
+import { applyDiscount, computeMargin, convertPrice, costOf, retailOf } from '@/utils/pricing'
 import { describe, expect, it } from 'vitest'
 
 describe('convertPrice', () => {
@@ -62,5 +62,33 @@ describe('costOf', () => {
       amount: 40,
       currency: 'USD',
     })
+  })
+})
+
+describe('retailOf', () => {
+  const product = { retail_amount: 2000, retail_currency: 'UAH' }
+
+  it('prefers the batch’s own selling price', () => {
+    expect(retailOf({ retail_amount: 1790, retail_currency: 'UAH' }, product)).toEqual({
+      amount: 1790,
+      currency: 'UAH',
+    })
+  })
+
+  it('falls back to the catalogue price', () => {
+    expect(retailOf({ retail_amount: null, retail_currency: null }, product).amount).toBe(2000)
+    expect(retailOf(null, product).amount).toBe(2000)
+  })
+
+  // A product with no price of its own has none to inherit either; the caller
+  // decides what to do with that, rather than being handed a made-up number.
+  it('stays null when neither names a price', () => {
+    expect(retailOf(null, { retail_amount: null, retail_currency: 'UAH' }).amount).toBeNull()
+  })
+
+  it('reads a currency-less batch price in the product’s currency', () => {
+    expect(
+      retailOf({ retail_amount: 60, retail_currency: null }, { retail_amount: 70, retail_currency: 'USD' }),
+    ).toEqual({ amount: 60, currency: 'USD' })
   })
 })

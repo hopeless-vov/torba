@@ -135,7 +135,7 @@ const priced = {
   retail_currency: 'UAH',
 } as Product
 
-function batchOf(id: string, cost: number | null): BatchRow {
+function batchOf(id: string, cost: number | null, retail: number | null = null): BatchRow {
   return {
     id,
     company_id: 'c',
@@ -147,6 +147,8 @@ function batchOf(id: string, cost: number | null): BatchRow {
     remaining_qty: 10,
     cost_amount: cost,
     cost_currency: cost == null ? null : 'UAH',
+    retail_amount: retail,
+    retail_currency: retail == null ? null : 'UAH',
     created_at: '2026-06-01',
     product: { ...priced, brand: null },
   } as unknown as BatchRow
@@ -201,5 +203,65 @@ describe('useCart batch cost', () => {
     use.addProduct({ ...priced, brand: null, category: null } as never)
 
     expect(cart.lines[0].unitCost).toBe(1192)
+  })
+})
+
+describe('useCart batch price', () => {
+  it('sells a delivery at its own price when it names one', () => {
+    const { cart, use } = harness()
+    use.addFromBatch(batchOf('promo', 1192, 1790))
+
+    expect(cart.lines[0].unitPrice).toBe(1790)
+    expect(cart.lines[0].listPrice).toBe(1790)
+  })
+
+  it('falls back to the catalogue price for a delivery without one', () => {
+    const { cart, use } = harness()
+    use.addFromBatch(batchOf('old', null))
+
+    expect(cart.lines[0].unitPrice).toBe(2000)
+  })
+
+  // Handing over the other delivery re-prices the line, the same way it
+  // re-costs it — both prices belong to the goods, not to the product.
+  it('re-prices the line when it is moved onto another batch', () => {
+    const { cart, use } = harness()
+    const inventory = useInventoryStore()
+    inventory.batches = [batchOf('promo', 1192, 1790), batchOf('full', 1500, 2200)]
+
+    use.addFromBatch(batchOf('promo', 1192, 1790))
+    use.selectBatch(cart.lines[0], 'full')
+
+    expect(cart.lines[0].unitPrice).toBe(2200)
+    expect(cart.lines[0].unitCost).toBe(1500)
+  })
+
+  // But a price the user typed is a decision. Re-pricing over it would undo
+  // that decision without saying so.
+  it('keeps a price the user typed when the batch changes', () => {
+    const { cart, use } = harness()
+    const inventory = useInventoryStore()
+    inventory.batches = [batchOf('promo', 1192, 1790), batchOf('full', 1500, 2200)]
+
+    use.addFromBatch(batchOf('promo', 1192, 1790))
+    cart.setPrice(cart.lines[0].key, 1650)
+    use.selectBatch(cart.lines[0], 'full')
+
+    expect(cart.lines[0].unitPrice).toBe(1650)
+    // The catalogue price still moves, so "reset" offers the new batch's.
+    expect(cart.lines[0].listPrice).toBe(2200)
+    expect(cart.lines[0].unitCost).toBe(1500)
+  })
+
+  it('sends the batch’s price to the order', async () => {
+    const { use } = harness()
+    use.addFromBatch(batchOf('promo', 1192, 1790))
+    await use.checkout()
+
+    expect(api.place).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [expect.objectContaining({ unit_price: 1790, unit_cost: 1192 })],
+      }),
+    )
   })
 })

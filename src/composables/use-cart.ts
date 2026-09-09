@@ -39,7 +39,7 @@ export function useCart() {
   const orders = useOrdersStore()
   const clients = useClientsStore()
   const reference = useReferenceStore()
-  const { convertBetween, costToDisplay, batchCostToDisplay } = useCurrency()
+  const { batchCostToDisplay, batchRetailToDisplay } = useCurrency()
   const toast = useToast()
   const { t } = useI18n()
 
@@ -87,6 +87,15 @@ export function useCart() {
     return batchCostToDisplay(batch, product, brand)
   }
 
+  /**
+   * What a unit drawn from this batch goes out at, in the display currency:
+   * the batch's own selling price when it names one, the product's otherwise,
+   * and the purchase price as a last resort when neither does.
+   */
+  function batchPrice(product: Product, batch: Batch | null): number {
+    return batchRetailToDisplay(batch, product) ?? batchCost(product, batch)
+  }
+
   /** Every batch of a product, FIFO-ordered — the expiry choices for a line. */
   function batchesFor(productId: string): BatchRow[] {
     return inventory.batches.filter((b) => b.product_id === productId).sort(compareByExpiry)
@@ -114,17 +123,6 @@ export function useCart() {
     return cart.lines.filter((l) => l.batch?.id === batchId).reduce((sum, l) => sum + l.qty, 0)
   }
 
-  // Display prices for a product, in the active currency. Cost and retail each
-  // carry their own currency; the brand supplier rate still overrides the table
-  // for a cost in the brand's catalog currency.
-  function pricesFor(product: Product) {
-    const brand = product.brand_id ? (reference.brandsById.get(product.brand_id) ?? null) : null
-    const purchase = costToDisplay(product.cost_amount, product.cost_currency, brand)
-    const retail =
-      product.retail_amount != null ? convertBetween(product.retail_amount, product.retail_currency) : purchase
-    return { purchase, retail }
-  }
-
   /** Confirms the line landed, and says how much is waiting in the cart. */
   function announce(name: string) {
     toast.success(t('toasts.addedToCart', { name, count: cart.count }))
@@ -136,7 +134,7 @@ export function useCart() {
       product,
       brand: product.brand,
       batch,
-      unitPrice: product.retail ?? product.purchase,
+      unitPrice: batchPrice(product, batch),
       unitCost: batchCost(product, batch),
       stockQty: batch ? batch.remaining_qty : product.inStock,
     })
@@ -146,13 +144,12 @@ export function useCart() {
   // Used by the cart page's "from catalog" picker, where prices still need
   // to be resolved from the brand rate.
   function addProduct(product: ProductRow) {
-    const { retail } = pricesFor(product)
     const batch = fifoBatch(product.id)
     cart.addLine({
       product,
       brand: product.brand,
       batch,
-      unitPrice: retail,
+      unitPrice: batchPrice(product, batch),
       unitCost: batchCost(product, batch),
       stockQty: batch ? batch.remaining_qty : (inventory.stockByProduct.get(product.id) ?? 0),
     })
@@ -163,12 +160,11 @@ export function useCart() {
   function addFromBatch(batch: BatchRow) {
     const product = batch.product
     if (!product) return
-    const { retail } = pricesFor(product)
     cart.addLine({
       product,
       brand: null,
       batch,
-      unitPrice: retail,
+      unitPrice: batchPrice(product, batch),
       unitCost: batchCost(product, batch),
       stockQty: batch.remaining_qty,
     })
@@ -179,7 +175,13 @@ export function useCart() {
   function selectBatch(line: CartLine, batchId: string) {
     const batch = batchesFor(line.product.id).find((b) => b.id === batchId)
     if (!batch) return
-    cart.setBatch(line.key, batch, batch.remaining_qty, batchCost(line.product, batch))
+    cart.setBatch(
+      line.key,
+      batch,
+      batch.remaining_qty,
+      batchCost(line.product, batch),
+      batchPrice(line.product, batch),
+    )
   }
 
   /** Places the order. Returns whether it went through, so the caller can
@@ -239,6 +241,7 @@ export function useCart() {
     error,
     batchesFor,
     batchCost,
+    batchPrice,
     shortfall,
     inCart,
     inCartFromBatch,

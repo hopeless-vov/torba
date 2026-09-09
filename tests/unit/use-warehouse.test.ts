@@ -19,6 +19,8 @@ const alpha = {
   brand_id: null,
   cost_amount: 1500,
   cost_currency: 'UAH',
+  retail_amount: 2000,
+  retail_currency: 'UAH',
 } as Product
 const beta = {
   id: 'p2',
@@ -42,6 +44,8 @@ function batch(over: Partial<BatchRow> & { id: string }): BatchRow {
     remaining_qty: 10,
     cost_amount: null,
     cost_currency: null,
+    retail_amount: null,
+    retail_currency: null,
     created_at: '2026-01-01',
     product: { ...alpha, brand: null } as BatchRow['product'],
     ...over,
@@ -205,5 +209,50 @@ describe('useWarehouse cost', () => {
     ]
 
     expect(warehouse.grouped.value[0].stockValue).toBe(2 * 1192 + 3 * 1500)
+  })
+})
+
+describe('useWarehouse retail', () => {
+  it('reports what this delivery sells for', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [batch({ id: 'b-1', retail_amount: 1790, retail_currency: 'UAH' })]
+
+    expect(warehouse.filtered.value[0].retail).toBe(1790)
+  })
+
+  it('falls back to the catalogue price', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [batch({ id: 'b-1' })]
+
+    expect(warehouse.filtered.value[0].retail).toBe(2000)
+  })
+
+  // The pair is the point: a promotional buy sold at the usual price earns
+  // more, and the shelf should say so per delivery.
+  it('reports the margin between this delivery’s own two prices', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [
+      batch({
+        id: 'b-1',
+        cost_amount: 1000,
+        cost_currency: 'UAH',
+        retail_amount: 2000,
+        retail_currency: 'UAH',
+      }),
+    ]
+
+    expect(warehouse.filtered.value[0].margin).toBe(0.5)
+  })
+
+  it('has no margin when nothing names a selling price', () => {
+    const { inventory, warehouse } = harness()
+    inventory.batches = [
+      batch({
+        id: 'b-1',
+        product: { ...alpha, retail_amount: null, brand: null } as BatchRow['product'],
+      }),
+    ]
+
+    expect(warehouse.filtered.value[0].margin).toBeNull()
   })
 })

@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/ui'
 import type { BatchPatch, NewBatch } from '@/types/database'
 import type { BatchStatus } from '@/types/models'
 import { batchStatus, compareByExpiry, daysUntil } from '@/utils/batch-status'
+import { computeMargin } from '@/utils/pricing'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -24,6 +25,8 @@ export interface WarehouseRow {
   received: number // how many arrived in this delivery
   sold: number // received − remaining
   cost: number // what one unit of *this* delivery cost, in display currency
+  retail: number | null // what it sells for; null when neither batch nor product says
+  margin: number | null // 0..1, what the delivery earns per unit
   status: BatchStatus
   daysLeft: number | null
 }
@@ -61,7 +64,7 @@ export function useWarehouse() {
   const inventory = useInventoryStore()
   const reference = useReferenceStore()
   const ui = useUiStore()
-  const { batchCostToDisplay } = useCurrency()
+  const { batchCostToDisplay, batchRetailToDisplay } = useCurrency()
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
@@ -75,26 +78,34 @@ export function useWarehouse() {
   const groupByProduct = ref(false)
 
   const rows = computed<WarehouseRow[]>(() =>
-    inventory.batches.map((b) => ({
-      id: b.id,
-      productId: b.product_id,
-      brandId: b.product?.brand_id ?? null,
-      name: b.product?.name ?? '—',
-      sku: b.product?.sku ?? '',
-      batch: b.batch_number ?? '—',
-      delivery: b.delivery_date,
-      expiry: b.expiry_date,
-      remaining: b.remaining_qty,
-      received: b.received_qty,
-      sold: Math.max(0, b.received_qty - b.remaining_qty),
-      // A delivery bought on promotion keeps its own cost here, so the shelf
-      // can say what is left at which price rather than one blended figure.
-      cost: b.product
-        ? batchCostToDisplay(b, b.product, reference.brandsById.get(b.product.brand_id ?? '') ?? null)
-        : 0,
-      status: batchStatus(b.expiry_date),
-      daysLeft: daysUntil(b.expiry_date),
-    })),
+    inventory.batches.map((b) => {
+      const brand = b.product ? (reference.brandsById.get(b.product.brand_id ?? '') ?? null) : null
+      // A delivery bought on promotion keeps its own prices, so the shelf says
+      // what is left at which cost — and what it earns — rather than one
+      // blended figure. Both are converted the same way, so the margin between
+      // them is the ratio it would be in any currency.
+      const cost = b.product ? batchCostToDisplay(b, b.product, brand) : 0
+      const retail = b.product ? batchRetailToDisplay(b, b.product) : null
+
+      return {
+        id: b.id,
+        productId: b.product_id,
+        brandId: b.product?.brand_id ?? null,
+        name: b.product?.name ?? '—',
+        sku: b.product?.sku ?? '',
+        batch: b.batch_number ?? '—',
+        delivery: b.delivery_date,
+        expiry: b.expiry_date,
+        remaining: b.remaining_qty,
+        received: b.received_qty,
+        sold: Math.max(0, b.received_qty - b.remaining_qty),
+        cost,
+        retail,
+        margin: computeMargin(cost, retail),
+        status: batchStatus(b.expiry_date),
+        daysLeft: daysUntil(b.expiry_date),
+      }
+    }),
   )
 
   const filtered = computed(() => {

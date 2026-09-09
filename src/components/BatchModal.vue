@@ -9,6 +9,8 @@ import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
 import type { Batch, NewBatch } from '@/types/database'
 import { generateBatchNumber } from '@/utils/batch-number'
+import { formatPercent } from '@/utils/format'
+import { computeMargin } from '@/utils/pricing'
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -20,7 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewBatch, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { options, costToDisplay, functionalCode, formatIn } = useCurrency()
+const { options, convertBetween, costToDisplay, functionalCode, formatIn } = useCurrency()
 const inventory = useInventoryStore()
 const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
@@ -40,6 +42,11 @@ const remaining = ref(0)
 // rate that moved, is exactly what this field is here to record.
 const cost = ref(0)
 const costCurrency = ref('USD')
+// And what it goes out at. A promotional delivery is often passed on cheaper,
+// so the selling price belongs to the delivery too — same fallback: leave it
+// as the catalogue price and nothing changes.
+const retail = ref(0)
+const retailCurrency = ref('UAH')
 
 const isEdit = computed(() => !!props.batch)
 
@@ -50,6 +57,13 @@ const chosenProduct = computed(() => inventory.products.find((p) => p.id === for
 const catalogCost = computed(() => ({
   amount: chosenProduct.value?.cost_amount ?? 0,
   currency: chosenProduct.value?.cost_currency ?? 'USD',
+}))
+
+// Retail is a sale amount, so it defaults to the currency the books are kept
+// in rather than the supplier's.
+const catalogRetail = computed(() => ({
+  amount: chosenProduct.value?.retail_amount ?? 0,
+  currency: chosenProduct.value?.retail_currency ?? functionalCode.value,
 }))
 
 const currencyOptions = computed(() =>
@@ -67,6 +81,18 @@ const brand = computed(() =>
 const costInBase = computed(() =>
   formatIn(functionalCode.value, costToDisplay(cost.value, costCurrency.value, brand.value, functionalCode.value)),
 )
+
+// What this delivery earns, if both prices are known — the number that makes
+// a promotional buy worth recording in the first place.
+const marginLabel = computed(() => {
+  if (!retail.value) return null
+  const base = functionalCode.value
+  const margin = computeMargin(
+    costToDisplay(cost.value, costCurrency.value, brand.value, base),
+    convertBetween(retail.value, retailCurrency.value, base),
+  )
+  return margin == null ? null : formatPercent(margin)
+})
 
 // Name on top, SKU underneath: two products can open with the same long
 // phrase, and the SKU is what actually tells them apart.
@@ -105,6 +131,10 @@ watch(
     // as today, so saving does not silently change what it reports.
     cost.value = b?.cost_amount ?? catalogCost.value.amount
     costCurrency.value = b?.cost_currency ?? catalogCost.value.currency
+    retail.value = b?.retail_amount ?? catalogRetail.value.amount
+    retailCurrency.value = b?.retail_currency ?? catalogRetail.value.currency
+    touchedCost.value = false
+    touchedRetail.value = false
   },
   { immediate: true },
 )
@@ -117,7 +147,14 @@ watch(catalogCost, (next) => {
   costCurrency.value = next.currency
 })
 
+watch(catalogRetail, (next) => {
+  if (isEdit.value || touchedRetail.value) return
+  retail.value = next.amount
+  retailCurrency.value = next.currency
+})
+
 const touchedCost = ref(false)
+const touchedRetail = ref(false)
 
 // New batches start out untouched, so the remainder tracks the delivery.
 watch(received, (value) => {
@@ -135,6 +172,10 @@ function submit() {
     remaining_qty: (isEdit.value ? remaining.value : received.value) || 0,
     cost_amount: cost.value || 0,
     cost_currency: costCurrency.value,
+    // Nothing entered means "sell it at the catalogue price", which is what
+    // an empty retail column has always meant on a product.
+    retail_amount: retail.value ? retail.value : null,
+    retail_currency: retailCurrency.value,
   })
 }
 </script>
@@ -204,6 +245,34 @@ function submit() {
           {{ t('warehouse.hint.cost') }}
           <template v-if="costCurrency !== functionalCode">
             {{ ' · ' + t('common.approx', { amount: costInBase }) }}
+          </template>
+        </span>
+      </div>
+
+      <div class="col-span-1 flex flex-col gap-1 sm:col-span-2">
+        <div class="flex items-end gap-2">
+          <NumberInput
+            v-model="retail"
+            class="flex-1"
+            :label="t('warehouse.cols.retail')"
+            :min="0"
+            :step="0.01"
+            @update:model-value="touchedRetail = true"
+          />
+          <div class="w-28">
+            <Combobox
+              v-model="retailCurrency"
+              :label="t('catalog.form.currency')"
+              :search-placeholder="t('common.search')"
+              :empty-text="t('common.noMatches')"
+              :options="currencyOptions"
+            />
+          </div>
+        </div>
+        <span class="text-xs text-faint">
+          {{ t('warehouse.hint.retail') }}
+          <template v-if="marginLabel">
+            {{ ' · ' + t('warehouse.hint.margin', { margin: marginLabel }) }}
           </template>
         </span>
       </div>

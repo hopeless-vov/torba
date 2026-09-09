@@ -162,6 +162,9 @@ export interface Batch {
   // falls back to the product's catalogue price — see 0017 and `costOf`.
   cost_amount: number | null
   cost_currency: string | null
+  // What it is sold for, same rule: null follows the product (0018).
+  retail_amount: number | null
+  retail_currency: string | null
   created_at: string
 }
 
