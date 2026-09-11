@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MissingRateLink from '@/components/MissingRateLink.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -21,7 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewBatch, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { options, toBase, functionalCode, formatIn } = useCurrency()
+const { options, toBase, hasRate, functionalCode, formatIn } = useCurrency()
 const inventory = useInventoryStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -70,6 +71,14 @@ const currencyOptions = computed(() =>
 
 // Whose rates apply: the supplier of the product this delivery is of.
 const brandId = computed(() => chosenProduct.value?.brand_id ?? null)
+
+// A price of this delivery in a currency its supplier has no rate for.
+const missingCurrency = computed(() => {
+  if (!brandId.value) return null
+  if (!hasRate(brandId.value, costCurrency.value)) return costCurrency.value
+  if (retail.value && !hasRate(brandId.value, retailCurrency.value)) return retailCurrency.value
+  return null
+})
 
 // A cost entered in the supplier's currency is worth saying out loud in the
 // books' currency: that is the number this delivery will report as margin.
@@ -271,6 +280,16 @@ function submit() {
             {{ ' · ' + t('warehouse.hint.margin', { margin: marginLabel }) }}
           </template>
         </span>
+      </div>
+
+      <div
+        v-if="missingCurrency"
+        class="col-span-1 sm:col-span-2"
+      >
+        <MissingRateLink
+          :brand-id="brandId"
+          :currency="missingCurrency"
+        />
       </div>
 
       <div class="flex flex-col gap-1">

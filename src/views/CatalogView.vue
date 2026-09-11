@@ -2,6 +2,7 @@
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import CsvImportModal from '@/components/CsvImportModal.vue'
 import ListFallback from '@/components/ListFallback.vue'
+import MissingRateLink from '@/components/MissingRateLink.vue'
 import ProductFormModal from '@/components/ProductFormModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
@@ -278,6 +279,11 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
 
         <template #cell-purchase="{ row }">
           <span v-if="(row as ProductView).purchase != null">{{ format((row as ProductView).purchase as number) }}</span>
+          <MissingRateLink
+            v-else-if="(row as ProductView).rateMissing"
+            :brand-id="(row as ProductView).brand_id"
+            :currency="(row as ProductView).rateMissing as string"
+          />
           <span
             v-else
             class="text-faint"
@@ -294,6 +300,13 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
               >{{ formatIn((row as ProductView).retail_currency, (row as ProductView).retail_amount as number) }}</span>
             </div>
           </template>
+          <!-- Cost converted but retail did not: the retail price is in a
+               currency its supplier has no rate for. -->
+          <MissingRateLink
+            v-else-if="(row as ProductView).rateMissing && (row as ProductView).purchase != null"
+            :brand-id="(row as ProductView).brand_id"
+            :currency="(row as ProductView).rateMissing as string"
+          />
           <span
             v-else
             class="text-faint"

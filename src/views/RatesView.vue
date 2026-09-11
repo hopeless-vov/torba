@@ -15,8 +15,9 @@ import { useRates } from '@/composables/use-rates'
 import { useReferenceStore } from '@/stores/reference'
 import type { Brand, Currency } from '@/types/database'
 import { formatDate, formatNumber } from '@/utils/format'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 
 // One page for everything a price is converted with: the base currency the
 // books are kept in, the currencies the company's suppliers quote in, and the
@@ -39,7 +40,17 @@ const {
 } = useRates()
 const { canConfigure, canAdministerCompany } = usePermissions()
 
-onMounted(checkBaseLock)
+// Arriving from a "rate needed" link: the supplier it was about is picked
+// out and brought into view, so the missing cell is right there.
+const route = useRoute()
+const focusBrand = computed(() => (typeof route.query.brand === 'string' ? route.query.brand : null))
+
+onMounted(async () => {
+  void checkBaseLock()
+  if (!focusBrand.value) return
+  await nextTick()
+  document.getElementById(`rates-brand-${focusBrand.value}`)?.scrollIntoView?.({ block: 'center' })
+})
 
 // ── base currency ────────────────────────────────────────────
 // Only the owner moves it, only while nothing has been sold, and only after
@@ -320,7 +331,9 @@ function openHistory(brand: Brand, code: string) {
           <tbody class="divide-y divide-line-soft">
             <tr
               v-for="brand in reference.brands"
+              :id="`rates-brand-${brand.id}`"
               :key="brand.id"
+              :class="brand.id === focusBrand && 'bg-accent-soft'"
             >
               <td class="px-5 py-3 font-medium whitespace-nowrap text-fg">
                 {{ brand.name }}

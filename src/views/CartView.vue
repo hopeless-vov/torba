@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MissingRateLink from '@/components/MissingRateLink.vue'
 import QuickAddModal from '@/components/QuickAddModal.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
@@ -46,7 +47,7 @@ const {
   addFromBatch,
   selectBatch,
 } = useCart()
-const { format } = useCurrency()
+const { format, missingRate } = useCurrency()
 const { canTrade } = usePermissions()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
@@ -358,6 +359,17 @@ async function placeOrder() {
                 <span class="text-faint">
                   {{ t('cart.unitCost', { cost: format(line.unitCost) }) }}
                 </span>
+                <!-- No rate for the currency this line is priced in: the cost it
+                     would be sold at is unknown, and would go on record as 0. -->
+                <template v-if="missingRate(line.product, line.batch)">
+                  <span class="text-warn">
+                    {{ t('cart.costUnknown', { code: missingRate(line.product, line.batch) }) }}
+                  </span>
+                  <MissingRateLink
+                    :brand-id="line.product.brand_id"
+                    :currency="missingRate(line.product, line.batch) as string"
+                  />
+                </template>
                 <span
                   v-if="line.discount > 0"
                   class="text-muted"

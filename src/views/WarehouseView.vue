@@ -3,6 +3,7 @@ import BatchModal from '@/components/BatchModal.vue'
 import BatchStatusBadge from '@/components/BatchStatusBadge.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import ListFallback from '@/components/ListFallback.vue'
+import MissingRateLink from '@/components/MissingRateLink.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
@@ -369,6 +370,11 @@ async function confirmDelete() {
             v-if="(row as WarehouseRow).cost != null"
             class="text-muted"
           >{{ format((row as WarehouseRow).cost as number) }}</span>
+          <MissingRateLink
+            v-else-if="(row as WarehouseRow).rateMissing"
+            :brand-id="(row as WarehouseRow).brandId"
+            :currency="(row as WarehouseRow).rateMissing as string"
+          />
           <span
             v-else
             class="text-faint"
@@ -379,6 +385,11 @@ async function confirmDelete() {
             v-if="(row as WarehouseRow).retail != null"
             class="text-fg"
           >{{ format((row as WarehouseRow).retail as number) }}</span>
+          <MissingRateLink
+            v-else-if="(row as WarehouseRow).rateMissing && (row as WarehouseRow).cost != null"
+            :brand-id="(row as WarehouseRow).brandId"
+            :currency="(row as WarehouseRow).rateMissing as string"
+          />
           <span
             v-else
             class="text-faint"

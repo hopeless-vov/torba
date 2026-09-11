@@ -136,7 +136,11 @@ const columns = computed<Column[]>(() => [
       <StatCard
         :label="t('dashboard.kpi.stockValue')"
         :value="format(stats.stockValue)"
-        :hint="t('dashboard.kpi.stockValueHint')"
+        :hint="
+          stats.unpriced > 0
+            ? t('dashboard.kpi.stockValueUnpriced', { count: stats.unpriced })
+            : t('dashboard.kpi.stockValueHint')
+        "
       />
       <StatCard
         :label="t('dashboard.kpi.profit')"

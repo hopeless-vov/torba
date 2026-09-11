@@ -98,7 +98,8 @@
       "stockValue": "Stock value",
       "stockValueHint": "at purchase price",
       "profit": "Net profit",
-      "profitHint": "across {count} orders in the period"
+      "profitHint": "across {count} orders in the period",
+      "stockValueUnpriced": "at purchase price · {count} without a rate"
     },
     "burning": {
       "title": "Expiring soonest",
@@ -400,7 +401,9 @@
     "history": "Rate history",
     "historyEmpty": "The rate has not changed yet.",
     "empty": "No brands yet",
-    "emptyHint": "Add a brand on the Links page."
+    "emptyHint": "Add a brand on the Links page.",
+    "addForSupplier": "Add a supplier rate",
+    "missingFor": "This supplier has no {code} rate"
   },
   "links": {
     "title": "Brands & categories",
@@ -479,7 +482,8 @@
     "underOrder": "on backorder",
     "noBatches": "no batches in stock",
     "backorder": "{count} short",
-    "backorderHint": "Some units are not in stock — the order still goes through, and the missing units stay on backorder."
+    "backorderHint": "Some units are not in stock — the order still goes through, and the missing units stay on backorder.",
+    "costUnknown": "No {code} rate — this line counts its cost as 0"
   },
   "status": {
     "batch": {

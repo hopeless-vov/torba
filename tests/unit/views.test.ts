@@ -52,7 +52,9 @@ const product = {
   name: 'Fairy Засіб для миття посуду',
   volume: '500 мл',
   cost_amount: 2.1,
+  cost_currency: 'USD',
   retail_amount: 87,
+  retail_currency: 'UAH',
   is_active: true,
   created_at: '',
   updated_at: '',
@@ -149,6 +151,7 @@ function testRouter() {
       { path: '/', name: 'dashboard', component: blank },
       { path: '/orders', name: 'orders', component: blank },
       { path: '/cart', name: 'cart', component: blank },
+      { path: '/rates', name: 'rates', component: blank },
     ],
   })
 }
@@ -574,5 +577,44 @@ describe('RatesView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain(uk.rates.changeBase)
+  })
+})
+
+// A price whose supplier has no rate for its currency cannot be shown in the
+// base. Every screen that meets one says so, and leads to where it is fixed.
+describe('a missing supplier rate', () => {
+  it('turns the catalogue price into a link to add it', async () => {
+    const wrapper = render(CatalogView)
+    useReferenceStore().supplierRates = []
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.rates.addForSupplier)
+    expect(wrapper.find('a[href="/rates?brand=b1"]').exists()).toBe(true)
+  })
+
+  it('shows nothing of the sort while the rate is there', async () => {
+    const wrapper = render(CatalogView)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain(uk.rates.addForSupplier)
+  })
+
+  // Sold now, the line would go on record at a cost of 0.
+  it('warns on the cart line before it is sold', async () => {
+    const wrapper = render(CartView)
+    useReferenceStore().supplierRates = []
+    useCartStore().addLine({ product, brand: null, batch: null, unitPrice: 87, unitCost: 0 })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.cart.costUnknown.replace('{code}', 'USD'))
+    expect(wrapper.find('a[href="/rates?brand=b1"]').exists()).toBe(true)
+  })
+
+  it('picks the supplier out when the rates page is opened from one', async () => {
+    const wrapper = render(RatesView)
+    await wrapper.vm.$router.push('/rates?brand=b1')
+    await flushPromises()
+
+    expect(wrapper.find('#rates-brand-b1').classes()).toContain('bg-accent-soft')
   })
 })

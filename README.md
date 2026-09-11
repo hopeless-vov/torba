@@ -307,7 +307,11 @@ nothing else. The database keeps each cell's history.
 converts through `rateFor(brand, currency)`; without a rate the result is `null`,
 the screen shows *"—"*, and margins and stock value leave that price out instead of
 counting it at an invented number. `missingRate` names the currency a price is still
-waiting for.
+waiting for, and wherever one turns up — a catalogue or warehouse row, a cart line,
+the product and batch forms — the price is replaced by **«Додати курс для
+постачальника»**, a link to /rates that picks that supplier out. The dashboard's
+stock value says how many batches it had to leave out; a cart line says that it
+would go on record at a cost of 0.
 
 **/rates** has three parts:
 

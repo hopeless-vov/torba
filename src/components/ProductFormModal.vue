@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MissingRateLink from '@/components/MissingRateLink.vue'
 import QuickAddModal from '@/components/QuickAddModal.vue'
 import Button from '@/components/ui/Button.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
@@ -20,7 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewProduct, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { functionalCode, options } = useCurrency()
+const { functionalCode, options, hasRate } = useCurrency()
 const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -88,6 +89,16 @@ function onQuickAdded(value: string) {
 }
 
 const canSave = computed(() => !!form.sku.trim() && !!form.name.trim() && !!form.brand_id)
+
+// The currency among this product's prices that its supplier has no rate
+// for — the cost first, since without it there is no margin at all. Such a
+// price would show as unknown everywhere, so the form says so now.
+const missingCurrency = computed(() => {
+  if (!form.brand_id) return null
+  if (!hasRate(form.brand_id, costCurrency.value)) return costCurrency.value
+  if (retailModel.value && !hasRate(form.brand_id, retailCurrency.value)) return retailCurrency.value
+  return null
+})
 
 watch(
   open,
@@ -212,6 +223,15 @@ function submit() {
       <p class="col-span-1 -mt-1 text-xs text-faint sm:col-span-2">
         {{ t('catalog.form.priceHint') }}
       </p>
+      <div
+        v-if="missingCurrency"
+        class="col-span-1 -mt-2 sm:col-span-2"
+      >
+        <MissingRateLink
+          :brand-id="form.brand_id || null"
+          :currency="missingCurrency"
+        />
+      </div>
       <div class="col-span-1 sm:col-span-2">
         <Checkbox
           v-model="form.is_active"
