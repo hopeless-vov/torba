@@ -29,7 +29,7 @@ const props = withDefaults(
 )
 
 const { t } = useI18n()
-const { format, formatIn, costInBase, retailInBase } = useCurrency()
+const { format, formatIn, costInBase, retailInBase, retailInCostCurrency } = useCurrency()
 const inventory = useInventoryStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -45,12 +45,18 @@ const facts = computed(() => {
   if (!p) return []
   const purchase = costInBase(p)
   const retail = retailInBase(p)
+  const supplierRetail = retailInCostCurrency(p)
   const stock = inventory.stockByProduct.get(p.id) ?? 0
   const rows = [
     { label: t('catalog.form.volume'), value: p.volume || t('common.emptyValue') },
     {
       label: t('catalog.cols.supplierCost'),
       value: formatIn(p.cost_currency, p.cost_amount, 2),
+      mono: true,
+    },
+    {
+      label: t('catalog.cols.supplierRetail'),
+      value: supplierRetail != null ? formatIn(p.cost_currency, supplierRetail, 2) : t('common.emptyValue'),
       mono: true,
     },
     {

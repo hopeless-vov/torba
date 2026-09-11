@@ -332,8 +332,11 @@ would go on record at a cost of 0.
 `cost_amount` + `cost_currency` and `retail_amount` + `retail_currency`. Both go
 through the supplier's rate — retail follows the supplier exactly like cost, so *"you
 buy at 55, you sell at 80"* is what the catalogue stores, and a new rate reprices both.
-A price in the base needs no rate at all. The catalog shows each price in the base,
-with the supplier's own amount underneath when it is in another currency.
+A price in the base needs no rate at all. The catalog shows both prices twice: the
+supplier's own pair in the currency it quotes the cost in (**Ціна постачальника**,
+**Роздріб постачальника** — a price list reads back exactly as it was written), then
+the same two in the base. New products start with both prices in the currency their
+brand quotes in.
 
 **A batch may override both prices.** The product's pair is the *catalogue* price —
 what a delivery normally costs and normally sells for — and a batch that came in

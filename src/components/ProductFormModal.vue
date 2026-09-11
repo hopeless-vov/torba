@@ -37,7 +37,9 @@ const form = reactive({
 const isEdit = computed(() => !!props.product)
 
 // Cost and retail each carry the currency they were entered in; no conversion
-// on save. Cost defaults to the brand's catalog currency, retail to the base.
+// on save. Both default to the currency the brand quotes in: the supplier
+// says what you buy at and what you sell at, in its own money, and its rate
+// takes both into the base.
 const priceModel = ref(0)
 const costCurrency = ref('USD')
 const retailModel = ref(0)
@@ -45,14 +47,18 @@ const retailCurrency = ref(functionalCode.value)
 
 // The catalog currency follows the selected brand — that is the currency the
 // supplier prices its goods in, and the default for a new product's cost.
-const catalogCurrency = computed(() => reference.brandsById.get(form.brand_id)?.catalog_currency ?? 'USD')
+const catalogCurrency = computed(
+  () => reference.brandsById.get(form.brand_id)?.catalog_currency ?? functionalCode.value,
+)
 
 const currencyOptions = computed(() => options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })))
 
-// For a new product, cost currency tracks the chosen brand's catalog currency;
-// editing keeps whatever currency the product was saved with.
+// For a new product, both currencies track the chosen brand's; editing keeps
+// whatever the product was saved with.
 watch(catalogCurrency, (cur) => {
-  if (!isEdit.value) costCurrency.value = cur
+  if (isEdit.value) return
+  costCurrency.value = cur
+  retailCurrency.value = cur
 })
 
 const brandOptions = computed(() => reference.brands.map((b) => ({ value: b.id, label: b.name })))
@@ -113,7 +119,7 @@ watch(
     priceModel.value = p?.cost_amount ?? 0
     costCurrency.value = p?.cost_currency ?? catalogCurrency.value
     retailModel.value = p?.retail_amount ?? 0
-    retailCurrency.value = p?.retail_currency ?? functionalCode.value
+    retailCurrency.value = p?.retail_currency ?? catalogCurrency.value
     form.is_active = p?.is_active ?? true
   },
   { immediate: true },

@@ -11,6 +11,7 @@ export interface ProductView extends Product {
   category: Category | null
   purchase: number | null // cost in the base; null while the supplier's rate is missing
   retail: number | null // retail in the base; null with no price, or no rate for it
+  supplierRetail: number | null // retail in the supplier's own currency — the one cost is quoted in
   discounted: number | null // retail after applying the active discount
   margin: number | null // 0..1
   rateMissing: string | null // the currency a price here still needs a rate for

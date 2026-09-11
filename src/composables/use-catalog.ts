@@ -16,7 +16,7 @@ export function useCatalog() {
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
-  const { costInBase, retailInBase, missingRate } = useCurrency()
+  const { costInBase, retailInBase, retailInCostCurrency, missingRate } = useCurrency()
 
   const brandFilter = ref('all')
   const categoryFilter = ref('all')
@@ -37,6 +37,7 @@ export function useCatalog() {
         category: p.category,
         purchase,
         retail,
+        supplierRetail: retailInCostCurrency(p),
         discounted,
         margin: purchase != null ? computeMargin(purchase, retail) : null,
         rateMissing: missingRate(p),

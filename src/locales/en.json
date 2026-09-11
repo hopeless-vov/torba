@@ -155,6 +155,7 @@
       "article": "Article",
       "name": "Name",
       "supplierCost": "Supplier cost",
+      "supplierRetail": "Supplier retail",
       "purchase": "Purchase",
       "retail": "Retail",
       "discounted": "Discounted",
@@ -182,7 +183,7 @@
       "priceUsd": "Purchase",
       "retailUsd": "Retail",
       "currency": "Currency",
-      "priceHint": "Cost and retail are each entered in their own currency; everything is converted for display through the rate table. A brand's supplier rate still overrides the table for its own catalog currency.",
+      "priceHint": "Enter cost and retail in the currency the supplier quotes them in — that supplier's rate takes both into the base.",
       "categoryPickBrand": "Select a brand first",
       "categoryEmpty": "No categories for this brand yet",
       "active": "Active"

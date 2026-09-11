@@ -113,6 +113,7 @@ const columns = computed<Column[]>(() => [
   { key: 'sku', label: t('catalog.cols.article'), width: '9rem', mono: true },
   { key: 'name', label: t('catalog.cols.name'), card: 'title' },
   { key: 'supplierCost', label: t('catalog.cols.supplierCost'), align: 'right', mono: true },
+  { key: 'supplierRetail', label: t('catalog.cols.supplierRetail'), align: 'right', mono: true },
   { key: 'purchase', label: `${t('catalog.cols.purchase')} ${functionalCode.value}`, align: 'right', mono: true },
   { key: 'retail', label: `${t('catalog.cols.retail')} ${functionalCode.value}`, align: 'right', mono: true },
   { key: 'discounted', label: t('catalog.cols.discounted'), align: 'right', mono: true },
@@ -277,6 +278,19 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
           </span>
         </template>
 
+        <!-- What the supplier says it sells for, in the currency it quotes the
+             cost in, so a price list reads back exactly as it was written. -->
+        <template #cell-supplierRetail="{ row }">
+          <span
+            v-if="(row as ProductView).supplierRetail != null"
+            class="text-muted"
+          >{{ formatIn((row as ProductView).cost_currency, (row as ProductView).supplierRetail as number, 2) }}</span>
+          <span
+            v-else
+            class="text-faint"
+          >{{ t('common.emptyValue') }}</span>
+        </template>
+
         <template #cell-purchase="{ row }">
           <span v-if="(row as ProductView).purchase != null">{{ format((row as ProductView).purchase as number) }}</span>
           <MissingRateLink
@@ -292,13 +306,7 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
 
         <template #cell-retail="{ row }">
           <template v-if="(row as ProductView).retail != null">
-            <div class="flex flex-col leading-tight">
-              <span>{{ format((row as ProductView).retail as number) }}</span>
-              <span
-                v-if="(row as ProductView).retail_currency !== functionalCode"
-                class="text-xs text-faint tabular-nums"
-              >{{ formatIn((row as ProductView).retail_currency, (row as ProductView).retail_amount as number) }}</span>
-            </div>
+            <span>{{ format((row as ProductView).retail as number) }}</span>
           </template>
           <!-- Cost converted but retail did not: the retail price is in a
                currency its supplier has no rate for. -->

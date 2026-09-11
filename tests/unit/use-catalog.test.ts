@@ -147,3 +147,20 @@ describe('useCatalog without a supplier rate', () => {
     expect(catalog.filtered.value[0].rateMissing).toBeNull()
   })
 })
+
+describe('useCatalog supplier prices', () => {
+  // "You buy at $51, you sell at $80": the supplier's own pair, side by side.
+  it('shows the retail price in the currency the supplier quotes the cost in', () => {
+    const { inventory, catalog } = harness()
+    inventory.products = [product({ retail_amount: 80, retail_currency: 'USD' })]
+
+    expect(catalog.filtered.value[0].supplierRetail).toBe(80)
+  })
+
+  it('brings a retail price kept in the base back into it', () => {
+    const { inventory, catalog } = harness()
+    inventory.products = [product()] // ₴3400 at ₴44.5 per $
+
+    expect(catalog.filtered.value[0].supplierRetail).toBeCloseTo(3400 / 44.5, 6)
+  })
+})

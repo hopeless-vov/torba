@@ -192,6 +192,15 @@ beforeEach(() => {
 })
 
 describe('CatalogView', () => {
+  // The supplier's pair — buy at, sell at — in its own currency, next to
+  // the same two prices in the base.
+  it('shows the supplier’s retail price beside its cost', () => {
+    const wrapper = render(CatalogView)
+    expect(wrapper.text()).toContain(uk.catalog.cols.supplierRetail)
+    // ₴87 at ₴41.5 per $ is $2.10 — read back in the currency the cost is in.
+    expect(wrapper.text()).toContain('2,10')
+  })
+
   it('renders products with selection checkboxes', () => {
     const wrapper = render(CatalogView)
     expect(wrapper.text()).toContain('Fairy Засіб для миття посуду')

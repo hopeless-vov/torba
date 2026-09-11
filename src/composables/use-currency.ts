@@ -87,6 +87,19 @@ export function useCurrency() {
   }
 
   /**
+   * The retail price in the currency the supplier quotes the cost in — the
+   * pair a price list prints side by side: "you buy at 55, you sell at 80".
+   * A retail price kept in another currency is brought over through the base;
+   * null with no retail price, or when a rate it needs is missing.
+   */
+  function retailInCostCurrency(product: CostSource & RetailSource): number | null {
+    if (product.retail_amount == null) return null
+    if (product.retail_currency === product.cost_currency) return product.retail_amount
+    const base = retailInBase(product)
+    return base == null ? null : fromBase(base, product.cost_currency, product.brand_id)
+  }
+
+  /**
    * The currency a price is still waiting for a rate in, or null when all it
    * needs is known. Cost first: without it there is no margin to speak of.
    */
@@ -137,6 +150,7 @@ export function useCurrency() {
     fromBase,
     costInBase,
     retailInBase,
+    retailInCostCurrency,
     missingRate,
     format,
     formatIn,

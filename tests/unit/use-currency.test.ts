@@ -157,3 +157,29 @@ describe('useCurrency — prices', () => {
     expect(c.missingRate(inBase)).toBeNull()
   })
 })
+
+describe('useCurrency — retail in the supplier’s currency', () => {
+  it('reads a retail price quoted in the cost’s currency as it is', () => {
+    companyUsing('UAH', ['USD'])
+    const product = { brand_id: 'b1', cost_amount: 55, cost_currency: 'USD', retail_amount: 80, retail_currency: 'USD' }
+    expect(useCurrency().retailInCostCurrency(product)).toBe(80)
+  })
+
+  // A retail price kept in the base is brought over through the supplier's
+  // rate, so the pair can still be read side by side.
+  it('brings a retail price in another currency over through the base', () => {
+    const reference = companyUsing('UAH', ['USD'])
+    reference.supplierRates = [rate('b1', 'USD', 40)]
+    const product = { brand_id: 'b1', cost_amount: 55, cost_currency: 'USD', retail_amount: 3200, retail_currency: 'UAH' }
+    expect(useCurrency().retailInCostCurrency(product)).toBeCloseTo(80, 6)
+  })
+
+  it('has nothing to show without a retail price, or without the rate', () => {
+    companyUsing('UAH', ['USD'])
+    const c = useCurrency()
+    const noRetail = { brand_id: 'b1', cost_amount: 55, cost_currency: 'USD', retail_amount: null, retail_currency: 'USD' }
+    const noRate = { brand_id: 'b1', cost_amount: 55, cost_currency: 'USD', retail_amount: 3200, retail_currency: 'UAH' }
+    expect(c.retailInCostCurrency(noRetail)).toBeNull()
+    expect(c.retailInCostCurrency(noRate)).toBeNull()
+  })
+})
