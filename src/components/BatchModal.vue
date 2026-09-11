@@ -6,7 +6,6 @@ import NumberInput from '@/components/ui/NumberInput.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrency } from '@/composables/use-currency'
 import { useInventoryStore } from '@/stores/inventory'
-import { useReferenceStore } from '@/stores/reference'
 import type { Batch, NewBatch } from '@/types/database'
 import { generateBatchNumber } from '@/utils/batch-number'
 import { formatPercent } from '@/utils/format'
@@ -22,9 +21,8 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewBatch, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { options, convertBetween, costToDisplay, functionalCode, formatIn } = useCurrency()
+const { options, toBase, functionalCode, formatIn } = useCurrency()
 const inventory = useInventoryStore()
-const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
 
 const form = reactive({
@@ -70,27 +68,25 @@ const currencyOptions = computed(() =>
   options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })),
 )
 
-// How the cost will be read back: a price in the brand's catalog currency
-// goes through that brand's supplier rate, so the hint says what it becomes.
-const brand = computed(() =>
-  chosenProduct.value?.brand_id ? (reference.brandsById.get(chosenProduct.value.brand_id) ?? null) : null,
-)
+// Whose rates apply: the supplier of the product this delivery is of.
+const brandId = computed(() => chosenProduct.value?.brand_id ?? null)
 
 // A cost entered in the supplier's currency is worth saying out loud in the
 // books' currency: that is the number this delivery will report as margin.
-const costInBase = computed(() =>
-  formatIn(functionalCode.value, costToDisplay(cost.value, costCurrency.value, brand.value, functionalCode.value)),
-)
+// Null while the supplier's rate for that currency is missing.
+const costInBase = computed(() => {
+  const amount = toBase(cost.value, costCurrency.value, brandId.value)
+  return amount == null ? null : formatIn(functionalCode.value, amount)
+})
 
 // What this delivery earns, if both prices are known — the number that makes
 // a promotional buy worth recording in the first place.
 const marginLabel = computed(() => {
   if (!retail.value) return null
-  const base = functionalCode.value
-  const margin = computeMargin(
-    costToDisplay(cost.value, costCurrency.value, brand.value, base),
-    convertBetween(retail.value, retailCurrency.value, base),
-  )
+  const costBase = toBase(cost.value, costCurrency.value, brandId.value)
+  const retailBase = toBase(retail.value, retailCurrency.value, brandId.value)
+  if (costBase == null || retailBase == null) return null
+  const margin = computeMargin(costBase, retailBase)
   return margin == null ? null : formatPercent(margin)
 })
 
@@ -243,7 +239,7 @@ function submit() {
         </div>
         <span class="text-xs text-faint">
           {{ t('warehouse.hint.cost') }}
-          <template v-if="costCurrency !== functionalCode">
+          <template v-if="costCurrency !== functionalCode && costInBase">
             {{ ' · ' + t('common.approx', { amount: costInBase }) }}
           </template>
         </span>

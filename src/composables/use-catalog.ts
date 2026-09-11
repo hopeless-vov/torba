@@ -16,24 +16,21 @@ export function useCatalog() {
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
-  const { functionalCode, convertBetween, costToDisplay } = useCurrency()
+  const { costInBase, retailInBase, missingRate } = useCurrency()
 
   const brandFilter = ref('all')
   const categoryFilter = ref('all')
   const discount = ref(0)
   const showInactive = ref(false)
 
-  const base = functionalCode
   const views = computed<ProductView[]>(() =>
     inventory.products.map((p) => {
-      // Each amount carries its own currency; convert both to the active
-      // display currency for the columns, and to the base currency to compute
-      // a currency-independent margin from a common footing.
-      const purchase = costToDisplay(p.cost_amount, p.cost_currency, p.brand)
-      const retail = p.retail_amount != null ? convertBetween(p.retail_amount, p.retail_currency) : null
+      // Both prices go through this supplier's rates into the base. A rate
+      // that was never entered leaves the figure unknown rather than invented,
+      // and says which currency it is waiting for.
+      const purchase = costInBase(p)
+      const retail = retailInBase(p)
       const discounted = retail != null ? applyDiscount(retail, discount.value) : null
-      const costBase = costToDisplay(p.cost_amount, p.cost_currency, p.brand, base.value)
-      const retailBase = p.retail_amount != null ? convertBetween(p.retail_amount, p.retail_currency, base.value) : null
       return {
         ...p,
         brand: p.brand,
@@ -41,7 +38,8 @@ export function useCatalog() {
         purchase,
         retail,
         discounted,
-        margin: computeMargin(costBase, retailBase),
+        margin: purchase != null ? computeMargin(purchase, retail) : null,
+        rateMissing: missingRate(p),
         inStock: inventory.stockByProduct.get(p.id) ?? 0,
       }
     }),

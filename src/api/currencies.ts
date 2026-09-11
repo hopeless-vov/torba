@@ -1,6 +1,8 @@
 import { supabase } from '@/api/supabase'
-import type { Currency, CurrencyPatch, NewCurrency } from '@/types/database'
+import type { Currency, NewCurrency } from '@/types/database'
 
+// The platform currencies a company uses besides its base. There is no rate
+// here: what a currency is worth depends on the supplier (supplier-rates).
 export const currenciesApi = {
   list: async (companyId: string): Promise<Currency[]> => {
     const { data, error } = await supabase
@@ -18,17 +20,7 @@ export const currenciesApi = {
     return data as Currency
   },
 
-  update: async (id: string, patch: CurrencyPatch): Promise<Currency> => {
-    const { data, error } = await supabase
-      .from('currencies')
-      .update(patch)
-      .eq('id', id)
-      .select('*')
-      .single()
-    if (error) throw error
-    return data as Currency
-  },
-
+  // Its supplier rates go with it — a trigger drops them (see 0019).
   remove: async (id: string): Promise<void> => {
     const { error } = await supabase.from('currencies').delete().eq('id', id)
     if (error) throw error

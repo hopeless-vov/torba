@@ -29,12 +29,11 @@ const props = withDefaults(
 const emit = defineEmits<{ edit: [order: OrderView]; delete: [order: OrderView] }>()
 
 const { t } = useI18n()
-const { formatFrom } = useCurrency()
+const { format } = useCurrency()
 const inventory = useInventoryStore()
 
-// Orders are snapshots in the currency they were sold in; convert them into
-// the active display currency so the whole app reads in one currency.
-const fmt = (amount: number) => formatFrom(props.order?.currency ?? 'UAH', amount)
+// Every order is in the base currency — the database keeps it that way.
+const fmt = (amount: number) => format(amount)
 const open = defineModel<boolean>('open', { default: false })
 
 // Clicking a line opens the product behind it — its brand, prices and stock.
@@ -125,9 +124,6 @@ const money = computed(() => {
           tone="info"
         >
           {{ order.payment_method }}
-        </Badge>
-        <Badge tone="neutral">
-          {{ order.currency }}
         </Badge>
       </div>
 

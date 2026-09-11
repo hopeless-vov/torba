@@ -1,6 +1,7 @@
-import { brandsApi } from '@/api/brands'
 import { categoriesApi } from '@/api/categories'
+import { currenciesApi } from '@/api/currencies'
 import { productsApi } from '@/api/products'
+import { supplierRatesApi } from '@/api/supplier-rates'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
@@ -152,14 +153,15 @@ export function useCsvImport() {
         categoryIds.set(name, created.id)
       }
 
-      // A price list is in the supplier's catalog currency. Cost is stored in
-      // it as-is; retail is re-expressed into the base currency using the rate
-      // that will apply to this brand after the import.
+      // A price list is in the supplier's own currency, and both its prices
+      // are kept exactly as the supplier wrote them — "you buy at 55, you
+      // sell at 80" is what the catalogue stores. The supplier's rate turns
+      // them into the base wherever they are shown, so a new rate reprices
+      // the whole list without rewriting it.
       const brand = reference.brandsById.get(brandId.value)
-      const costCurrency = brand?.catalog_currency ?? 'USD'
       const baseCurrency = auth.company?.base_currency ?? 'UAH'
-      const willApplyRate = applyRate.value && !!parsed.value.rate
-      const effectiveRate = (willApplyRate ? parsed.value.rate : brand?.supplier_rate) ?? 0
+      const costCurrency = brand?.catalog_currency ?? baseCurrency
+      const willApplyRate = applyRate.value && !!parsed.value.rate && costCurrency !== baseCurrency
 
       const rows: NewProduct[] = parsed.value.products.map((p) => ({
         company_id: companyId,
@@ -170,8 +172,8 @@ export function useCsvImport() {
         volume: p.volume,
         cost_amount: p.priceUsd,
         cost_currency: costCurrency,
-        retail_amount: p.retailUsd != null && effectiveRate > 0 ? Math.round(p.retailUsd * effectiveRate * 100) / 100 : null,
-        retail_currency: baseCurrency,
+        retail_amount: p.retailUsd,
+        retail_currency: costCurrency,
         is_active: true,
       }))
 
@@ -185,7 +187,20 @@ export function useCsvImport() {
         ),
       )
 
-      if (willApplyRate && brand) await brandsApi.updateRate(brand, parsed.value.rate as number)
+      // The rate printed on the list ("Курс: 44,50") is this supplier's rate
+      // for its currency: one cell of the matrix. The currency has to be in
+      // use for that cell to exist on the rates page.
+      if (willApplyRate && brand) {
+        if (!reference.currencies.some((c) => c.code === costCurrency)) {
+          await currenciesApi.create({ company_id: companyId, code: costCurrency })
+        }
+        await supplierRatesApi.set({
+          company_id: companyId,
+          brand_id: brand.id,
+          currency: costCurrency,
+          rate: parsed.value.rate as number,
+        })
+      }
 
       // It worked, so this is the layout of that supplier's files.
       safeStorage.set(`${MAPPING_KEY}:${brandId.value}`, JSON.stringify(mapping.value))

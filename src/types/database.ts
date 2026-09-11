@@ -82,16 +82,28 @@ export interface Brand {
   id: string
   company_id: string
   name: string
-  catalog_currency: string // the currency this supplier prices its goods in
-  supplier_rate: number // functional-currency units per 1 unit of catalog_currency
-  rate_updated_at: string
+  // The currency this supplier quotes in: the default for its new products and
+  // for its price lists. What it is worth lives in SupplierRate.
+  catalog_currency: string
   created_at: string
+}
+
+// One cell of the supplier × currency matrix (0019): how many units of the
+// company's base currency one unit of `currency` is worth to this supplier.
+export interface SupplierRate {
+  id: string
+  company_id: string
+  brand_id: string
+  currency: string
+  rate: number
+  updated_at: string
 }
 
 export interface RateHistoryEntry {
   id: string
   company_id: string
   brand_id: string
+  currency: string
   rate: number
   created_at: string
 }
@@ -123,12 +135,21 @@ export interface PaymentMethod {
 // A currency the owner can display amounts in, with its market (bank) rate.
 // usd_rate is a per-USD numeraire — USD is only a rate-table reference point,
 // not the functional currency (that is companies.base_currency, chosen freely).
+// A currency the platform offers. The list is kept by the platform; a
+// company only chooses from it.
+export interface PlatformCurrency {
+  code: string
+  symbol: string
+  sort: number
+  created_at: string
+}
+
+// A platform currency this company uses besides its base. No rate: what it
+// is worth depends on the supplier.
 export interface Currency {
   id: string
   company_id: string
   code: string
-  symbol: string
-  usd_rate: number // market rate: units of this currency per 1 USD
   created_at: string
 }
 
@@ -215,14 +236,14 @@ export interface OrderItem {
 
 // ── insert payloads (server fills id / created_at / company via app) ──
 
-export type NewBrand = Pick<Brand, 'company_id' | 'name' | 'catalog_currency' | 'supplier_rate'>
+export type NewBrand = Pick<Brand, 'company_id' | 'name' | 'catalog_currency'>
+export type NewSupplierRate = Pick<SupplierRate, 'company_id' | 'brand_id' | 'currency' | 'rate'>
 export type NewCategory = Pick<Category, 'company_id' | 'name'>
 export type NewBrandCategory = Pick<BrandCategory, 'company_id' | 'brand_id' | 'category_id'>
 export type NewPaymentMethod = Pick<PaymentMethod, 'company_id' | 'name'>
 export type NewClient = Omit<Client, 'id' | 'created_at'>
 
-export type NewCurrency = Pick<Currency, 'company_id' | 'code' | 'symbol' | 'usd_rate'>
-export type CurrencyPatch = Partial<Pick<Currency, 'code' | 'symbol' | 'usd_rate'>>
+export type NewCurrency = Pick<Currency, 'company_id' | 'code'>
 
 export type NewProduct = Omit<Product, 'id' | 'created_at' | 'updated_at'>
 export type ProductPatch = Partial<Omit<Product, 'id' | 'company_id' | 'created_at' | 'updated_at'>>

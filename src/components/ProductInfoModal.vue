@@ -29,7 +29,7 @@ const props = withDefaults(
 )
 
 const { t } = useI18n()
-const { format, formatIn, functionalCode, convertBetween, costToDisplay } = useCurrency()
+const { format, formatIn, costInBase, retailInBase } = useCurrency()
 const inventory = useInventoryStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -43,9 +43,8 @@ const sku = computed(() => product.value?.sku ?? props.fallbackSku ?? '')
 const facts = computed(() => {
   const p = product.value
   if (!p) return []
-  const base = functionalCode.value
-  const costBase = costToDisplay(p.cost_amount, p.cost_currency, p.brand, base)
-  const retailBase = p.retail_amount != null ? convertBetween(p.retail_amount, p.retail_currency, base) : null
+  const purchase = costInBase(p)
+  const retail = retailInBase(p)
   const stock = inventory.stockByProduct.get(p.id) ?? 0
   const rows = [
     { label: t('catalog.form.volume'), value: p.volume || t('common.emptyValue') },
@@ -54,13 +53,21 @@ const facts = computed(() => {
       value: formatIn(p.cost_currency, p.cost_amount, 2),
       mono: true,
     },
-    { label: t('catalog.cols.purchase'), value: format(costToDisplay(p.cost_amount, p.cost_currency, p.brand)), mono: true },
     {
-      label: t('catalog.cols.retail'),
-      value: p.retail_amount != null ? format(convertBetween(p.retail_amount, p.retail_currency)) : t('common.emptyValue'),
+      label: t('catalog.cols.purchase'),
+      value: purchase != null ? format(purchase) : t('common.emptyValue'),
       mono: true,
     },
-    { label: t('catalog.cols.margin'), value: formatPercent(computeMargin(costBase, retailBase)), mono: true },
+    {
+      label: t('catalog.cols.retail'),
+      value: retail != null ? format(retail) : t('common.emptyValue'),
+      mono: true,
+    },
+    {
+      label: t('catalog.cols.margin'),
+      value: formatPercent(purchase != null ? computeMargin(purchase, retail) : null),
+      mono: true,
+    },
     {
       label: t('catalog.cols.stock'),
       value: stock > 0 ? `${stock} ${t('common.pcs')}` : t('common.none'),

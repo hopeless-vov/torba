@@ -2,7 +2,6 @@ import { useCurrency } from '@/composables/use-currency'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
-import { useReferenceStore } from '@/stores/reference'
 import type { BatchStatus } from '@/types/models'
 import { batchStatus, daysUntil } from '@/utils/batch-status'
 import { computeOrderTotals } from '@/utils/orders'
@@ -23,7 +22,7 @@ export interface BurningRow {
 /** How wide one column of the trend chart is. */
 export type Granularity = 'day' | 'month' | 'year'
 
-/** One period of trade, in the active display currency. */
+/** One period of trade, in the base currency. */
 export interface PeriodTotals {
   /** 'YYYY-MM-DD' / 'YYYY-MM' / 'YYYY' — the view formats the visible label. */
   key: string
@@ -43,7 +42,7 @@ export interface DateRange {
   to: string
 }
 
-/** Where the money of a period went, in the active display currency. */
+/** Where the money of a period went, in the base currency. */
 export interface Spending {
   /** What the goods themselves cost — the sum of the lines' unit costs. */
   goods: number
@@ -97,8 +96,7 @@ export function useDashboard() {
   const inventory = useInventoryStore()
   const auth = useAuthStore()
   const orders = useOrdersStore()
-  const reference = useReferenceStore()
-  const { convertBetween, batchCostToDisplay } = useCurrency()
+  const { costInBase } = useCurrency()
 
   // A sold-out batch is history, not stock: nothing is left on the shelf to
   // go off, so it raises no warning, takes no place in the expiry table and
@@ -150,13 +148,16 @@ export function useDashboard() {
     let expiredUnits = 0
     let criticalUnits = 0
     let stockValue = 0
+    let unpriced = 0
 
     for (const { batch, status } of onShelf.value) {
-      const brand = reference.brandsById.get(batch.product?.brand_id ?? '') ?? null
       // Each batch at its own purchase price: a promotional delivery is worth
-      // what it cost, not what the catalogue says the product costs.
-      const unitCost = batch.product ? batchCostToDisplay(batch, batch.product, brand) : 0
-      stockValue += batch.remaining_qty * unitCost
+      // what it cost, not what the catalogue says the product costs. A batch
+      // whose supplier rate is missing cannot be valued; it is counted apart
+      // instead of passing for worthless.
+      const unitCost = batch.product ? costInBase(batch.product, batch) : null
+      if (unitCost == null) unpriced += 1
+      else stockValue += batch.remaining_qty * unitCost
       if (status === 'expired') {
         expired += 1
         expiredUnits += batch.remaining_qty
@@ -166,16 +167,10 @@ export function useDashboard() {
       }
     }
 
-    // Each order's profit is snapshotted in its own currency; convert to
-    // the active one before summing so the figure is coherent. The period is
+    // Orders are all in the base, so profit adds up as it is. The period is
     // the chart's, not "everything loaded" — which is a window now.
     const profit = ordersInRange.value.reduce(
-      (sum, o) =>
-        sum +
-        convertBetween(
-          computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost, o.discount).profit,
-          o.currency,
-        ),
+      (sum, o) => sum + computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost, o.discount).profit,
       0,
     )
 
@@ -193,6 +188,7 @@ export function useDashboard() {
       criticalUnits,
       expiredUnits,
       stockValue,
+      unpriced,
       profit,
       ordersCount: ordersInRange.value.length,
     }
@@ -254,9 +250,9 @@ export function useDashboard() {
       const bucket = buckets.get(keyOf(order.created_at.slice(0, 10), step))
       if (!bucket) continue
       const totals = computeOrderTotals(order.items, order.delivery_cost, order.packaging_cost, order.discount)
-      bucket.revenue += convertBetween(totals.saleTotal, order.currency)
-      bucket.cost += convertBetween(totals.costTotal, order.currency)
-      bucket.profit += convertBetween(totals.profit, order.currency)
+      bucket.revenue += totals.saleTotal
+      bucket.cost += totals.costTotal
+      bucket.profit += totals.profit
       bucket.orders += 1
     }
 
@@ -274,9 +270,9 @@ export function useDashboard() {
 
     for (const order of ordersInRange.value) {
       const totals = computeOrderTotals(order.items, order.delivery_cost, order.packaging_cost, order.discount)
-      goods += convertBetween(totals.goodsCost, order.currency)
-      packaging += convertBetween(order.packaging_cost, order.currency)
-      delivery += convertBetween(order.delivery_cost, order.currency)
+      goods += totals.goodsCost
+      packaging += order.packaging_cost
+      delivery += order.delivery_cost
     }
 
     return { goods, packaging, delivery, total: goods + packaging + delivery }

@@ -95,6 +95,17 @@ export const ordersApi = {
     return data as unknown as OrderRow
   },
 
+  // Whether a company has sold anything at all. The base currency may only
+  // change while it has not (0019), and the rates page says so up front.
+  count: async (companyId: string): Promise<number> => {
+    const { count, error } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+    if (error) throw error
+    return count ?? 0
+  },
+
   // One order with its client and lines — what the store holds, so a freshly
   // placed order can join the list without refetching every other one.
   get: async (id: string): Promise<OrderRow> => {

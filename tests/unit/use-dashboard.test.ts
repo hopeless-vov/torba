@@ -3,7 +3,6 @@ import type { OrderRow } from '@/api/orders'
 import { useDashboard } from '@/composables/use-dashboard'
 import uk from '@/locales/uk.json'
 import { useAuthStore } from '@/stores/auth'
-import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
 import type { Company, OrderItem } from '@/types/database'
@@ -29,7 +28,6 @@ function harness() {
   mount(
     defineComponent({
       setup() {
-        useCurrencyStore().setCurrency('UAH')
         const auth = useAuthStore()
         auth.memberships = [
           {

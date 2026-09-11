@@ -3,7 +3,6 @@ import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
-import { useReferenceStore } from '@/stores/reference'
 import { useUiStore } from '@/stores/ui'
 import type { BatchPatch, NewBatch } from '@/types/database'
 import type { BatchStatus } from '@/types/models'
@@ -24,9 +23,10 @@ export interface WarehouseRow {
   remaining: number // still on the shelf
   received: number // how many arrived in this delivery
   sold: number // received − remaining
-  cost: number // what one unit of *this* delivery cost, in display currency
-  retail: number | null // what it sells for; null when neither batch nor product says
+  cost: number | null // what one unit of *this* delivery cost, in the base; null without a rate
+  retail: number | null // what it sells for; null with no price, or no rate for it
   margin: number | null // 0..1, what the delivery earns per unit
+  rateMissing: string | null // the currency this delivery's prices still need a rate for
   status: BatchStatus
   daysLeft: number | null
 }
@@ -62,9 +62,8 @@ const STATUS_SEVERITY: Record<BatchStatus, number> = {
 
 export function useWarehouse() {
   const inventory = useInventoryStore()
-  const reference = useReferenceStore()
   const ui = useUiStore()
-  const { batchCostToDisplay, batchRetailToDisplay } = useCurrency()
+  const { costInBase, retailInBase, missingRate } = useCurrency()
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
@@ -79,13 +78,11 @@ export function useWarehouse() {
 
   const rows = computed<WarehouseRow[]>(() =>
     inventory.batches.map((b) => {
-      const brand = b.product ? (reference.brandsById.get(b.product.brand_id ?? '') ?? null) : null
       // A delivery bought on promotion keeps its own prices, so the shelf says
       // what is left at which cost — and what it earns — rather than one
-      // blended figure. Both are converted the same way, so the margin between
-      // them is the ratio it would be in any currency.
-      const cost = b.product ? batchCostToDisplay(b, b.product, brand) : 0
-      const retail = b.product ? batchRetailToDisplay(b, b.product) : null
+      // blended figure. Both go through this supplier's rates into the base.
+      const cost = b.product ? costInBase(b.product, b) : null
+      const retail = b.product ? retailInBase(b.product, b) : null
 
       return {
         id: b.id,
@@ -101,7 +98,8 @@ export function useWarehouse() {
         sold: Math.max(0, b.received_qty - b.remaining_qty),
         cost,
         retail,
-        margin: computeMargin(cost, retail),
+        margin: cost != null ? computeMargin(cost, retail) : null,
+        rateMissing: b.product ? missingRate(b.product, b) : null,
         status: batchStatus(b.expiry_date),
         daysLeft: daysUntil(b.expiry_date),
       }
@@ -153,7 +151,7 @@ export function useWarehouse() {
           received: sorted.reduce((sum, b) => sum + b.received, 0),
           sold: sorted.reduce((sum, b) => sum + b.sold, 0),
           batchesCount: sorted.length,
-          stockValue: sorted.reduce((sum, b) => sum + b.remaining * b.cost, 0),
+          stockValue: sorted.reduce((sum, b) => sum + (b.cost != null ? b.remaining * b.cost : 0), 0),
           status: worst.status,
           nearestExpiry: nearest.expiry,
           daysLeft: nearest.daysLeft,

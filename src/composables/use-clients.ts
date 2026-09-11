@@ -1,5 +1,4 @@
 import { type ClientPatch,clientsApi } from '@/api/clients'
-import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useClientsStore } from '@/stores/clients'
@@ -18,7 +17,6 @@ export function useClients() {
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
-  const { convertBetween } = useCurrency()
 
   // Every figure on this screen is all-time — how much a client has ever
   // spent, how many orders they have ever placed — so it is one of the few
@@ -30,10 +28,9 @@ export function useClients() {
   const views = computed<ClientView[]>(() =>
     store.clients.map((c) => {
       const own = orders.orders.filter((o) => o.client_id === c.id)
-      // Each order is snapshotted in its own currency; convert to the active
-      // one before summing so the spend total is coherent.
+      // Orders are all in the base currency, so the spend simply adds up.
       const totalSpent = own.reduce(
-        (sum, o) => sum + convertBetween(computeOrderTotals(o.items, 0, 0, o.discount).saleTotal, o.currency),
+        (sum, o) => sum + computeOrderTotals(o.items, 0, 0, o.discount).saleTotal,
         0,
       )
       return { ...c, ordersCount: own.length, totalSpent }

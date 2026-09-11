@@ -184,6 +184,12 @@ const rowMenu = computed(() => [
   { value: 'delete', label: t('catalog.menu.delete'), icon: 'fa-solid fa-trash', danger: true },
 ])
 
+// Cost → retail for one delivery, with "—" for whatever is not known yet.
+function priceSpan(cost: number | null, retail: number | null) {
+  const bought = cost != null ? format(cost) : t('common.emptyValue')
+  return retail != null ? `${bought} → ${format(retail)}` : bought
+}
+
 function openNew() {
   editing.value = null
   modalOpen.value = true
@@ -359,7 +365,14 @@ async function confirmDelete() {
           >{{ (row as WarehouseRow).remaining }}</span>
         </template>
         <template #cell-cost="{ row }">
-          <span class="text-muted">{{ format((row as WarehouseRow).cost) }}</span>
+          <span
+            v-if="(row as WarehouseRow).cost != null"
+            class="text-muted"
+          >{{ format((row as WarehouseRow).cost as number) }}</span>
+          <span
+            v-else
+            class="text-faint"
+          >{{ t('common.emptyValue') }}</span>
         </template>
         <template #cell-retail="{ row }">
           <span
@@ -508,11 +521,7 @@ async function confirmDelete() {
                 :days-left="batch.daysLeft"
               />
               <span class="ml-auto shrink-0 font-mono text-xs text-faint tabular-nums">
-                {{
-                  batch.retail != null
-                    ? `${format(batch.cost)} → ${format(batch.retail)}`
-                    : format(batch.cost)
-                }}
+                {{ priceSpan(batch.cost, batch.retail) }}
               </span>
               <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
                 {{ `${batch.remaining} / ${batch.received} ${t('common.pcs')}` }}

@@ -4,15 +4,16 @@ import type { Batch, Brand, Category, Client, Order, OrderItem, Product } from '
 // remaining quantity (see utils/batch-status).
 export type BatchStatus = 'expired' | 'critical' | 'ending' | 'almost' | 'ok'
 
-// A catalogue product joined with its brand + category, plus the
-// prices/margin resolved into the current display currency.
+// A catalogue product joined with its brand + category, plus its prices in
+// the base currency, converted through the supplier's own rates.
 export interface ProductView extends Product {
   brand: Brand | null
   category: Category | null
-  purchase: number // supplier cost, resolved into the display currency
-  retail: number | null // retail price, resolved into the display currency
+  purchase: number | null // cost in the base; null while the supplier's rate is missing
+  retail: number | null // retail in the base; null with no price, or no rate for it
   discounted: number | null // retail after applying the active discount
-  margin: number | null // 0..1, currency-independent
+  margin: number | null // 0..1
+  rateMissing: string | null // the currency a price here still needs a rate for
   inStock: number // sum of remaining_qty across batches
 }
 
@@ -25,7 +26,7 @@ export interface BatchView extends Batch {
 
 export interface ClientView extends Client {
   ordersCount: number
-  // Sum of the client's orders, already converted into the active currency.
+  // Sum of the client's orders, in the base currency like every amount.
   totalSpent: number
 }
 

@@ -1,5 +1,5 @@
 import { supabase } from '@/api/supabase'
-import type { Brand, NewBrand, RateHistoryEntry } from '@/types/database'
+import type { Brand, NewBrand } from '@/types/database'
 
 export const brandsApi = {
   list: async (companyId: string): Promise<Brand[]> => {
@@ -29,49 +29,18 @@ export const brandsApi = {
     return data as Brand
   },
 
-  // Updating a rate also records a history entry so the trend is auditable.
-  // The catalog currency (what the supplier prices in) can change alongside it.
-  updateRate: async (brand: Brand, rate: number, catalogCurrency?: string): Promise<Brand> => {
-    const patch: Partial<Brand> = { supplier_rate: rate, rate_updated_at: new Date().toISOString() }
-    if (catalogCurrency && catalogCurrency !== brand.catalog_currency) patch.catalog_currency = catalogCurrency
+  // The currency the supplier prices in: the default for its new products and
+  // the currency its price lists are read in. What that currency is worth is a
+  // separate thing — its rate lives in supplier_rates.
+  setCatalogCurrency: async (id: string, code: string): Promise<Brand> => {
     const { data, error } = await supabase
       .from('brands')
-      .update(patch)
-      .eq('id', brand.id)
-      .select('*')
-      .single()
-    if (error) throw error
-
-    const { error: historyError } = await supabase
-      .from('rate_history')
-      .insert({ company_id: brand.company_id, brand_id: brand.id, rate })
-    if (historyError) throw historyError
-
-    return data as Brand
-  },
-
-  // Re-express a supplier rate without recording history — used when the base
-  // currency changes and every brand rate is converted into the new base, which
-  // is a bookkeeping re-expression, not a real supplier rate change.
-  setSupplierRate: async (id: string, rate: number): Promise<Brand> => {
-    const { data, error } = await supabase
-      .from('brands')
-      .update({ supplier_rate: rate })
+      .update({ catalog_currency: code })
       .eq('id', id)
       .select('*')
       .single()
     if (error) throw error
     return data as Brand
-  },
-
-  rateHistory: async (brandId: string): Promise<RateHistoryEntry[]> => {
-    const { data, error } = await supabase
-      .from('rate_history')
-      .select('*')
-      .eq('brand_id', brandId)
-      .order('created_at', { ascending: false })
-    if (error) throw error
-    return (data ?? []) as RateHistoryEntry[]
   },
 
   remove: async (id: string): Promise<void> => {

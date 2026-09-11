@@ -1,14 +1,28 @@
 import { useCsvImport } from '@/composables/use-csv-import'
 import uk from '@/locales/uk.json'
+import { useAuthStore } from '@/stores/auth'
+import { useInventoryStore } from '@/stores/inventory'
+import { useReferenceStore } from '@/stores/reference'
+import type { Company } from '@/types/database'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent } from 'vue'
 import { createI18n } from 'vue-i18n'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// The import reads a file it has never seen before, so these cover the part
-// that has to survive that: which column means what. Writing to Supabase is
-// the api layer's business and is not exercised here.
+// Only what the import writes is stubbed; reading the file stays real.
+const products = vi.hoisted(() => ({ bulkUpsert: vi.fn(async (rows: unknown[]) => rows) }))
+const rates = vi.hoisted(() => ({ set: vi.fn(async () => ({})) }))
+const currencies = vi.hoisted(() => ({ create: vi.fn(async () => ({})) }))
+vi.mock('@/api/products', () => ({ productsApi: products }))
+vi.mock('@/api/supplier-rates', () => ({ supplierRatesApi: rates }))
+vi.mock('@/api/currencies', () => ({ currenciesApi: currencies }))
+vi.mock('@/api/categories', () => ({ categoriesApi: { create: vi.fn(), link: vi.fn(async () => ({})) } }))
+
+// The import reads a file it has never seen before, so most of these cover
+// the part that has to survive that: which column means what. The last group
+// checks what the import then writes — prices exactly as the supplier wrote
+// them, and the list's rate into the supplier's cell of the matrix.
 
 const FILE = 'Артикул,Назва,Об\'єм,Ціна,Рек. ціна\nA-1,Крем,50 мл,10,18\nA-2,Гель,30 мл,7,12\n'
 
@@ -17,7 +31,8 @@ function csvFile(text: string, name = 'price.csv') {
 }
 
 // useCsvImport reaches for useI18n, so it has to run inside a component.
-function harness() {
+// `seed` runs first, inside that component, to put stores in place.
+function mountImport(seed: () => void = () => {}) {
   const pinia = createPinia()
   setActivePinia(pinia)
   const i18n = createI18n({ legacy: false, locale: 'uk', fallbackLocale: 'uk', messages: { uk } })
@@ -25,6 +40,7 @@ function harness() {
   mount(
     defineComponent({
       setup() {
+        seed()
         ctx = useCsvImport()
         return () => null
       },
@@ -32,6 +48,10 @@ function harness() {
     { global: { plugins: [pinia, i18n] } },
   )
   return ctx
+}
+
+function harness() {
+  return mountImport()
 }
 
 beforeEach(() => {
@@ -147,5 +167,70 @@ describe('useCsvImport errors', () => {
 
     expect(csv.error.value).toBe('errorEmpty')
     expect(csv.table.value).toBeNull()
+  })
+})
+
+// A company in hryvnia importing from a supplier who quotes in dollars.
+function importHarness() {
+  let reference!: ReturnType<typeof useReferenceStore>
+  const csv = mountImport(() => {
+        const auth = useAuthStore()
+        const company = {
+          id: 'c',
+          name: '',
+          owner_id: 'u',
+          base_currency: 'UAH',
+          display_currency: 'UAH',
+          created_at: '',
+        } as Company
+        auth.memberships = [{ company_id: 'c', user_id: 'u', role: 'owner', created_at: '', company }]
+        auth.activeCompanyId = 'c'
+        reference = useReferenceStore()
+        reference.brands = [{ id: 'b1', company_id: 'c', name: 'Colorescience', catalog_currency: 'USD', created_at: '' }]
+        reference.load = vi.fn(async () => {})
+        useInventoryStore().load = vi.fn(async () => {})
+  })
+  return { csv, reference }
+}
+
+describe('useCsvImport import', () => {
+  beforeEach(() => {
+    products.bulkUpsert.mockClear()
+    rates.set.mockClear()
+    currencies.create.mockClear()
+  })
+
+  // "You buy at 55, you sell at 80": both prices are kept exactly as the
+  // supplier wrote them, and the supplier's rate does the rest.
+  it('keeps both prices in the supplier’s currency', async () => {
+    const { csv } = importHarness()
+    csv.brandId.value = 'b1'
+    await csv.parseFile(csvFile('Артикул,Назва,Ціна,Рек. ціна\nA-1,Крем,55,80\n'))
+    await csv.runImport()
+
+    expect(products.bulkUpsert).toHaveBeenCalledWith([
+      expect.objectContaining({ cost_amount: 55, cost_currency: 'USD', retail_amount: 80, retail_currency: 'USD' }),
+    ])
+  })
+
+  it('reads the rate on the list into the supplier’s cell of the matrix', async () => {
+    const { csv } = importHarness()
+    csv.brandId.value = 'b1'
+    await csv.parseFile(csvFile('"Курс: 41,50",,,\nАртикул,Назва,Ціна,Рек. ціна\nA-1,Крем,55,80\n'))
+    await csv.runImport()
+
+    expect(rates.set).toHaveBeenCalledWith({ company_id: 'c', brand_id: 'b1', currency: 'USD', rate: 41.5 })
+    // USD was not in use yet, so its column is opened first.
+    expect(currencies.create).toHaveBeenCalledWith({ company_id: 'c', code: 'USD' })
+  })
+
+  it('sets no rate for a supplier that quotes in the base', async () => {
+    const { csv, reference } = importHarness()
+    reference.brands = [{ id: 'b1', company_id: 'c', name: 'Local', catalog_currency: 'UAH', created_at: '' }]
+    csv.brandId.value = 'b1'
+    await csv.parseFile(csvFile('"Курс: 41,50",,,\nАртикул,Назва,Ціна\nA-1,Крем,55\n'))
+    await csv.runImport()
+
+    expect(rates.set).not.toHaveBeenCalled()
   })
 })

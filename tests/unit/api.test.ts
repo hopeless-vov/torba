@@ -55,15 +55,38 @@ describe('productsApi', () => {
   })
 })
 
-describe('brandsApi.updateRate', () => {
-  it('updates the brand and records history', async () => {
-    const brand = { id: 'b1', company_id: 'c1', name: 'X', catalog_currency: 'USD', supplier_rate: 44 } as never
-    mocked.from.mockReturnValue(builder({ data: { ...(brand as object), supplier_rate: 45 }, error: null }) as never)
-    const { brandsApi } = await import('@/api/brands')
-    const updated = await brandsApi.updateRate(brand, 45)
-    expect(mocked.from).toHaveBeenCalledWith('brands')
-    expect(mocked.from).toHaveBeenCalledWith('rate_history')
-    expect((updated as { supplier_rate: number }).supplier_rate).toBe(45)
+describe('supplierRatesApi.set', () => {
+  // One cell of the matrix: created the first time, updated after. The
+  // history row is the database's job (a trigger), so it is not written here.
+  it('upserts on supplier and currency', async () => {
+    const chain = builder({ data: { id: 'r1', rate: 41.5 }, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { supplierRatesApi } = await import('@/api/supplier-rates')
+    const row = { company_id: 'c1', brand_id: 'b1', currency: 'USD', rate: 41.5 }
+    await supplierRatesApi.set(row)
+    expect(mocked.from).toHaveBeenCalledWith('supplier_rates')
+    expect(mocked.from).not.toHaveBeenCalledWith('rate_history')
+    expect(chain.upsert).toHaveBeenCalledWith(row, { onConflict: 'brand_id,currency' })
+  })
+})
+
+describe('platformCurrenciesApi', () => {
+  it('reads the list the platform keeps', async () => {
+    const chain = builder({ data: [{ code: 'UAH' }], error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { platformCurrenciesApi } = await import('@/api/platform-currencies')
+    expect(await platformCurrenciesApi.list()).toEqual([{ code: 'UAH' }])
+    expect(mocked.from).toHaveBeenCalledWith('platform_currencies')
+  })
+})
+
+describe('ordersApi.count', () => {
+  it('asks for a count only, not the rows', async () => {
+    const chain = builder({ data: null, error: null, count: 3 } as never)
+    mocked.from.mockReturnValue(chain as never)
+    const { ordersApi } = await import('@/api/orders')
+    expect(await ordersApi.count('c1')).toBe(3)
+    expect(chain.select).toHaveBeenCalledWith('id', { count: 'exact', head: true })
   })
 })
 

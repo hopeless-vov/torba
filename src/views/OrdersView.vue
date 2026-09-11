@@ -33,7 +33,7 @@ import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
 const router = useRouter()
-const { format, formatFrom } = useCurrency()
+const { format } = useCurrency()
 const reference = useReferenceStore()
 const clients = useClientsStore()
 const ordersStore = useOrdersStore()
@@ -382,13 +382,13 @@ function destination(order: OrderView) {
           >{{ t('common.emptyValue') }}</span>
         </template>
         <template #cell-sale="{ row }">
-          {{ formatFrom((row as OrderView).currency, (row as OrderView).saleTotal) }}
+          {{ format((row as OrderView).saleTotal) }}
         </template>
         <template #cell-cost="{ row }">
-          <span class="text-muted">{{ formatFrom((row as OrderView).currency, (row as OrderView).costTotal) }}</span>
+          <span class="text-muted">{{ format((row as OrderView).costTotal) }}</span>
         </template>
         <template #cell-profit="{ row }">
-          <span class="text-accent">{{ formatFrom((row as OrderView).currency, (row as OrderView).profit) }}</span>
+          <span class="text-accent">{{ format((row as OrderView).profit) }}</span>
         </template>
         <template #cell-margin="{ row }">
           {{ formatPercent((row as OrderView).margin) }}
@@ -456,10 +456,10 @@ function destination(order: OrderView) {
                 class="shrink-0 font-mono text-xs text-faint"
               >{{ item.sku }}</span>
               <span class="shrink-0 font-mono text-xs text-muted tabular-nums">
-                {{ `${item.qty} × ${formatFrom((row as OrderView).currency, item.unitNet)}` }}
+                {{ `${item.qty} × ${format(item.unitNet)}` }}
               </span>
               <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
-                {{ formatFrom((row as OrderView).currency, item.lineSale) }}
+                {{ format(item.lineSale) }}
               </span>
             </li>
             <li

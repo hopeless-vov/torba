@@ -6,10 +6,8 @@ import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
-import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import { useOrdersStore } from '@/stores/orders'
-import { useReferenceStore } from '@/stores/reference'
 import type { Batch, Product } from '@/types/database'
 import type { CartLine, ProductView } from '@/types/models'
 import { compareByExpiry } from '@/utils/batch-status'
@@ -19,7 +17,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 // Cart orchestration: turning catalog rows into lines and checking out
-// into a real order. Prices are captured in the current display currency.
+// into a real order. Prices are captured in the base currency.
 //
 // Anything in the catalog can be added, in stock or not. Each line is
 // pinned to a concrete batch when one exists — that is what makes two
@@ -34,12 +32,10 @@ import { useI18n } from 'vue-i18n'
 export function useCart() {
   const cart = useCartStore()
   const auth = useAuthStore()
-  const currency = useCurrencyStore()
   const inventory = useInventoryStore()
   const orders = useOrdersStore()
   const clients = useClientsStore()
-  const reference = useReferenceStore()
-  const { batchCostToDisplay, batchRetailToDisplay } = useCurrency()
+  const { functionalCode, costInBase, retailInBase } = useCurrency()
   const toast = useToast()
   const { t } = useI18n()
 
@@ -77,23 +73,24 @@ export function useCart() {
   )
 
   /**
-   * What one unit drawn from this batch cost us, in the display currency.
+   * What one unit drawn from this batch cost us, in the base currency.
    * The batch's own purchase price when it has one — a promotional delivery
    * must not be sold at the full-price delivery's margin — and the product's
-   * catalogue price otherwise.
+   * catalogue price otherwise. While the supplier's rate for that currency
+   * is missing the cost is unknown; the line then carries 0 and the cart
+   * says which rate to add.
    */
   function batchCost(product: Product, batch: Batch | null): number {
-    const brand = product.brand_id ? (reference.brandsById.get(product.brand_id) ?? null) : null
-    return batchCostToDisplay(batch, product, brand)
+    return costInBase(product, batch) ?? 0
   }
 
   /**
-   * What a unit drawn from this batch goes out at, in the display currency:
+   * What a unit drawn from this batch goes out at, in the base currency:
    * the batch's own selling price when it names one, the product's otherwise,
    * and the purchase price as a last resort when neither does.
    */
   function batchPrice(product: Product, batch: Batch | null): number {
-    return batchRetailToDisplay(batch, product) ?? batchCost(product, batch)
+    return retailInBase(product, batch) ?? costInBase(product, batch) ?? 0
   }
 
   /** Every batch of a product, FIFO-ordered — the expiry choices for a line. */
@@ -196,7 +193,7 @@ export function useCart() {
         companyId,
         clientId: cart.clientId,
         paymentMethod: cart.paymentMethod,
-        currency: currency.displayCurrency,
+        currency: functionalCode.value,
         discount: discountPct.value,
         // Store gross prices and both discounts as percentages; the totals are
         // derived from them, so every reduction stays visible and editable

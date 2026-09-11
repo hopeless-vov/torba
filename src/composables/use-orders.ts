@@ -1,5 +1,4 @@
 import { ordersApi } from '@/api/orders'
-import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
@@ -19,7 +18,6 @@ export function useOrders() {
   const auth = useAuthStore()
   const toast = useToast()
   const { t } = useI18n()
-  const { convertBetween } = useCurrency()
 
   const statusFilter = ref<'all' | OrderStatus>('all')
   const paymentFilter = ref('all')
@@ -91,17 +89,15 @@ export function useOrders() {
     })
   })
 
-  // Orders snapshot their amounts in the currency they were sold in, so
-  // convert each into the active display currency before summing — the
-  // totals stay coherent even across a mix of order currencies.
+  // Every order is in the base currency, so the totals simply add up.
   const kpis = computed(() => {
     let revenue = 0
     let cost = 0
     let profit = 0
     for (const o of filtered.value) {
-      revenue += convertBetween(o.saleTotal, o.currency)
-      cost += convertBetween(o.costTotal, o.currency)
-      profit += convertBetween(o.profit, o.currency)
+      revenue += o.saleTotal
+      cost += o.costTotal
+      profit += o.profit
     }
     return { revenue, cost, profit, margin: revenue > 0 ? profit / revenue : null }
   })

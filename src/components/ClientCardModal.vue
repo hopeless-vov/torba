@@ -27,10 +27,10 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { format, formatFrom } = useCurrency()
+const { format } = useCurrency()
 const orders = useOrdersStore()
 
-// Spend is already converted into the active currency by useClients.
+// Spend is in the base currency, like every amount.
 const totalSpent = computed(() => format(props.client?.totalSpent ?? 0))
 const open = defineModel<boolean>('open', { default: false })
 
@@ -47,7 +47,6 @@ const history = computed(() => {
       number: o.number,
       date: o.created_at,
       status: o.status,
-      currency: o.currency,
       total: computeOrderTotals(o.items, o.delivery_cost, o.packaging_cost, o.discount).saleTotal,
     }))
 })
@@ -132,7 +131,7 @@ const history = computed(() => {
               <span class="text-xs text-faint">{{ formatDate(order.date) }}</span>
             </div>
             <OrderStatusBadge :status="order.status" />
-            <span class="font-mono text-sm text-fg tabular-nums">{{ formatFrom(order.currency, order.total) }}</span>
+            <span class="font-mono text-sm text-fg tabular-nums">{{ format(order.total) }}</span>
             <Icon
               icon="fa-solid fa-chevron-right"
               size="xs"

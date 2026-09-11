@@ -2,24 +2,50 @@ import { brandsApi } from '@/api/brands'
 import { categoriesApi } from '@/api/categories'
 import { currenciesApi } from '@/api/currencies'
 import { paymentMethodsApi } from '@/api/payment-methods'
-import type { Brand, BrandCategory, Category, Currency, PaymentMethod } from '@/types/database'
+import { platformCurrenciesApi } from '@/api/platform-currencies'
+import { supplierRatesApi } from '@/api/supplier-rates'
+import type {
+  Brand,
+  BrandCategory,
+  Category,
+  Currency,
+  PaymentMethod,
+  PlatformCurrency,
+  SupplierRate,
+} from '@/types/database'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-// User-defined lookup data (brands + their rates, categories, payment
-// methods, extra display currencies). Shared by catalog, rates, orders
-// and profile. Small enough to reload wholesale after any edit.
+// User-defined lookup data (brands, categories, payment methods), the
+// currencies the company uses, and what each supplier says they are worth.
+// Shared by catalog, rates, orders and profile. Small enough to reload
+// wholesale after any edit.
 export const useReferenceStore = defineStore('reference', () => {
   const brands = ref<Brand[]>([])
   const categories = ref<Category[]>([])
   const brandCategories = ref<BrandCategory[]>([])
   const paymentMethods = ref<PaymentMethod[]>([])
+  // Every currency the platform offers, and the ones this company uses
+  // besides its base.
+  const platformCurrencies = ref<PlatformCurrency[]>([])
   const currencies = ref<Currency[]>([])
+  const supplierRates = ref<SupplierRate[]>([])
   const loaded = ref(false)
 
   const brandsById = computed(() => new Map(brands.value.map((b) => [b.id, b])))
   const categoriesById = computed(() => new Map(categories.value.map((c) => [c.id, c])))
-  const currenciesByCode = computed(() => new Map(currencies.value.map((c) => [c.code, c])))
+  const platformByCode = computed(() => new Map(platformCurrencies.value.map((c) => [c.code, c])))
+
+  /** brand_id → currency → base units per 1 unit, as that supplier reckons it. */
+  const ratesByBrand = computed(() => {
+    const map = new Map<string, Map<string, number>>()
+    for (const r of supplierRates.value) {
+      const row = map.get(r.brand_id) ?? new Map<string, number>()
+      row.set(r.currency, Number(r.rate))
+      map.set(r.brand_id, row)
+    }
+    return map
+  })
 
   // brand_id → the set of category ids linked to it.
   const categoryIdsByBrand = computed(() => {
@@ -46,26 +72,23 @@ export const useReferenceStore = defineStore('reference', () => {
     return brandCategories.value.filter((l) => l.category_id === categoryId).map((l) => l.brand_id)
   }
 
-  // A brand's supplier rate: functional-currency units per 1 unit of the
-  // brand's catalog currency. Drives cost.
-  function brandRate(brandId: string | null): number {
-    if (!brandId) return 0
-    return brandsById.value.get(brandId)?.supplier_rate ?? 0
-  }
-
   async function load(companyId: string) {
-    const [b, c, links, p, cur] = await Promise.all([
+    const [b, c, links, p, platform, cur, rates] = await Promise.all([
       brandsApi.list(companyId),
       categoriesApi.list(companyId),
       categoriesApi.listLinks(companyId),
       paymentMethodsApi.list(companyId),
+      platformCurrenciesApi.list(),
       currenciesApi.list(companyId),
+      supplierRatesApi.list(companyId),
     ])
     brands.value = b
     categories.value = c
     brandCategories.value = links
     paymentMethods.value = p
+    platformCurrencies.value = platform
     currencies.value = cur
+    supplierRates.value = rates
     loaded.value = true
   }
 
@@ -74,7 +97,9 @@ export const useReferenceStore = defineStore('reference', () => {
     categories.value = []
     brandCategories.value = []
     paymentMethods.value = []
+    platformCurrencies.value = []
     currencies.value = []
+    supplierRates.value = []
     loaded.value = false
   }
 
@@ -83,15 +108,17 @@ export const useReferenceStore = defineStore('reference', () => {
     categories,
     brandCategories,
     paymentMethods,
+    platformCurrencies,
     currencies,
+    supplierRates,
     loaded,
     brandsById,
     categoriesById,
-    currenciesByCode,
+    platformByCode,
+    ratesByBrand,
     categoryIdsByBrand,
     categoriesForBrand,
     brandIdsForCategory,
-    brandRate,
     load,
     reset,
   }

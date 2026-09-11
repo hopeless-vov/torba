@@ -44,10 +44,10 @@ Both come from your Supabase project → **Project Settings → API**.
 The schema (tables, relationships, Row Level Security, the new-user bootstrap
 trigger, the profile-identity lockdown, a self-heal bootstrap RPC, the atomic
 `create_order` / `delete_orders`
-functions, per-client discounts, per-order delivery addresses, user-defined
-currencies, order-level and per-line discounts, the supplier/market rate split,
-per-product price currencies, per-batch purchase and selling prices, and the
-brand↔category links) lives in
+functions, per-client discounts, per-order delivery addresses, order-level and
+per-line discounts, the platform currency list and the supplier × currency rate
+matrix, per-product price currencies, per-batch purchase and selling prices, and
+the brand↔category links) lives in
 [`supabase/migrations/`](supabase/migrations).
 Apply **all files, in order**:
 
@@ -60,7 +60,7 @@ Apply **all files, in order**:
   `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
   `0014_invitation_preview.sql`, `0015_order_item_discount.sql`,
-  `0017_batch_cost.sql`, `0018_batch_retail.sql`.
+  `0017_batch_cost.sql`, `0018_batch_retail.sql`, `0019_supplier_rates.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -138,11 +138,24 @@ the company without touching a single product.
 the check a viewer could place and delete orders through the functions while
 being unable to touch the tables directly.
 
+**`0019` makes the base the only currency of account.** The market rates the user
+typed in (`currencies.usd_rate`) and the single rate on each brand are gone. What
+is left: a **platform currency list** (`platform_currencies`, kept by the platform
+operator, read-only from the app), the currencies a company uses from it
+(`currencies`, no rate), and a **supplier × currency matrix** (`supplier_rates`)
+that the old brand rates carry over into, with a trigger keeping each cell's
+history. Orders sold in another currency are converted with the last market rates
+there were, and a trigger files every order under the base from then on. Retail
+that an import had frozen into the base goes back into the supplier's currency —
+the same number at today's rate, moving with the rate from now on. The base only
+changes while a company has no orders, and changing it resets the supplier rates,
+which are all "per old base". Every currency column points at the platform list.
+
 **`0018` does the same for the selling price.** A delivery bought on promotion is
 usually passed on cheaper, and an older delivery keeps the price it went on the
 shelf at while the next one arrives dearer. `batches.retail_amount` +
-`retail_currency` mirror the product's pair and resolve through the market table
-like every other sale amount — never the supplier rate, which drives cost alone.
+`retail_currency` mirror the product's pair and, since `0019`, go through the
+supplier's rate exactly like cost.
 Nullable, so null still means the catalogue price, and `order_items.unit_price`
 stays snapshotted at checkout.
 
@@ -275,40 +288,55 @@ and exposed as Tailwind utilities (`bg-surface`, `text-muted`, `border-line`,
 
 ## Currency
 
-The app keeps **three exchange rates deliberately separate**, because real
-distribution needs all three:
+**One currency of account.** The company keeps its books in its **base currency**
+(`company.base_currency`, ₴ by default), and every amount the app shows, sums or
+stores is in it — orders included: a trigger files every order under the base,
+whatever the caller passed (`0019`). There is nothing to switch, so the top bar shows
+the base as a badge that leads to **/rates**, where it is set.
 
-- **Supplier rate** — each brand's own rate for the currency it prices its goods in
-  (e.g. €1 = ₴52). Suppliers bump it every couple of months to compensate for the
-  market, so it rarely matches the bank rate, and it drives **cost**. Lives on the
-  brand (`brand.supplier_rate` + `brand.catalog_currency`), edited on **/rates** and
-  shown in the base currency (*"₴n per 1 {catalog}"*). When a supplier prices in the
-  base currency itself there is nothing to convert, so the rate is pinned to 1 and the
-  card reads *"priced in base currency"* instead of a meaningless *"per 1 ₴"*.
-- **Market rate** — the bank/reference rate, used only to **display** amounts in a
-  chosen currency. Stored per company in `currencies.usd_rate` as a per-USD numeraire
-  (units of the currency per 1 USD). USD is only that stored numeraire — it is never
-  shown as a unit: **/rates** presents every rate as *"1 {code} = n {base}"* and takes
-  edits that way too, converting to the stored per-USD value on save.
-- **Base currency** — `company.base_currency` (₴ by default): the default display
-  currency and the anchor rates are entered against. Since every stored amount carries
-  its own currency, switching the base is a display concern and never rewrites data —
-  it only re-expresses each **brand supplier rate** into the new base (so costs stay
-  the same amount of money). Change it with **"Make base"** on **/rates** (confirmed).
+**The only rates are the suppliers'.** A price is entered in whatever currency its
+supplier quotes, and every supplier has its own rate for every currency the company
+uses — *how many units of the base one unit is worth to them*. That makes a matrix
+(`supplier_rates`: supplier × currency), because a supplier may quote in dollars and
+euros both and two suppliers rarely agree on a rate: the same dollar can be ₴41.50 to
+one and ₴42 to another. Changing a cell reprices **that supplier's** cost and retail
+in that currency across the app — catalog, warehouse, cart, stock value — and
+nothing else. The database keeps each cell's history.
+
+**A rate nobody entered is never guessed.** [`use-currency`](src/composables/use-currency.ts)
+converts through `rateFor(brand, currency)`; without a rate the result is `null`,
+the screen shows *"—"*, and margins and stock value leave that price out instead of
+counting it at an invented number. `missingRate` names the currency a price is still
+waiting for.
+
+**/rates** has three parts:
+
+- **Base currency** — changed by the owner, and only while the company has **no
+  orders**: orders are kept in the base, and once the supplier rates are reset nothing
+  could convert them into a new one. Changing it **resets every supplier rate** (they
+  are all "per old base"). Both rules are the database's, and the page asks first. The
+  old base stays in use as an ordinary currency.
+- **Company currencies** — picked from the **platform list**, never typed in. Adding one
+  opens a column in the matrix; a currency still used by a price, or by a supplier as
+  its default, cannot be removed, since that price would be left with nothing to be
+  converted by.
+- **Supplier rates** — the matrix, with each supplier's default quoting currency
+  (*"Ціни у"* — used for its new products and its price lists) alongside. An empty
+  cell reads *"rate needed"* and opens straight into editing.
 
 **What is stored where.** Every product price carries **its own currency**:
-`cost_amount` + `cost_currency` and `retail_amount` + `retail_currency` (chosen in the
-product form; cost defaults to the brand's catalog currency, retail to the base). A
-cost in the brand's catalog currency is still resolved through the **supplier rate**
-(`costToDisplay` → `functionalCost`), so bumping a supplier's rate reflows that brand's
-cost; a cost in any other currency goes through the market table instead.
+`cost_amount` + `cost_currency` and `retail_amount` + `retail_currency`. Both go
+through the supplier's rate — retail follows the supplier exactly like cost, so *"you
+buy at 55, you sell at 80"* is what the catalogue stores, and a new rate reprices both.
+A price in the base needs no rate at all. The catalog shows each price in the base,
+with the supplier's own amount underneath when it is in another currency.
 
 **A batch may override both prices.** The product's pair is the *catalogue* price —
 what a delivery normally costs and normally sells for — and a batch that came in
 cheaper, or goes out cheaper, carries its own `cost_amount` / `retail_amount` (each
 with its currency). [`costOf` and `retailOf`](src/utils/pricing.ts) pick between batch
-and product, `batchCostToDisplay` / `batchRetailToDisplay` convert, so one rule holds
-everywhere: **a sale costs, and earns, what the delivery it ships from does.**
+and product, `costInBase` / `retailInBase` convert, so one rule holds everywhere:
+**a sale costs, and earns, what the delivery it ships from does.**
 
 The cart prices a line from its batch and moves both figures when the line is handed
 to another delivery — except a price the user typed, which stays: that is a decision,
@@ -316,27 +344,12 @@ and re-pricing over it would undo it silently (the *list* price still moves, so
 "reset" offers the new batch's). The warehouse shows cost, retail and the margin
 between them per delivery; the dashboard values stock at each batch's own cost. Since
 `order_items` snapshots both `unit_cost` and `unit_price` at checkout, changing a
-price later never rewrites a sale already made. **Order**
-amounts snapshot in the order's currency. Nothing is stored in a display-converted
-form, so switching the display or base currency never rewrites data.
+rate or a price later never rewrites a sale already made.
 
-Everything the user sees is each amount re-expressed from its own currency into the
-**active display currency** (top-bar menu) through the market table, resolved at render
-time by [`use-currency`](src/composables/use-currency.ts) (`convertBetween` /
-`costToDisplay` / `formatFrom`) — so switching the display currency reprices the
-**whole app** consistently (catalog, warehouse, orders, KPIs, dashboard, per-client
-spend). The catalog shows each price in the active currency with the **raw entered
-amount** underneath in muted type when the two currencies differ. Three currencies are
-**built in** (UAH, USD, EUR) with sensible default market rates until one is set; the
-owner can add more (PLN, …) on **/rates**.
-
-**Orders** snapshot their amounts in the currency they were placed in
-(`order.currency`) and are re-expressed into the active display currency via
-`convertBetween`, so the order list, details, client card and KPI totals all read in
-one currency. A client's agreed discount is applied to sale prices in the cart and can
-be overridden per cart/order, and each cart line can additionally be **re-priced** and
-given **its own discount** (see *Orders & stock*). The top bar also carries a UK/EN
-language toggle.
+A client's agreed discount is applied to sale prices in the cart and can be overridden
+per cart/order, and each cart line can additionally be **re-priced** and given **its
+own discount** (see *Orders & stock*). The top bar also carries a UK/EN language
+toggle.
 
 ---
 
@@ -455,7 +468,7 @@ action — save, delete, import, order placed, rate updated — surfaces a **toa
 
 In an order's details, each line is a button: clicking it opens a **product-info
 card** (`ProductInfoModal`) resolving the live catalog product behind the line —
-brand, category, prices in the display currency and current stock — falling back to
+brand, category, prices in the base currency and current stock — falling back to
 the line's name/SKU snapshot when the product was since deleted.
 
 The order list itself carries a **Товари** column (first item, plus `+n` when
@@ -492,7 +505,7 @@ src/
   locales/               → uk.json (default) + en.json
   router/                → routes + auth guard (meta.public, meta.minRole)
   stores/                → Pinia state (auth, reference, inventory, clients,
-                           orders, cart, currency, ui, toast)
+                           orders, cart, ui, toast)
   styles/main.css        → Tailwind + theme tokens
   types/                 → database (row shapes) + models (derived views)
   utils/                 → pure helpers (pricing, batch-status, batch-number, orders,
@@ -691,11 +704,12 @@ Two-column form modals (`ProductFormModal`, `OrderEditModal`, `BatchModal`,
 Unit tests live in `tests/unit/` and cover the pure utilities (pricing, batch
 status and FIFO ordering, batch numbering, order totals, formatting, **CSV
 parsing** — delimiters, encodings, header detection and column guessing), Pinia stores (cart — including backorders and switching a line's
-batch — and currency), the composable logic (`useCatalog`, `useWarehouse`
-grouping, `useCurrency` conversion, `useSelection`, `useCsvImport` column
-mapping), and the API layer (mocked
-Supabase client). `views.test.ts` mounts Catalog, Warehouse, Orders, Links and the
-cart page against seeded stores, so a broken template or missing slot fails in CI
+batch — inventory, orders and the supplier rate lookup), the composable logic
+(`useCatalog`, `useWarehouse` grouping, `useCurrency`'s supplier-rate conversion,
+`useCurrencies`, `useRates`, `useSelection`, `useCsvImport` column mapping and
+what an import writes), and the API layer (mocked Supabase client).
+`views.test.ts` mounts Catalog, Warehouse, Orders, Links, Rates and the cart page
+against seeded stores, so a broken template or missing slot fails in CI
 rather than in the browser, and `data-table.test.ts` covers paging and the height
 cap on their own. A Playwright smoke test in `tests/e2e/` verifies the auth gate.
 

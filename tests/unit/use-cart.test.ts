@@ -3,7 +3,6 @@ import uk from '@/locales/uk.json'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useClientsStore } from '@/stores/clients'
-import { useCurrencyStore } from '@/stores/currency'
 import { useInventoryStore } from '@/stores/inventory'
 import type { BatchRow } from '@/api/batches'
 import type { Client, Company, Product } from '@/types/database'
@@ -30,7 +29,6 @@ function harness() {
   mount(
     defineComponent({
       setup() {
-        useCurrencyStore().setCurrency('UAH')
         const auth = useAuthStore()
         auth.memberships = [
           {

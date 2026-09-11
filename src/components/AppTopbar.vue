@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import DropdownMenu from '@/components/ui/DropdownMenu.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import { useCurrency } from '@/composables/use-currency'
@@ -20,14 +19,9 @@ const route = useRoute()
 const cart = useCartStore()
 const ui = useUiStore()
 const { isDark, toggle } = useTheme()
-const { code, symbol, options, setCurrency } = useCurrency()
+const { functionalCode, functionalSymbol } = useCurrency()
 const { locale, setLocale } = useLocale()
 const { canTrade } = usePermissions()
-
-// Built-ins plus whatever the owner added on the Rates page.
-const currencyItems = computed(() =>
-  options.value.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.code}` })),
-)
 
 const language = computed({
   get: () => locale.value,
@@ -69,24 +63,17 @@ const today = formatDate(new Date())
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
-      <DropdownMenu
-        :items="currencyItems"
-        @select="setCurrency"
+      <!-- Every amount in the app is in the base currency, so there is
+           nothing to switch here. The badge says which currency that is and
+           leads to where it — and the supplier rates — are set. -->
+      <RouterLink
+        :to="{ name: 'rates' }"
+        :title="t('nav.currency')"
+        class="flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-fg transition-colors hover:bg-hover"
       >
-        <button
-          type="button"
-          :title="t('nav.currency')"
-          class="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-fg transition-colors hover:bg-hover"
-        >
-          <span class="font-mono">{{ symbol }}</span>
-          <span class="hidden text-xs text-faint sm:inline">{{ code }}</span>
-          <Icon
-            icon="fa-solid fa-chevron-down"
-            size="xs"
-            class="text-faint"
-          />
-        </button>
-      </DropdownMenu>
+        <span class="font-mono">{{ functionalSymbol }}</span>
+        <span class="hidden text-xs text-faint sm:inline">{{ functionalCode }}</span>
+      </RouterLink>
 
       <!-- Wrapped rather than given `hidden lg:inline-flex` directly: Tabs'
            own root sets `inline-flex`, and between two display utilities of

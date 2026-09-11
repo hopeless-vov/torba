@@ -34,7 +34,7 @@ const { t } = useI18n()
 const reference = useReferenceStore()
 const inventory = useInventoryStore()
 const ui = useUiStore()
-const { code, format, formatIn } = useCurrency()
+const { functionalCode, format, formatIn } = useCurrency()
 const { addFromCatalog } = useCart()
 const {
   filtered,
@@ -112,8 +112,8 @@ const columns = computed<Column[]>(() => [
   { key: 'sku', label: t('catalog.cols.article'), width: '9rem', mono: true },
   { key: 'name', label: t('catalog.cols.name'), card: 'title' },
   { key: 'supplierCost', label: t('catalog.cols.supplierCost'), align: 'right', mono: true },
-  { key: 'purchase', label: `${t('catalog.cols.purchase')} ${code.value}`, align: 'right', mono: true },
-  { key: 'retail', label: `${t('catalog.cols.retail')} ${code.value}`, align: 'right', mono: true },
+  { key: 'purchase', label: `${t('catalog.cols.purchase')} ${functionalCode.value}`, align: 'right', mono: true },
+  { key: 'retail', label: `${t('catalog.cols.retail')} ${functionalCode.value}`, align: 'right', mono: true },
   { key: 'discounted', label: t('catalog.cols.discounted'), align: 'right', mono: true },
   { key: 'margin', label: t('catalog.cols.margin'), align: 'right', mono: true },
   { key: 'stock', label: t('catalog.cols.stock'), align: 'left' },
@@ -277,7 +277,11 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
         </template>
 
         <template #cell-purchase="{ row }">
-          {{ format((row as ProductView).purchase) }}
+          <span v-if="(row as ProductView).purchase != null">{{ format((row as ProductView).purchase as number) }}</span>
+          <span
+            v-else
+            class="text-faint"
+          >{{ t('common.emptyValue') }}</span>
         </template>
 
         <template #cell-retail="{ row }">
@@ -285,7 +289,7 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
             <div class="flex flex-col leading-tight">
               <span>{{ format((row as ProductView).retail as number) }}</span>
               <span
-                v-if="(row as ProductView).retail_currency !== code"
+                v-if="(row as ProductView).retail_currency !== functionalCode"
                 class="text-xs text-faint tabular-nums"
               >{{ formatIn((row as ProductView).retail_currency, (row as ProductView).retail_amount as number) }}</span>
             </div>

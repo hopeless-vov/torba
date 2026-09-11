@@ -1,181 +1,204 @@
 <script setup lang="ts">
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
-import Combobox from '@/components/ui/Combobox.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
+import Select from '@/components/ui/Select.vue'
 import Spinner from '@/components/ui/Spinner.vue'
-import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrencies } from '@/composables/use-currencies'
-import { BUILT_IN_CODES, BUILT_IN_CURRENCIES, NUMERAIRE, useCurrency } from '@/composables/use-currency'
+import { useCurrency } from '@/composables/use-currency'
 import { usePermissions } from '@/composables/use-permissions'
 import { useRates } from '@/composables/use-rates'
 import { useReferenceStore } from '@/stores/reference'
-import type { Brand } from '@/types/database'
+import type { Brand, Currency } from '@/types/database'
 import { formatDate, formatNumber } from '@/utils/format'
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+// One page for everything a price is converted with: the base currency the
+// books are kept in, the currencies the company's suppliers quote in, and the
+// matrix of what each of those is worth to each supplier. There is no other
+// rate anywhere — every amount in the app is in the base.
 const { t } = useI18n()
 const reference = useReferenceStore()
-const { code: activeCode, functionalCode, options, rateOf, convertBetween, formatIn, setBase } = useCurrency()
-const { addCurrency, setRate, removeCurrency } = useCurrencies()
-const { updating, history, loadingHistory, updateRate, loadHistory } = useRates()
+const { functionalCode, functionalSymbol, options, symbolOf, rateFor, formatIn } = useCurrency()
+const { available, addCurrency, removeCurrency } = useCurrencies()
+const {
+  saving,
+  history,
+  loadingHistory,
+  baseLocked,
+  setRate,
+  setCatalogCurrency,
+  loadHistory,
+  checkBaseLock,
+  changeBase,
+} = useRates()
 const { canConfigure, canAdministerCompany } = usePermissions()
 
-// What 1 unit of `codeStr` is worth in the base currency — the readable,
-// USD-free way to show a market rate.
-function baseEquiv(codeStr: string): number {
-  return convertBetween(1, codeStr, functionalCode.value)
-}
+onMounted(checkBaseLock)
 
-// Switching the base re-expresses every brand supplier rate, so it is gated.
+// ── base currency ────────────────────────────────────────────
+// Only the owner moves it, only while nothing has been sold, and only after
+// being told that it resets every supplier rate.
+const nextBase = ref('')
+const baseOptions = computed(() =>
+  reference.platformCurrencies
+    .filter((c) => c.code !== functionalCode.value)
+    .map((c) => ({ value: c.code, label: `${c.symbol}  ${c.code}` })),
+)
 const baseConfirmOpen = ref(false)
-const pendingBase = ref<string | null>(null)
 const switchingBase = ref(false)
-function askBase(codeStr: string) {
-  pendingBase.value = codeStr
-  baseConfirmOpen.value = true
-}
+
 async function confirmBase() {
-  if (!pendingBase.value) return
+  if (!nextBase.value) return
   switchingBase.value = true
   try {
-    await setBase(pendingBase.value)
-    baseConfirmOpen.value = false
+    if (await changeBase(nextBase.value)) {
+      baseConfirmOpen.value = false
+      nextBase.value = ''
+    }
   } finally {
     switchingBase.value = false
-    pendingBase.value = null
   }
 }
 
-// Removing a currency takes its rate out of the table, and amounts already
-// stored in it then have nothing to be converted with — worth a question.
-const currencyConfirmOpen = ref(false)
-const pendingCurrency = ref<{ id: string; code: string } | null>(null)
-const removingCurrency = ref(false)
-function askRemoveCurrency(id: string, codeStr: string) {
-  pendingCurrency.value = { id, code: codeStr }
-  currencyConfirmOpen.value = true
+// ── company currencies ───────────────────────────────────────
+const toAdd = ref('')
+const availableOptions = computed(() =>
+  available.value.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.code}` })),
+)
+
+async function add() {
+  if (!toAdd.value) return
+  await addCurrency(toAdd.value)
+  toAdd.value = ''
 }
-async function confirmRemoveCurrency() {
-  if (!pendingCurrency.value) return
-  removingCurrency.value = true
+
+const pendingRemoval = ref<Currency | null>(null)
+const removeOpen = ref(false)
+const removing = ref(false)
+
+function askRemove(currency: Currency) {
+  pendingRemoval.value = currency
+  removeOpen.value = true
+}
+
+async function confirmRemove() {
+  if (!pendingRemoval.value) return
+  removing.value = true
   try {
-    await removeCurrency(pendingCurrency.value.id)
-    currencyConfirmOpen.value = false
+    await removeCurrency(pendingRemoval.value.id)
+    removeOpen.value = false
+    pendingRemoval.value = null
   } finally {
-    removingCurrency.value = false
-    pendingCurrency.value = null
+    removing.value = false
   }
 }
 
-// ── currencies ───────────────────────────────────────────────
-type CurrencyRow = {
-  code: string
-  symbol: string
-  rate: number
-  id: string | null
-  kind: 'anchor' | 'builtin' | 'custom'
+// ── the supplier rate matrix ─────────────────────────────────
+// One column per currency the company uses; the base has none — a price in
+// the base needs no rate at all.
+const rateColumns = computed(() => reference.currencies.map((c) => c.code))
+
+const catalogOptions = computed(() =>
+  options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })),
+)
+
+function onCatalog(brand: Brand, code: string | undefined) {
+  if (code && code !== brand.catalog_currency) void setCatalogCurrency(brand.id, code)
 }
 
-const currencyRows = computed<CurrencyRow[]>(() => {
-  const builtin = BUILT_IN_CURRENCIES.map((b) => ({
-    code: b.code,
-    symbol: b.symbol,
-    rate: rateOf(b.code),
-    id: reference.currenciesByCode.get(b.code)?.id ?? null,
-    kind: (b.code === 'USD' ? 'anchor' : 'builtin') as CurrencyRow['kind'],
-  }))
-  const custom = reference.currencies
-    .filter((c) => !BUILT_IN_CODES.includes(c.code))
-    .map((c) => ({
-      code: c.code,
-      symbol: c.symbol || c.code,
-      rate: c.usd_rate,
-      id: c.id,
-      kind: 'custom' as const,
-    }))
-  return [...builtin, ...custom]
-})
+// One cell is edited at a time, in place.
+const editing = ref<{ brandId: string; code: string } | null>(null)
+const editValue = ref(0)
 
-// One row is rate-edited at a time, always the readable way: "1 unit = ? base".
-// The base currency itself is the pivot (its value in itself is 1), so it has
-// no editable rate; every other row — USD included — is entered against the
-// base and converted to the stored per-USD numeraire on save.
-const editCode = ref<string | null>(null)
-const editRate = ref(0)
-function startEdit(row: CurrencyRow) {
-  editCode.value = row.code
-  editRate.value = baseEquiv(row.code)
-}
-async function saveEdit(code: string) {
-  const entered = editRate.value || 0
-  if (code === NUMERAIRE) {
-    // The USD row reads "1 USD = X base" — that number *is* the base currency's
-    // own per-USD market rate. USD stays the numeraire (rate 1); we store the
-    // rate on the base currency instead.
-    await setRate(functionalCode.value, entered)
-  } else {
-    const usdRate = entered > 0 ? rateOf(functionalCode.value) / entered : 0
-    await setRate(code, usdRate)
-  }
-  editCode.value = null
+function isEditing(brandId: string, code: string) {
+  return editing.value?.brandId === brandId && editing.value.code === code
 }
 
-// Add a custom currency. The rate is entered the same base-centric way as the
-// rows above — "1 unit = ? base" — and converted to the stored per-USD
-// numeraire on save, so USD never surfaces here either.
-const addForm = reactive({ code: '', symbol: '' })
-const addRate = ref(0)
-async function addCustom() {
-  if (!addForm.code.trim()) return
-  const entered = addRate.value || 0
-  const usdRate = entered > 0 ? rateOf(functionalCode.value) / entered : 0
-  await addCurrency({ code: addForm.code, symbol: addForm.symbol, usdRate })
-  addForm.code = ''
-  addForm.symbol = ''
-  addRate.value = 0
+function startEdit(brandId: string, code: string) {
+  if (!canConfigure.value) return
+  editing.value = { brandId, code }
+  editValue.value = rateFor(brandId, code) ?? 0
 }
 
-// ── brand supplier rates ─────────────────────────────────────
-const updateOpen = ref(false)
+function cancelEdit() {
+  editing.value = null
+}
+
+async function saveCell() {
+  if (!editing.value || !(editValue.value > 0)) return
+  if (await setRate(editing.value.brandId, editing.value.code, editValue.value)) editing.value = null
+}
+
 const historyOpen = ref(false)
-const active = ref<Brand | null>(null)
-const rateInput = ref(0)
-const catalogInput = ref('USD')
+const historyFor = ref<{ brand: Brand; code: string } | null>(null)
 
-// The currencies a supplier might price in — the display options, so any
-// currency the owner uses is available.
-const catalogOptions = computed(() => options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })))
-
-function openUpdate(brand: Brand) {
-  active.value = brand
-  rateInput.value = brand.supplier_rate
-  catalogInput.value = brand.catalog_currency
-  updateOpen.value = true
-}
-function openHistory(brand: Brand) {
-  active.value = brand
+function openHistory(brand: Brand, code: string) {
+  historyFor.value = { brand, code }
   historyOpen.value = true
-  void loadHistory(brand.id)
-}
-// When a supplier prices in the base currency there is nothing to convert, so
-// the rate is pinned to 1 rather than left as a meaningless free number.
-const catalogIsBase = computed(() => catalogInput.value === functionalCode.value)
-async function saveBrandRate() {
-  if (!active.value) return
-  await updateRate(active.value, catalogIsBase.value ? 1 : rateInput.value, catalogInput.value)
-  updateOpen.value = false
+  void loadHistory(brand.id, code)
 }
 </script>
 
 <template>
   <div class="flex flex-col gap-6 p-6">
-    <!-- Currencies -->
+    <!-- Base currency -->
+    <section class="flex flex-col gap-3">
+      <div>
+        <h2 class="text-sm font-semibold text-fg">
+          {{ t('rates.baseTitle') }}
+        </h2>
+        <p class="text-xs text-faint">
+          {{ t('rates.baseHint') }}
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-panel px-5 py-4">
+        <span class="flex size-10 items-center justify-center rounded-lg bg-accent-soft font-mono text-lg text-accent">
+          {{ functionalSymbol }}
+        </span>
+        <div class="min-w-0 flex-1">
+          <p class="font-mono text-sm font-semibold text-fg">
+            {{ functionalCode }}
+          </p>
+          <p
+            v-if="canAdministerCompany && baseLocked != null"
+            class="text-xs text-faint"
+          >
+            {{ baseLocked ? t('rates.baseLocked') : t('rates.baseChangeHint') }}
+          </p>
+        </div>
+
+        <form
+          v-if="canAdministerCompany && baseLocked === false"
+          class="flex flex-wrap items-end gap-2"
+          @submit.prevent="baseConfirmOpen = true"
+        >
+          <div class="w-40">
+            <Select
+              v-model="nextBase"
+              size="sm"
+              :options="baseOptions"
+              :placeholder="t('rates.chooseBase')"
+            />
+          </div>
+          <Button
+            type="submit"
+            size="sm"
+            :disabled="!nextBase"
+          >
+            {{ t('rates.changeBase') }}
+          </Button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Company currencies -->
     <section class="flex flex-col gap-3">
       <div>
         <h2 class="text-sm font-semibold text-fg">
@@ -186,125 +209,56 @@ async function saveBrandRate() {
         </p>
       </div>
 
-      <div class="flex flex-col divide-y divide-line-soft overflow-hidden rounded-xl border border-line bg-panel">
-        <div
-          v-for="row in currencyRows"
-          :key="row.code"
-          class="flex flex-wrap items-center gap-3 px-5 py-3.5"
-        >
-          <span class="flex size-9 items-center justify-center rounded-lg bg-chip font-mono text-sm text-muted">
-            {{ row.symbol }}
-          </span>
-          <div class="min-w-0">
-            <p class="flex items-center gap-2 font-mono text-sm font-medium text-fg">
-              {{ row.code }}
-              <Badge
-                v-if="row.code === activeCode"
-                tone="accent"
-              >
-                {{ t('rates.active') }}
-              </Badge>
-              <Badge
-                v-if="row.code === functionalCode"
-                tone="info"
-              >
-                {{ t('rates.base') }}
-              </Badge>
-            </p>
-            <p class="text-xs text-faint">
-              {{
-                row.code === functionalCode
-                  ? t('rates.isBase')
-                  : t('rates.oneEquals', { code: row.code, amount: formatIn(functionalCode, baseEquiv(row.code), 2) })
-              }}
-            </p>
-          </div>
+      <div class="flex flex-col gap-4 rounded-xl border border-line bg-panel px-5 py-4">
+        <ul class="flex flex-wrap items-center gap-2">
+          <li class="flex h-8 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm">
+            <span class="font-mono text-muted">{{ functionalSymbol }}</span>
+            <span class="font-mono font-medium text-fg">{{ functionalCode }}</span>
+            <Badge tone="info">
+              {{ t('rates.base') }}
+            </Badge>
+          </li>
+          <li
+            v-for="currency in reference.currencies"
+            :key="currency.id"
+            class="flex h-8 items-center gap-2 rounded-lg border border-line bg-surface pr-1 pl-3 text-sm"
+          >
+            <span class="font-mono text-muted">{{ symbolOf(currency.code) }}</span>
+            <span class="font-mono font-medium text-fg">{{ currency.code }}</span>
+            <button
+              v-if="canConfigure"
+              type="button"
+              class="flex size-6 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-danger"
+              :title="t('common.delete')"
+              @click="askRemove(currency)"
+            >
+              <Icon
+                icon="fa-solid fa-xmark"
+                size="xs"
+              />
+            </button>
+          </li>
+        </ul>
 
-          <div class="ml-auto flex flex-wrap items-end justify-end gap-2">
-            <template v-if="editCode === row.code">
-              <div class="w-36">
-                <NumberInput
-                  v-model="editRate"
-                  size="sm"
-                  :label="t('rates.marketRate')"
-                  :min="0"
-                  :step="0.01"
-                />
-                <p class="mt-1 text-xs text-faint">
-                  {{ t('rates.oneEquals', { code: row.code, amount: formatIn(functionalCode, editRate, 2) }) }}
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="primary"
-                @click="saveEdit(row.code)"
-              >
-                {{ t('rates.saveRate') }}
-              </Button>
-            </template>
-            <template v-else>
-              <Button
-                v-if="row.code !== functionalCode && canAdministerCompany"
-                size="sm"
-                variant="ghost"
-                @click="askBase(row.code)"
-              >
-                {{ t('rates.makeBase') }}
-              </Button>
-              <Button
-                v-if="row.code !== functionalCode && canConfigure"
-                size="sm"
-                @click="startEdit(row)"
-              >
-                {{ t('rates.update') }}
-              </Button>
-              <button
-                v-if="row.kind === 'custom' && row.id && canConfigure"
-                type="button"
-                class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-danger"
-                :title="t('common.delete')"
-                @click="askRemoveCurrency(row.id, row.code)"
-              >
-                <Icon
-                  icon="fa-solid fa-xmark"
-                  size="sm"
-                />
-              </button>
-            </template>
-          </div>
-        </div>
-
-        <!-- Add custom currency -->
         <form
-          v-if="canConfigure"
-          class="grid grid-cols-2 items-end gap-2 bg-surface px-5 py-4 sm:grid-cols-[6rem_5rem_1fr_auto]"
-          @submit.prevent="addCustom"
+          v-if="canConfigure && available.length > 0"
+          class="flex flex-wrap items-end gap-2"
+          @submit.prevent="add"
         >
-          <TextInput
-            v-model="addForm.code"
-            :label="t('profile.currency.code')"
-            :placeholder="t('profile.currency.codePlaceholder')"
-          />
-          <TextInput
-            v-model="addForm.symbol"
-            :label="t('profile.currency.symbol')"
-            :placeholder="t('profile.currency.symbolPlaceholder')"
-          />
-          <div class="col-span-2 sm:col-span-1">
-            <NumberInput
-              v-model="addRate"
-              :label="t('rates.addRate', { base: functionalCode })"
-              :min="0"
-              :step="0.01"
+          <div class="w-48">
+            <Select
+              v-model="toAdd"
+              size="sm"
+              :options="availableOptions"
+              :placeholder="t('rates.chooseCurrency')"
             />
           </div>
           <Button
             type="submit"
+            size="sm"
             variant="primary"
             icon="fa-solid fa-plus"
-            class="col-span-2 sm:col-span-1"
-            :disabled="!addForm.code.trim()"
-            :title="t('rates.addCurrency')"
+            :disabled="!toAdd"
           >
             {{ t('rates.addCurrency') }}
           </Button>
@@ -312,14 +266,14 @@ async function saveBrandRate() {
       </div>
     </section>
 
-    <!-- Brand supplier rates -->
+    <!-- Supplier rates -->
     <section class="flex flex-col gap-3">
       <div>
         <h2 class="text-sm font-semibold text-fg">
           {{ t('rates.brandsTitle') }}
         </h2>
         <p class="text-xs text-faint">
-          {{ t('rates.brandsHint') }}
+          {{ t('rates.brandsHint', { base: functionalCode }) }}
         </p>
       </div>
 
@@ -334,109 +288,154 @@ async function saveBrandRate() {
         />
       </div>
 
-      <div
-        v-for="brand in reference.brands"
-        :key="brand.id"
-        class="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-panel px-5 py-4"
+      <p
+        v-else-if="rateColumns.length === 0"
+        class="rounded-xl border border-line bg-panel px-5 py-4 text-sm text-muted"
       >
-        <div class="min-w-0 flex-1">
-          <p class="flex items-center gap-2 text-sm font-semibold text-fg">
-            {{ brand.name }}
-            <Badge tone="neutral">
-              {{ brand.catalog_currency }}
-            </Badge>
-          </p>
-          <p class="text-xs text-faint">
-            {{ t('rates.updatedAt', { date: formatDate(brand.rate_updated_at) }) }}
-          </p>
-        </div>
+        {{ t('rates.noCurrencies') }}
+      </p>
 
-        <div class="text-right">
-          <template v-if="brand.catalog_currency === functionalCode">
-            <p class="text-sm font-medium text-muted">
-              {{ t('rates.catalogIsBase') }}
-            </p>
-            <p class="text-xs text-faint">
-              {{ t('rates.catalogIsBaseHint') }}
-            </p>
-          </template>
-          <template v-else>
-            <p class="font-mono text-2xl font-semibold text-accent tabular-nums">
-              {{ formatIn(functionalCode, brand.supplier_rate, 2) }}
-            </p>
-            <p class="text-xs text-faint">
-              {{ t('rates.perUnit', { code: brand.catalog_currency }) }}
-            </p>
-          </template>
-        </div>
+      <div
+        v-else
+        class="overflow-x-auto rounded-xl border border-line bg-panel"
+      >
+        <table class="w-full text-sm">
+          <thead class="text-left text-xs text-faint">
+            <tr class="border-b border-line-soft">
+              <th class="px-5 py-3 font-medium">
+                {{ t('rates.colBrand') }}
+              </th>
+              <th class="px-3 py-3 font-medium">
+                {{ t('rates.colCatalog') }}
+              </th>
+              <th
+                v-for="code in rateColumns"
+                :key="code"
+                class="px-3 py-3 text-right font-medium whitespace-nowrap"
+              >
+                {{ t('rates.perUnit', { base: functionalCode, code }) }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line-soft">
+            <tr
+              v-for="brand in reference.brands"
+              :key="brand.id"
+            >
+              <td class="px-5 py-3 font-medium whitespace-nowrap text-fg">
+                {{ brand.name }}
+              </td>
+              <td class="px-3 py-2">
+                <div
+                  v-if="canConfigure"
+                  class="w-28"
+                >
+                  <Select
+                    :model-value="brand.catalog_currency"
+                    size="sm"
+                    :options="catalogOptions"
+                    @update:model-value="onCatalog(brand, $event)"
+                  />
+                </div>
+                <span
+                  v-else
+                  class="font-mono text-muted"
+                >{{ brand.catalog_currency }}</span>
+              </td>
+              <td
+                v-for="code in rateColumns"
+                :key="code"
+                class="px-3 py-2 text-right"
+              >
+                <form
+                  v-if="isEditing(brand.id, code)"
+                  class="flex items-center justify-end gap-1.5"
+                  @submit.prevent="saveCell"
+                  @keydown.esc="cancelEdit"
+                >
+                  <div class="w-28">
+                    <NumberInput
+                      v-model="editValue"
+                      size="sm"
+                      align="right"
+                      :min="0"
+                      :step="0.01"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="primary"
+                    :loading="saving"
+                    :disabled="!(editValue > 0)"
+                  >
+                    {{ t('common.save') }}
+                  </Button>
+                  <button
+                    type="button"
+                    class="flex size-8 cursor-pointer items-center justify-center rounded-lg text-faint transition-colors hover:bg-hover hover:text-fg"
+                    :title="t('common.cancel')"
+                    @click="cancelEdit"
+                  >
+                    <Icon
+                      icon="fa-solid fa-xmark"
+                      size="sm"
+                    />
+                  </button>
+                </form>
 
-        <div class="flex items-center gap-2">
-          <Button @click="openHistory(brand)">
-            {{ t('rates.history') }}
-          </Button>
-          <Button
-            v-if="canConfigure"
-            variant="primary"
-            @click="openUpdate(brand)"
-          >
-            {{ t('rates.update') }}
-          </Button>
-        </div>
+                <div
+                  v-else-if="rateFor(brand.id, code) != null"
+                  class="flex items-center justify-end gap-1"
+                >
+                  <button
+                    type="button"
+                    class="rounded-md px-2 py-1 font-mono text-fg tabular-nums transition-colors"
+                    :class="canConfigure ? 'cursor-pointer hover:bg-hover' : 'cursor-default'"
+                    @click="startEdit(brand.id, code)"
+                  >
+                    {{ formatIn(functionalCode, rateFor(brand.id, code) as number, 2) }}
+                  </button>
+                  <button
+                    type="button"
+                    class="flex size-7 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-hover hover:text-fg"
+                    :title="t('rates.history')"
+                    @click="openHistory(brand, code)"
+                  >
+                    <Icon
+                      icon="fa-solid fa-clock-rotate-left"
+                      size="xs"
+                    />
+                  </button>
+                </div>
+
+                <!-- A supplier with no rate for a currency the company uses:
+                     any price of theirs in it has nothing to convert by. -->
+                <button
+                  v-else-if="canConfigure"
+                  type="button"
+                  class="cursor-pointer rounded-md border border-dashed border-line px-2 py-1 text-xs text-warn transition-colors hover:border-line-hover"
+                  @click="startEdit(brand.id, code)"
+                >
+                  {{ t('rates.missing') }}
+                </button>
+                <span
+                  v-else
+                  class="text-xs text-warn"
+                >{{ t('rates.missing') }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- Update brand rate -->
-    <Modal
-      v-model:open="updateOpen"
-      size="sm"
-      :title="t('rates.modalTitle', { brand: active?.name ?? '' })"
-    >
-      <div class="flex flex-col gap-4">
-        <Combobox
-          v-model="catalogInput"
-          :label="t('rates.catalogCurrency')"
-          :placeholder="t('common.search')"
-          :search-placeholder="t('common.search')"
-          :empty-text="t('common.noMatches')"
-          :options="catalogOptions"
-        />
-        <p
-          v-if="catalogIsBase"
-          class="rounded-lg border border-line bg-surface px-3 py-2.5 text-xs text-muted"
-        >
-          {{ t('rates.catalogIsBaseNote', { base: functionalCode }) }}
-        </p>
-        <NumberInput
-          v-else
-          v-model="rateInput"
-          :label="t('rates.perUnitInBase', { base: functionalCode, code: catalogInput })"
-          :min="0"
-          :step="0.1"
-        />
-      </div>
-      <template #footer>
-        <Button
-          variant="ghost"
-          @click="updateOpen = false"
-        >
-          {{ t('common.cancel') }}
-        </Button>
-        <Button
-          variant="primary"
-          :loading="updating"
-          @click="saveBrandRate"
-        >
-          {{ t('common.save') }}
-        </Button>
-      </template>
-    </Modal>
-
-    <!-- Brand rate history -->
+    <!-- Rate history for one cell -->
     <Modal
       v-model:open="historyOpen"
       size="sm"
       :title="t('rates.history')"
-      :subtitle="active?.name"
+      :subtitle="historyFor ? `${historyFor.brand.name} · ${historyFor.code}` : undefined"
     >
       <div
         v-if="loadingHistory"
@@ -461,27 +460,25 @@ async function saveBrandRate() {
         v-else
         class="py-6 text-center text-sm text-muted"
       >
-        {{ t('rates.emptyHint') }}
+        {{ t('rates.historyEmpty') }}
       </p>
     </Modal>
 
     <ConfirmDialog
-      v-model:open="currencyConfirmOpen"
-      :title="t('rates.deleteCurrencyTitle', { code: pendingCurrency?.code ?? '' })"
+      v-model:open="removeOpen"
+      :title="t('rates.deleteCurrencyTitle', { code: pendingRemoval?.code ?? '' })"
       :message="t('rates.deleteCurrencyMessage')"
       :confirm-label="t('common.delete')"
       :cancel-label="t('common.cancel')"
-      :loading="removingCurrency"
-      @confirm="confirmRemoveCurrency"
+      :loading="removing"
+      @confirm="confirmRemove"
     />
 
-    <!-- Switch base currency -->
     <ConfirmDialog
       v-model:open="baseConfirmOpen"
-      tone="accent"
-      :title="t('rates.baseConfirmTitle', { code: pendingBase ?? '' })"
+      :title="t('rates.baseConfirmTitle', { code: nextBase })"
       :message="t('rates.baseConfirmMessage')"
-      :confirm-label="t('rates.makeBase')"
+      :confirm-label="t('rates.changeBase')"
       :cancel-label="t('common.cancel')"
       :loading="switchingBase"
       @confirm="confirmBase"

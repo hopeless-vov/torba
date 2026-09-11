@@ -53,3 +53,24 @@ describe('reference store — brand ↔ category links', () => {
     expect(store.brandIdsForCategory('cat3')).toEqual([])
   })
 })
+
+describe('reference store — supplier rates', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('files each rate under its supplier and currency', () => {
+    const store = useReferenceStore()
+    store.supplierRates = [
+      { id: 'r1', company_id: 'c', brand_id: 'b1', currency: 'USD', rate: 41.5, updated_at: '' },
+      { id: 'r2', company_id: 'c', brand_id: 'b1', currency: 'EUR', rate: 45, updated_at: '' },
+      { id: 'r3', company_id: 'c', brand_id: 'b2', currency: 'USD', rate: 42, updated_at: '' },
+    ]
+
+    expect(store.ratesByBrand.get('b1')?.get('USD')).toBe(41.5)
+    expect(store.ratesByBrand.get('b1')?.get('EUR')).toBe(45)
+    expect(store.ratesByBrand.get('b2')?.get('USD')).toBe(42)
+    // No rate is not a rate of zero: the cell is simply not there.
+    expect(store.ratesByBrand.get('b2')?.get('EUR')).toBeUndefined()
+  })
+})

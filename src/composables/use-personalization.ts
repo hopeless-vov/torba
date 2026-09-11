@@ -56,8 +56,9 @@ export function usePersonalization() {
         brandsApi.create({
           company_id: auth.companyId as string,
           name: name.trim(),
-          catalog_currency: 'USD',
-          supplier_rate: 0,
+          // A new supplier quotes in the base until told otherwise on /rates,
+          // so its prices need no rate at all to begin with.
+          catalog_currency: auth.company?.base_currency ?? 'UAH',
         }),
       'toasts.saved',
       'errors.save',

@@ -1,62 +1,47 @@
 import { currenciesApi } from '@/api/currencies'
-import { BUILT_IN_CODES } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
+import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
-import type { CurrencyPatch } from '@/types/database'
-import { CURRENCY_SYMBOLS } from '@/utils/format'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-/** Codes are ISO-ish: 3 letters, stored upper-case. */
-export function normalizeCode(code: string): string {
-  return code.trim().toUpperCase().slice(0, 3)
-}
-
-function symbolFor(code: string): string {
-  return CURRENCY_SYMBOLS[code] ?? code
-}
-
-// CRUD for the company's display currencies and their central rates. USD is
-// the stored base (rate always 1) and can neither be added nor edited. UAH
-// and EUR are built into the dropdown but their rate is stored here like any
-// other, so `setRate` creates the row the first time and updates it after.
+// Which of the platform's currencies the company uses besides its base.
+// Adding one opens a column in the supplier rate matrix; removing one closes
+// it and drops its rates. A currency a price is still in cannot go: that
+// price would be left with nothing to be converted by.
 export function useCurrencies() {
   const auth = useAuthStore()
   const reference = useReferenceStore()
+  const inventory = useInventoryStore()
   const toast = useToast()
   const { t } = useI18n()
 
-  const currencies = computed(() => reference.currencies)
+  const base = computed(() => auth.company?.base_currency ?? '')
+
+  /** Platform currencies not in use yet — what "add" can offer. */
+  const available = computed(() => {
+    const used = new Set(reference.currencies.map((c) => c.code))
+    return reference.platformCurrencies.filter((c) => c.code !== base.value && !used.has(c.code))
+  })
+
+  /** Does any price, or any supplier's default, still depend on this currency? */
+  function inUse(code: string): boolean {
+    return (
+      reference.brands.some((b) => b.catalog_currency === code) ||
+      inventory.products.some((p) => p.cost_currency === code || p.retail_currency === code) ||
+      inventory.batches.some((b) => b.cost_currency === code || b.retail_currency === code)
+    )
+  }
 
   async function reload() {
     if (auth.companyId) await reference.load(auth.companyId)
   }
 
-  // Only for adding a *custom* currency via the form — the built-ins are
-  // managed through `setRate`, never added.
-  function validate(code: string): string | null {
-    const normalized = normalizeCode(code)
-    if (normalized.length < 3) return t('profile.currency.errorCode')
-    if (BUILT_IN_CODES.includes(normalized)) return t('profile.currency.errorBuiltIn')
-    if (reference.currenciesByCode.has(normalized)) return t('profile.currency.errorExists')
-    return null
-  }
-
-  async function addCurrency(input: { code: string; symbol: string; usdRate: number }) {
-    if (!auth.companyId) return
-    const problem = validate(input.code)
-    if (problem) {
-      toast.error(problem)
-      return
-    }
+  async function addCurrency(code: string) {
+    if (!auth.companyId || !available.value.some((c) => c.code === code)) return
     try {
-      await currenciesApi.create({
-        company_id: auth.companyId,
-        code: normalizeCode(input.code),
-        symbol: input.symbol.trim() || symbolFor(normalizeCode(input.code)),
-        usd_rate: input.usdRate || 0,
-      })
+      await currenciesApi.create({ company_id: auth.companyId, code })
       await reload()
       toast.success(t('toasts.saved'))
     } catch {
@@ -64,49 +49,24 @@ export function useCurrencies() {
     }
   }
 
-  // Upsert the central rate for a code — creates the row for a built-in
-  // (UAH/EUR) the first time its rate is set, updates it thereafter.
-  async function setRate(code: string, usdRate: number) {
-    const normalized = normalizeCode(code)
-    if (!auth.companyId || normalized === 'USD') return
-    const existing = reference.currenciesByCode.get(normalized)
-    try {
-      if (existing) {
-        await currenciesApi.update(existing.id, { usd_rate: usdRate || 0 })
-      } else {
-        await currenciesApi.create({
-          company_id: auth.companyId,
-          code: normalized,
-          symbol: symbolFor(normalized),
-          usd_rate: usdRate || 0,
-        })
-      }
-      await reload()
-      toast.success(t('toasts.rateUpdated'))
-    } catch {
-      toast.error(t('errors.save'))
+  /** False — with the reason said out loud — when a price still needs it. */
+  async function removeCurrency(id: string): Promise<boolean> {
+    const row = reference.currencies.find((c) => c.id === id)
+    if (!row) return false
+    if (inUse(row.code)) {
+      toast.error(t('rates.currencyInUse', { code: row.code }))
+      return false
     }
-  }
-
-  async function updateCurrency(id: string, patch: CurrencyPatch) {
-    try {
-      await currenciesApi.update(id, patch)
-      await reload()
-      toast.success(t('toasts.rateUpdated'))
-    } catch {
-      toast.error(t('errors.save'))
-    }
-  }
-
-  async function removeCurrency(id: string) {
     try {
       await currenciesApi.remove(id)
       await reload()
       toast.success(t('toasts.deleted'))
+      return true
     } catch {
       toast.error(t('errors.delete'))
+      return false
     }
   }
 
-  return { currencies, addCurrency, setRate, updateCurrency, removeCurrency, validate }
+  return { available, inUse, addCurrency, removeCurrency }
 }

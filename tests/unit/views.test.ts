@@ -17,12 +17,20 @@ import DashboardView from '@/views/DashboardView.vue'
 import ClientsView from '@/views/ClientsView.vue'
 import LinksView from '@/views/LinksView.vue'
 import OrdersView from '@/views/OrdersView.vue'
+import RatesView from '@/views/RatesView.vue'
 import WarehouseView from '@/views/WarehouseView.vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// The rates page asks whether anything has been sold; answer without a
+// network round trip. Everything else in the orders api stays real.
+vi.mock('@/api/orders', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/api/orders')>()
+  return { ...original, ordersApi: { ...original.ordersApi, count: vi.fn(async () => 0) } }
+})
 
 // Render smoke tests: every screen is mounted against seeded stores so a
 // broken template or a missing slot fails here instead of in the browser.
@@ -32,8 +40,6 @@ const brand = {
   company_id: 'c',
   name: 'Fairy',
   catalog_currency: 'USD',
-  supplier_rate: 41.5,
-  rate_updated_at: '',
   created_at: '',
 } as Brand
 
@@ -160,6 +166,15 @@ function render(component: Parameters<typeof mount>[0], role: MembershipRole = '
   ]
   useReferenceStore().paymentMethods = [
     { id: 'pm1', company_id: 'c', name: 'Готівка', created_at: '' },
+  ]
+  // Fairy quotes in dollars, at its own rate — the only rate there is.
+  useReferenceStore().platformCurrencies = [
+    { code: 'UAH', symbol: '₴', sort: 10, created_at: '' },
+    { code: 'USD', symbol: '$', sort: 20, created_at: '' },
+  ]
+  useReferenceStore().currencies = [{ id: 'cur-usd', company_id: 'c', code: 'USD', created_at: '' }]
+  useReferenceStore().supplierRates = [
+    { id: 'r1', company_id: 'c', brand_id: 'b1', currency: 'USD', rate: 41.5, updated_at: '' },
   ]
   useInventoryStore().products = [product]
   useInventoryStore().batches = [batch({ id: 'ba1' }), batch({ id: 'ba2', expiry_date: '2999-06-01' })]
@@ -530,5 +545,34 @@ describe('why a list is empty', () => {
     await flushPromises()
 
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+  })
+})
+
+describe('RatesView', () => {
+  it('lays out the supplier matrix, one column per currency in use', async () => {
+    const wrapper = render(RatesView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.rates.brandsTitle)
+    expect(wrapper.text()).toContain('Fairy')
+    // ₴41.50 per $ for Fairy — the one cell there is.
+    expect(wrapper.text()).toContain('41,50')
+  })
+
+  // A currency the company uses that a supplier has no rate for: any price of
+  // theirs in it has nothing to be converted by, and the cell says so.
+  it('flags a supplier with no rate for a currency in use', async () => {
+    const wrapper = render(RatesView)
+    useReferenceStore().currencies.push({ id: 'cur-eur', company_id: 'c', code: 'EUR', created_at: '' })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.rates.missing)
+  })
+
+  it('offers to change the base while nothing has been sold', async () => {
+    const wrapper = render(RatesView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(uk.rates.changeBase)
   })
 })
