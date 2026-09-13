@@ -30,6 +30,10 @@
 --   9. triggers: rate history, orders in the base, and a base currency
 --      that only changes while there are no orders — resetting the
 --      supplier rates when it does, since they are all "per old base".
+--
+-- Written to be run from the Supabase SQL editor as well as `db push`: no
+-- statement relies on anything an earlier one left in the session, and
+-- running the whole file again after a partial run changes nothing twice.
 -- ─────────────────────────────────────────────────────────────
 
 
@@ -72,13 +76,9 @@ update public.batches set retail_currency = upper(retail_currency)
   where retail_currency <> upper(retail_currency);
 
 -- Any other code a price is already in joins the list, so nothing is left
--- pointing at a currency that does not exist — under the symbol the company
--- gave it, where it gave one.
+-- pointing at a currency that does not exist.
 insert into public.platform_currencies (code, symbol)
-select used.code, coalesce(
-  (select nullif(c.symbol, '') from public.currencies c where upper(c.code) = used.code limit 1),
-  used.code
-)
+select used.code, used.code
 from (
   select base_currency as code from public.companies
   union select catalog_currency from public.brands
@@ -90,6 +90,30 @@ from (
 where used.code ~ '^[A-Z]{3}$'
 on conflict (code) do nothing;
 
+-- ...under the symbol the company gave it, where it gave one. Only while the
+-- company's own symbol column still exists (section 6 drops it), and never
+-- over a symbol the platform already set.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'currencies' and column_name = 'symbol'
+  ) then
+    execute $sql$
+      update public.platform_currencies pc
+      set symbol = s.symbol
+      from (
+        select distinct on (upper(code)) upper(code) as code, symbol
+        from public.currencies
+        where nullif(symbol, '') is not null
+        order by upper(code), created_at
+      ) s
+      where pc.code = s.code and pc.symbol = pc.code
+    $sql$;
+  end if;
+end;
+$$;
+
 
 -- ── 2. orders into the base currency ─────────────────────────
 -- The last thing the market rates are good for. A market rate is "units per
@@ -97,42 +121,64 @@ on conflict (code) do nothing;
 -- fell back on (UAH 41, EUR 0.92) — so a converted order lands on exactly
 -- the number the app was already showing for it.
 
-create temporary table order_fx as
-with rates as (
-  select co.id as company_id, x.code,
-    case
-      when x.code = 'USD' then 1::numeric
-      else coalesce(
-        (select nullif(cu.usd_rate, 0) from public.currencies cu
-          where cu.company_id = co.id and upper(cu.code) = x.code limit 1),
-        case x.code when 'UAH' then 41::numeric when 'EUR' then 0.92::numeric end
-      )
-    end as usd_rate
-  from public.companies co
-  cross join (
-    select distinct upper(currency) as code from public.orders
-    union select distinct base_currency from public.companies
-  ) x
-)
-select o.id as order_id, rb.usd_rate / nullif(ro.usd_rate, 0) as factor
-from public.orders o
-join public.companies co on co.id = o.company_id
-join rates rb on rb.company_id = o.company_id and rb.code = co.base_currency
-join rates ro on ro.company_id = o.company_id and ro.code = upper(o.currency)
-where upper(o.currency) <> co.base_currency;
+-- One statement, not a temporary table: the Supabase SQL editor does not keep
+-- a session from one statement to the next, so nothing may be left behind for
+-- a later one to read. It also means an order's lines and its own amounts are
+-- converted together or not at all — and never twice, because a converted
+-- order is in its base and no longer matches. The market rates are only read
+-- while their column still exists (section 6 drops it); by then every order
+-- this could convert already has been.
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'currencies' and column_name = 'usd_rate'
+  ) then
+    return;
+  end if;
 
-update public.order_items i
-set unit_price = round(i.unit_price * f.factor, 2),
-    unit_cost  = round(i.unit_cost * f.factor, 2)
-from order_fx f
-where i.order_id = f.order_id and f.factor is not null;
-
-update public.orders o
-set delivery_cost  = round(o.delivery_cost * f.factor, 2),
-    packaging_cost = round(o.packaging_cost * f.factor, 2),
-    currency       = co.base_currency
-from order_fx f, public.companies co
-where o.id = f.order_id and f.factor is not null and co.id = o.company_id;
+  execute $sql$
+    with rates as (
+      select co.id as company_id, x.code,
+        case
+          when x.code = 'USD' then 1::numeric
+          else coalesce(
+            (select nullif(cu.usd_rate, 0) from public.currencies cu
+              where cu.company_id = co.id and upper(cu.code) = x.code limit 1),
+            case x.code when 'UAH' then 41::numeric when 'EUR' then 0.92::numeric end
+          )
+        end as usd_rate
+      from public.companies co
+      cross join (
+        select distinct upper(currency) as code from public.orders
+        union select distinct base_currency from public.companies
+      ) x
+    ),
+    fx as (
+      select o.id as order_id, rb.usd_rate / nullif(ro.usd_rate, 0) as factor
+      from public.orders o
+      join public.companies co on co.id = o.company_id
+      join rates rb on rb.company_id = o.company_id and rb.code = co.base_currency
+      join rates ro on ro.company_id = o.company_id and ro.code = upper(o.currency)
+      where upper(o.currency) <> co.base_currency
+    ),
+    lines as (
+      update public.order_items i
+      set unit_price = round(i.unit_price * fx.factor, 2),
+          unit_cost  = round(i.unit_cost * fx.factor, 2)
+      from fx
+      where i.order_id = fx.order_id and fx.factor is not null
+      returning i.id
+    )
+    update public.orders o
+    set delivery_cost  = round(o.delivery_cost * fx.factor, 2),
+        packaging_cost = round(o.packaging_cost * fx.factor, 2),
+        currency       = co.base_currency
+    from fx, public.companies co
+    where o.id = fx.order_id and fx.factor is not null and co.id = o.company_id
+  $sql$;
+end;
+$$;
 
 -- An order in a currency nothing ever gave a rate for cannot be reckoned in
 -- the base either. No real account has one; if one did, it would go rather
@@ -145,8 +191,6 @@ where co.id = o.company_id and upper(o.currency) <> co.base_currency;
 update public.orders o set currency = co.base_currency
 from public.companies co
 where co.id = o.company_id and o.currency <> co.base_currency;
-
-drop table order_fx;
 
 
 -- ── 3. rate history names its currency ───────────────────────
@@ -211,13 +255,25 @@ drop policy if exists supplier_rates_remove on public.supplier_rates;
 create policy supplier_rates_remove on public.supplier_rates for delete
   using (public.has_min_role(company_id, 'admin'));
 
--- The one rate each brand had, for the one currency it priced in.
-insert into public.supplier_rates (company_id, brand_id, currency, rate, updated_at)
-select b.company_id, b.id, b.catalog_currency, b.supplier_rate, coalesce(b.rate_updated_at, now())
-from public.brands b
-join public.companies co on co.id = b.company_id
-where b.supplier_rate > 0 and b.catalog_currency <> co.base_currency
-on conflict (brand_id, currency) do nothing;
+-- The one rate each brand had, for the one currency it priced in — while
+-- that column still exists (section 7 drops it).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'brands' and column_name = 'supplier_rate'
+  ) then
+    execute $sql$
+      insert into public.supplier_rates (company_id, brand_id, currency, rate, updated_at)
+      select b.company_id, b.id, b.catalog_currency, b.supplier_rate, coalesce(b.rate_updated_at, now())
+      from public.brands b
+      join public.companies co on co.id = b.company_id
+      where b.supplier_rate > 0 and b.catalog_currency <> co.base_currency
+      on conflict (brand_id, currency) do nothing
+    $sql$;
+  end if;
+end;
+$$;
 
 
 -- ── 5. retail follows the supplier ───────────────────────────
