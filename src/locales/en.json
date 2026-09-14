@@ -632,5 +632,18 @@
         "body": "For questions about these terms, contact the owner of your organization or the service operator using the details published on the site."
       }
     }
+  },
+  "export": {
+    "button": "Export",
+    "heading": "Download as",
+    "csv": "CSV — for Excel",
+    "pdf": "PDF — with logo",
+    "generated": "Generated {date}",
+    "rows": "Rows: {count}",
+    "page": "Page {page} of {pages}",
+    "failed": "Couldn't build the file. Please try again.",
+    "orderNumber": "No.",
+    "date": "Date",
+    "empty": "Nothing to export — the list is empty."
   }
 }

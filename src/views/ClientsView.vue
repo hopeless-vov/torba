@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ClientCardModal from '@/components/ClientCardModal.vue'
 import ClientModal from '@/components/ClientModal.vue'
+import ExportMenu from '@/components/ExportMenu.vue'
 import ListFallback from '@/components/ListFallback.vue'
 import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -11,6 +12,7 @@ import Icon from '@/components/ui/Icon.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useClients } from '@/composables/use-clients'
 import { useCurrency } from '@/composables/use-currency'
+import { type ExportFormat, useExport } from '@/composables/use-export'
 import { useOrders } from '@/composables/use-orders'
 import { usePermissions } from '@/composables/use-permissions'
 import { useClientsStore } from '@/stores/clients'
@@ -92,6 +94,12 @@ function openCard(client: ClientView) {
   cardOpen.value = true
 }
 
+// Export exactly what the list shows, filters included.
+const { exporting, clientsTable, download } = useExport()
+function onExport(format: ExportFormat) {
+  void download(format, clientsTable(filtered.value))
+}
+
 function meta(client: ClientView) {
   return [client.city, client.delivery, client.note].filter(Boolean).join(' · ')
 }
@@ -119,16 +127,22 @@ async function onSubmit(payload: Omit<NewClient, 'company_id'>) {
           :placeholder="t('clients.searchPlaceholder')"
         />
       </div>
-      <Button
-        v-if="canTrade"
-        variant="primary"
-        icon="fa-solid fa-plus"
-        class="ml-auto"
-        :title="t('clients.newClient')"
-        @click="openNew"
-      >
-        <span class="hidden sm:inline">{{ t('clients.newClient') }}</span>
-      </Button>
+      <div class="ml-auto flex items-center gap-2">
+        <ExportMenu
+          :loading="exporting !== null"
+          :disabled="filtered.length === 0"
+          @select="onExport"
+        />
+        <Button
+          v-if="canTrade"
+          variant="primary"
+          icon="fa-solid fa-plus"
+          :title="t('clients.newClient')"
+          @click="openNew"
+        >
+          <span class="hidden sm:inline">{{ t('clients.newClient') }}</span>
+        </Button>
+      </div>
     </div>
 
     <div

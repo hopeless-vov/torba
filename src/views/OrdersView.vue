@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import ExportMenu from '@/components/ExportMenu.vue'
 import ListFallback from '@/components/ListFallback.vue'
 import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import OrderEditModal from '@/components/OrderEditModal.vue'
@@ -17,6 +18,7 @@ import StatCard from '@/components/ui/StatCard.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrency } from '@/composables/use-currency'
+import { type ExportFormat, useExport } from '@/composables/use-export'
 import { useOrders } from '@/composables/use-orders'
 import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
@@ -145,6 +147,12 @@ const clientOptions = computed(() => [
   { value: 'all', label: t('orders.allClients') },
   ...clients.clients.map((c) => ({ value: c.id, label: c.name })),
 ])
+
+// Export exactly what the list shows, filters included.
+const { exporting, ordersTable, download } = useExport()
+function onExport(format: ExportFormat) {
+  void download(format, ordersTable(filtered.value))
+}
 
 const columns = computed<Column[]>(() => [
   { key: 'number', label: t('orders.cols.number'), mono: true, card: 'title' },
@@ -290,7 +298,14 @@ function destination(order: OrderView) {
         </div>
       </FilterSheet>
 
-      <span class="ml-auto text-xs text-faint">{{ t('orders.count', { count: filtered.length }) }}</span>
+      <div class="ml-auto flex items-center gap-3">
+        <span class="text-xs text-faint">{{ t('orders.count', { count: filtered.length }) }}</span>
+        <ExportMenu
+          :loading="exporting !== null"
+          :disabled="filtered.length === 0"
+          @select="onExport"
+        />
+      </div>
     </div>
 
     <BulkActionBar

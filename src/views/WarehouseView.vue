@@ -2,6 +2,7 @@
 import BatchModal from '@/components/BatchModal.vue'
 import BatchStatusBadge from '@/components/BatchStatusBadge.vue'
 import BulkActionBar from '@/components/BulkActionBar.vue'
+import ExportMenu from '@/components/ExportMenu.vue'
 import ListFallback from '@/components/ListFallback.vue'
 import MissingRateLink from '@/components/MissingRateLink.vue'
 import Button from '@/components/ui/Button.vue'
@@ -17,6 +18,7 @@ import Tabs from '@/components/ui/Tabs.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
 import { useCurrency } from '@/composables/use-currency'
+import { type ExportFormat, useExport } from '@/composables/use-export'
 import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
 import { useWarehouse, type WarehouseGroup, type WarehouseRow } from '@/composables/use-warehouse'
@@ -93,6 +95,12 @@ const brandOptions = computed(() => [
   { value: 'all', label: t('catalog.allBrands') },
   ...reference.brands.map((b) => ({ value: b.id, label: b.name })),
 ])
+
+// Export exactly what the list shows, filters included.
+const { exporting, warehouseTable, download } = useExport()
+function onExport(format: ExportFormat) {
+  void download(format, warehouseTable(filtered.value))
+}
 
 const batchColumns = computed<Column[]>(() => [
   { key: 'name', label: t('warehouse.cols.product'), card: 'title' },
@@ -303,16 +311,22 @@ async function confirmDelete() {
         />
       </FilterSheet>
 
-      <Button
-        v-if="canTrade"
-        variant="primary"
-        icon="fa-solid fa-plus"
-        class="ml-auto"
-        :title="t('warehouse.newBatch')"
-        @click="openNew"
-      >
-        <span class="hidden sm:inline">{{ t('warehouse.newBatch') }}</span>
-      </Button>
+      <div class="ml-auto flex items-center gap-2">
+        <ExportMenu
+          :loading="exporting !== null"
+          :disabled="filtered.length === 0"
+          @select="onExport"
+        />
+        <Button
+          v-if="canTrade"
+          variant="primary"
+          icon="fa-solid fa-plus"
+          :title="t('warehouse.newBatch')"
+          @click="openNew"
+        >
+          <span class="hidden sm:inline">{{ t('warehouse.newBatch') }}</span>
+        </Button>
+      </div>
     </div>
 
     <BulkActionBar

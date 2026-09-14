@@ -156,6 +156,11 @@ function testRouter() {
   })
 }
 
+// A row's edit/delete menu — not the toolbar's export menu, which every role gets.
+function rowMenus(wrapper: ReturnType<typeof mount>) {
+  return wrapper.findAllComponents(DropdownMenu).filter((menu) => menu.props('heading') !== uk.export.heading)
+}
+
 function render(component: Parameters<typeof mount>[0], role: MembershipRole = 'owner') {
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -224,8 +229,21 @@ describe('CatalogView', () => {
   // to be checked as a component — a viewer must not even have it to open.
   it('hides the row edit/delete menu and add-to-cart button from a viewer', () => {
     const wrapper = render(CatalogView, 'viewer')
-    expect(wrapper.findComponent(DropdownMenu).exists()).toBe(false)
+    expect(rowMenus(wrapper)).toHaveLength(0)
     expect(wrapper.find(`[title="${uk.catalog.addToCart}"]`).exists()).toBe(false)
+  })
+})
+
+describe('exporting a list', () => {
+  // Reading is every role's right, so is taking the list away as a file.
+  it.each([
+    ['catalogue', CatalogView],
+    ['warehouse', WarehouseView],
+    ['orders', OrdersView],
+    ['clients', ClientsView],
+  ])('offers CSV and PDF on the %s, to a viewer too', (_name, view) => {
+    const wrapper = render(view, 'viewer')
+    expect(wrapper.find(`[title="${uk.export.button}"]`).exists()).toBe(true)
   })
 })
 
@@ -256,7 +274,7 @@ describe('WarehouseView', () => {
   // edit/delete menu and add-to-cart button on each row must not be offered.
   it('hides the row edit/delete menu and add-to-cart button from a viewer', () => {
     const wrapper = render(WarehouseView, 'viewer')
-    expect(wrapper.findComponent(DropdownMenu).exists()).toBe(false)
+    expect(rowMenus(wrapper)).toHaveLength(0)
     expect(wrapper.find(`[title="${uk.catalog.addToCart}"]`).exists()).toBe(false)
   })
 })
@@ -483,7 +501,7 @@ describe('DashboardView', () => {
 describe('deleting a single row', () => {
   it('asks before deleting a product', async () => {
     const wrapper = render(CatalogView)
-    await wrapper.findComponent(DropdownMenu).vm.$emit('select', 'delete')
+    await rowMenus(wrapper)[0]!.vm.$emit('select', 'delete')
     await flushPromises()
 
     expect(document.body.textContent).toContain(uk.catalog.deleteTitle)
@@ -494,7 +512,7 @@ describe('deleting a single row', () => {
   // shelf, so this is the one that must never happen on a stray click.
   it('asks before deleting a batch', async () => {
     const wrapper = render(WarehouseView)
-    await wrapper.findComponent(DropdownMenu).vm.$emit('select', 'delete')
+    await rowMenus(wrapper)[0]!.vm.$emit('select', 'delete')
     await flushPromises()
 
     expect(document.body.textContent).toContain(uk.warehouse.deleteTitle)
@@ -503,7 +521,7 @@ describe('deleting a single row', () => {
 
   it('counts what the dialog is actually about, not what is selected', async () => {
     const wrapper = render(CatalogView)
-    await wrapper.findComponent(DropdownMenu).vm.$emit('select', 'delete')
+    await rowMenus(wrapper)[0]!.vm.$emit('select', 'delete')
     await flushPromises()
 
     expect(document.body.textContent).toContain(uk.catalog.deleteMessage.replace('{count}', '1'))

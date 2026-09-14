@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import CsvImportModal from '@/components/CsvImportModal.vue'
+import ExportMenu from '@/components/ExportMenu.vue'
 import ListFallback from '@/components/ListFallback.vue'
 import MissingRateLink from '@/components/MissingRateLink.vue'
 import ProductFormModal from '@/components/ProductFormModal.vue'
@@ -20,6 +21,7 @@ import TextInput from '@/components/ui/TextInput.vue'
 import { useCart } from '@/composables/use-cart'
 import { useCatalog } from '@/composables/use-catalog'
 import { useCurrency } from '@/composables/use-currency'
+import { type ExportFormat, useExport } from '@/composables/use-export'
 import { usePermissions } from '@/composables/use-permissions'
 import { useSelection } from '@/composables/use-selection'
 import { useInventoryStore } from '@/stores/inventory'
@@ -108,6 +110,12 @@ watch(brandFilter, (brand) => {
   if (categoryFilter.value === 'all' || brand === 'all') return
   if (!reference.categoriesForBrand(brand).some((c) => c.id === categoryFilter.value)) categoryFilter.value = 'all'
 })
+
+// Export exactly what the list shows, filters included.
+const { exporting, catalogTable, download } = useExport()
+function onExport(format: ExportFormat) {
+  void download(format, catalogTable(filtered.value))
+}
 
 const columns = computed<Column[]>(() => [
   { key: 'sku', label: t('catalog.cols.article'), width: '9rem', mono: true },
@@ -205,11 +213,14 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
         />
       </FilterSheet>
 
-      <div
-        v-if="canTrade"
-        class="ml-auto flex items-center gap-2"
-      >
+      <div class="ml-auto flex items-center gap-2">
+        <ExportMenu
+          :loading="exporting !== null"
+          :disabled="filtered.length === 0"
+          @select="onExport"
+        />
         <Button
+          v-if="canTrade"
           icon="fa-solid fa-file-arrow-up"
           :title="t('catalog.importCsv')"
           @click="importOpen = true"
@@ -217,6 +228,7 @@ async function onSubmit(payload: Omit<NewProduct, 'company_id'>) {
           <span class="hidden sm:inline">{{ t('catalog.importCsv') }}</span>
         </Button>
         <Button
+          v-if="canTrade"
           variant="primary"
           icon="fa-solid fa-plus"
           :title="t('catalog.newProduct')"

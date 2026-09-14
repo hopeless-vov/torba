@@ -269,6 +269,7 @@ origin served the app.
 | Backend       | [Supabase](https://supabase.com/) (Postgres + Auth + RLS)           |
 | Animation     | [motion-v](https://motion.dev/) — subtle transitions                |
 | CSV parsing   | [PapaParse](https://www.papaparse.com/)                             |
+| PDF export    | [pdfmake](https://pdfmake.github.io/) — loaded only when a PDF is made |
 | i18n          | [vue-i18n v11](https://vue-i18n.intlify.dev/) — `uk` (default) + `en`|
 | Icons         | [Font Awesome 6 Free](https://fontawesome.com/)                     |
 | Variants      | [tailwind-variants](https://www.tailwind-variants.org/)             |
@@ -417,6 +418,28 @@ recomputed from the brand rate.
 
 ---
 
+## Export (CSV & PDF)
+
+The **catalogue, warehouse, orders and clients** each have an **Експорт** button —
+for every role, since exporting is only reading. It exports exactly what the list shows,
+search and filters included, in two forms:
+
+- **CSV — for Excel.** `;`-separated with a UTF-8 BOM and comma decimals, so Excel set
+  to Ukrainian opens it as-is. Plain data: money rounded to 2 decimals, dates as
+  `dd.MM.yyyy`. A CSV is text, so it carries no logo.
+- **PDF — with our logo.** The torba logo and name, the list's title, the company and
+  when it was made on top; the table (landscape, repeating header, zebra rows); page
+  numbers below. [pdfmake](https://pdfmake.github.io/) builds it in the browser and is
+  **loaded only when a PDF is asked for**. Its Roboto font has Cyrillic but no hryvnia
+  sign, so `₴` prints as *грн* ([`pdfText`](src/utils/pdf-export.ts)).
+
+[`use-export`](src/composables/use-export.ts) turns each screen's rows into one
+[`ExportTable`](src/utils/table-export.ts) (title, columns, plain values), which becomes
+either file. The logo is [`src/assets/logo.svg`](src/assets/logo.svg) — the favicon's
+mark. The same table is what a scheduled email would attach.
+
+---
+
 ## Warehouse
 
 A **batch** is one delivery of one product, with its own expiry date **and its own
@@ -521,7 +544,7 @@ src/
     auth.ts, profile.ts, memberships.ts, invitations.ts, brands.ts,
     categories.ts, payment-methods.ts, currencies.ts, products.ts,
     batches.ts, clients.ts, orders.ts
-  assets/                → static assets
+  assets/                → static assets (logo.svg — the mark printed on PDFs)
   components/
     ui/                  → presentational kit (props in, events out — no store/api/composable access)
     (root)               → smart components that wire ui/ to stores/composables
@@ -530,7 +553,7 @@ src/
                            use-warehouse, use-clients, use-rates, use-selection,
                            use-personalization, use-dashboard, use-theme,
                            use-locale, use-toast, use-popover-position,
-                           use-permissions, use-members, use-invite)
+                           use-permissions, use-members, use-invite, use-export)
   locales/               → uk.json (default) + en.json
   router/                → routes + auth guard (meta.public, meta.minRole)
   stores/                → Pinia state (auth, reference, inventory, clients,
@@ -538,7 +561,7 @@ src/
   styles/main.css        → Tailwind + theme tokens
   types/                 → database (row shapes) + models (derived views)
   utils/                 → pure helpers (pricing, batch-status, batch-number, orders,
-                           format, csv, storage, world-currencies)
+                           format, csv, storage, world-currencies, table-export, pdf-export)
   views/                 → one component per route
 supabase/migrations/     → SQL schema + RLS
 tests/
