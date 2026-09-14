@@ -6,7 +6,7 @@ import { useReferenceStore } from '@/stores/reference'
 import type { Company } from '@/types/database'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { defineComponent } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -205,6 +205,8 @@ describe('useCsvImport import', () => {
   it('keeps both prices in the supplier’s currency', async () => {
     const { csv } = importHarness()
     csv.brandId.value = 'b1'
+    await nextTick()
+    csv.currency.value = 'USD'
     await csv.parseFile(csvFile('Артикул,Назва,Ціна,Рек. ціна\nA-1,Крем,55,80\n'))
     await csv.runImport()
 
@@ -213,9 +215,20 @@ describe('useCsvImport import', () => {
     ])
   })
 
+  it('starts in the currency the supplier’s products are already in', async () => {
+    const { csv } = importHarness()
+    useInventoryStore().products = [{ id: 'p0', brand_id: 'b1', cost_currency: 'EUR' }] as never
+    csv.brandId.value = 'b1'
+    await nextTick()
+
+    expect(csv.currency.value).toBe('EUR')
+  })
+
   it('reads the rate on the list into the supplier’s cell of the matrix', async () => {
     const { csv } = importHarness()
     csv.brandId.value = 'b1'
+    await nextTick()
+    csv.currency.value = 'USD'
     await csv.parseFile(csvFile('"Курс: 41,50",,,\nАртикул,Назва,Ціна,Рек. ціна\nA-1,Крем,55,80\n'))
     await csv.runImport()
 

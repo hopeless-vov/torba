@@ -80,6 +80,30 @@ describe('platformCurrenciesApi', () => {
   })
 })
 
+describe('currency rpcs', () => {
+  it('puts a currency on the platform list', async () => {
+    mocked.rpc.mockResolvedValue({ data: { code: 'PLN', symbol: 'zł' }, error: null } as never)
+    const { platformCurrenciesApi } = await import('@/api/platform-currencies')
+    expect(await platformCurrenciesApi.ensure('PLN', 'zł')).toEqual({ code: 'PLN', symbol: 'zł' })
+    expect(mocked.rpc).toHaveBeenCalledWith('ensure_platform_currency', { p_code: 'PLN', p_symbol: 'zł' })
+  })
+
+  it('moves the base with the rate its orders convert at', async () => {
+    mocked.rpc.mockResolvedValue({ data: { id: 'c1', base_currency: 'USD' }, error: null } as never)
+    const { profileApi } = await import('@/api/profile')
+    expect(await profileApi.changeBaseCurrency('c1', 'USD', 0.024)).toEqual({ id: 'c1', base_currency: 'USD' })
+    expect(mocked.rpc).toHaveBeenCalledWith('change_base_currency', { p_company_id: 'c1', p_code: 'USD', p_rate: 0.024 })
+  })
+
+  it('throws what the database refuses with', async () => {
+    mocked.rpc.mockResolvedValue({ data: null, error: { message: 'base_currency_rate_required' } } as never)
+    const { profileApi } = await import('@/api/profile')
+    await expect(profileApi.changeBaseCurrency('c1', 'USD', null)).rejects.toMatchObject({
+      message: 'base_currency_rate_required',
+    })
+  })
+})
+
 describe('ordersApi.count', () => {
   it('asks for a count only, not the rows', async () => {
     const chain = builder({ data: null, error: null, count: 3 } as never)

@@ -45,7 +45,7 @@ The schema (tables, relationships, Row Level Security, the new-user bootstrap
 trigger, the profile-identity lockdown, a self-heal bootstrap RPC, the atomic
 `create_order` / `delete_orders`
 functions, per-client discounts, per-order delivery addresses, order-level and
-per-line discounts, the platform currency list and the supplier × currency rate
+per-line discounts, the shared currency list and the supplier × currency rate
 matrix, per-product price currencies, per-batch purchase and selling prices, and
 the brand↔category links) lives in
 [`supabase/migrations/`](supabase/migrations).
@@ -60,7 +60,8 @@ Apply **all files, in order**:
   `0010_lock_profile_identity.sql`, `0011_memberships.sql`,
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
   `0014_invitation_preview.sql`, `0015_order_item_discount.sql`,
-  `0017_batch_cost.sql`, `0018_batch_retail.sql`, `0019_supplier_rates.sql`.
+  `0017_batch_cost.sql`, `0018_batch_retail.sql`, `0019_supplier_rates.sql`,
+  `0020_open_currencies.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -150,6 +151,15 @@ that an import had frozen into the base goes back into the supplier's currency �
 the same number at today's rate, moving with the rate from now on. The base only
 changes while a company has no orders, and changing it resets the supplier rates,
 which are all "per old base". Every currency column points at the platform list.
+
+**`0020` opens both up.** `ensure_platform_currency` lets any signed-in user put a
+real ISO code on the platform list — append-only: a code already there is left as it
+is, and nothing is renamed or removed from the app. `change_base_currency` lets the
+owner move the base **with orders on the books**: it takes a rate (new base per 1 unit
+of the old), multiplies every stored order amount by it, and still resets the supplier
+rates. A plain update of `companies.base_currency` with orders is still refused — only
+the function, which converts them, gets through. `brands.catalog_currency` stays in the
+schema but is no longer asked for.
 
 **`0018` does the same for the selling price.** A delivery bought on promotion is
 usually passed on cheaper, and an older delivery keeps the price it went on the
@@ -315,18 +325,24 @@ would go on record at a cost of 0.
 
 **/rates** has three parts:
 
-- **Base currency** — changed by the owner, and only while the company has **no
-  orders**: orders are kept in the base, and once the supplier rates are reset nothing
-  could convert them into a new one. Changing it **resets every supplier rate** (they
-  are all "per old base"). Both rules are the database's, and the page asks first. The
-  old base stays in use as an ordinary currency.
-- **Company currencies** — picked from the **platform list**, never typed in. Adding one
-  opens a column in the matrix; a currency still used by a price, or by a supplier as
-  its default, cannot be removed, since that price would be left with nothing to be
-  converted by.
-- **Supplier rates** — the matrix, with each supplier's default quoting currency
-  (*"Ціни у"* — used for its new products and its price lists) alongside. An empty
-  cell reads *"rate needed"* and opens straight into editing.
+- **Base currency** — changed by the owner, to any currency. Changing it **resets every
+  supplier rate** (they are all "per old base"). If the company already has orders, the
+  page asks for one more number — how much of the new base one unit of the old is worth
+  — and every stored order amount is converted with it (`0020`). The old base stays in
+  use as an ordinary currency.
+- **Company currencies** — any real currency: the picker offers the runtime's ISO list
+  ([`utils/world-currencies`](src/utils/world-currencies.ts), with symbols and names),
+  and a code no company used before joins the platform list on the way. Adding one opens
+  a column in the matrix; a currency still used by a price cannot be removed, since that
+  price would be left with nothing to be converted by.
+- **Supplier rates** — the matrix. A cell asks for a rate (*"rate needed"*) only where
+  that supplier actually has a price in the currency; elsewhere it is a quiet *"—"* that
+  can still be filled in ahead of time.
+
+**The product form sets a missing rate in place.** Pick a supplier and a currency it has
+no rate for, and the form shows a field for that rate right under the prices; saving
+the product saves the rate into the matrix first. Left empty, the product saves anyway
+and every table shows the price as a link to /rates.
 
 **What is stored where.** Every product price carries **its own currency**:
 `cost_amount` + `cost_currency` and `retail_amount` + `retail_currency`. Both go
@@ -335,8 +351,9 @@ buy at 55, you sell at 80"* is what the catalogue stores, and a new rate reprice
 A price in the base needs no rate at all. The catalog shows both prices twice: the
 supplier's own pair in the currency it quotes the cost in (**Ціна постачальника**,
 **Роздріб постачальника** — a price list reads back exactly as it was written), then
-the same two in the base. New products start with both prices in the currency their
-brand quotes in.
+the same two in the base. New products — and CSV imports, where the currency can be
+changed — start in the currency most of that supplier's products are already in
+(`supplierCurrency`), or the base.
 
 **A batch may override both prices.** The product's pair is the *catalogue* price —
 what a delivery normally costs and normally sells for — and a batch that came in
@@ -516,7 +533,7 @@ src/
   styles/main.css        → Tailwind + theme tokens
   types/                 → database (row shapes) + models (derived views)
   utils/                 → pure helpers (pricing, batch-status, batch-number, orders,
-                           format, csv, storage)
+                           format, csv, storage, world-currencies)
   views/                 → one component per route
 supabase/migrations/     → SQL schema + RLS
 tests/

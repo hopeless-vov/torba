@@ -183,3 +183,25 @@ describe('useCurrency — retail in the supplier’s currency', () => {
     expect(c.retailInCostCurrency(noRate)).toBeNull()
   })
 })
+
+describe('useCurrency — a supplier’s usual currency', () => {
+  it('is the one most of its products are costed in', async () => {
+    companyUsing('UAH', ['USD', 'EUR'])
+    const { useInventoryStore } = await import('@/stores/inventory')
+    useInventoryStore().products = [
+      { id: 'p1', brand_id: 'b1', cost_currency: 'USD' },
+      { id: 'p2', brand_id: 'b1', cost_currency: 'USD' },
+      { id: 'p3', brand_id: 'b1', cost_currency: 'EUR' },
+      { id: 'p4', brand_id: 'b2', cost_currency: 'EUR' },
+    ] as never
+
+    expect(useCurrency().supplierCurrency('b1')).toBe('USD')
+    expect(useCurrency().supplierCurrency('b2')).toBe('EUR')
+  })
+
+  it('is the base for a supplier with no products, or no supplier', () => {
+    companyUsing('UAH', ['USD'])
+    expect(useCurrency().supplierCurrency('b9')).toBe('UAH')
+    expect(useCurrency().supplierCurrency(null)).toBe('UAH')
+  })
+})

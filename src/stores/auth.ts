@@ -138,11 +138,12 @@ export const useAuthStore = defineStore('auth', () => {
     if (entry) entry.company = updated
   }
 
-  // The functional (base) currency the company keeps its books in.
-  async function setBaseCurrency(code: string) {
+  // The functional (base) currency the company keeps its books in. `rate`
+  // (new base per 1 old) converts the orders already on the books.
+  async function setBaseCurrency(code: string, rate: number | null = null) {
     const current = company.value
     if (!current || current.base_currency === code) return
-    patchActiveCompany(await profileApi.updateCompany(current.id, { base_currency: code }))
+    patchActiveCompany(await profileApi.changeBaseCurrency(current.id, code, rate))
   }
 
   return {

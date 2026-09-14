@@ -6,6 +6,7 @@ import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
 import Select from '@/components/ui/Select.vue'
 import { useCsvImport } from '@/composables/use-csv-import'
+import { useCurrency } from '@/composables/use-currency'
 import { useReferenceStore } from '@/stores/reference'
 import type { CsvField } from '@/utils/csv'
 import { CSV_FIELDS } from '@/utils/csv'
@@ -15,11 +16,14 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const reference = useReferenceStore()
+const { options: currencies } = useCurrency()
+const currencyOptions = computed(() => currencies.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })))
 const open = defineModel<boolean>('open', { default: false })
 
 const {
   step,
   brandId,
+  currency,
   fileName,
   mapping,
   columnOptions,
@@ -112,14 +116,26 @@ function onDrop(event: DragEvent) {
       v-else-if="step === 1"
       class="flex flex-col gap-4"
     >
-      <Combobox
-        v-model="brandId"
-        :label="t('csv.brandForImport')"
-        :placeholder="t('csv.chooseBrand')"
-        :search-placeholder="t('common.search')"
-        :empty-text="t('common.noMatches')"
-        :options="brandOptions"
-      />
+      <div class="flex items-end gap-2">
+        <Combobox
+          v-model="brandId"
+          class="flex-1"
+          :label="t('csv.brandForImport')"
+          :placeholder="t('csv.chooseBrand')"
+          :search-placeholder="t('common.search')"
+          :empty-text="t('common.noMatches')"
+          :options="brandOptions"
+        />
+        <div class="w-32">
+          <Combobox
+            v-model="currency"
+            :label="t('csv.currency')"
+            :search-placeholder="t('common.search')"
+            :empty-text="t('common.noMatches')"
+            :options="currencyOptions"
+          />
+        </div>
+      </div>
 
       <label
         class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors"

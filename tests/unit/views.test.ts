@@ -571,17 +571,28 @@ describe('RatesView', () => {
     expect(wrapper.text()).toContain('41,50')
   })
 
-  // A currency the company uses that a supplier has no rate for: any price of
-  // theirs in it has nothing to be converted by, and the cell says so.
-  it('flags a supplier with no rate for a currency in use', async () => {
+  // A supplier with a price in a currency it has no rate for: that price has
+  // nothing to be converted by, and the cell says so.
+  it('flags a supplier with no rate for a currency its prices are in', async () => {
     const wrapper = render(RatesView)
     useReferenceStore().currencies.push({ id: 'cur-eur', company_id: 'c', code: 'EUR', created_at: '' })
+    useInventoryStore().products = [{ ...product, retail_amount: 80, retail_currency: 'EUR' }]
     await flushPromises()
 
     expect(wrapper.text()).toContain(uk.rates.missing)
   })
 
-  it('offers to change the base while nothing has been sold', async () => {
+  // No price of theirs in the currency: nothing is asked for.
+  it('leaves the cell empty when the supplier has no price in that currency', async () => {
+    const wrapper = render(RatesView)
+    useReferenceStore().currencies.push({ id: 'cur-eur', company_id: 'c', code: 'EUR', created_at: '' })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain(uk.rates.missing)
+    expect(wrapper.text()).toContain(uk.common.emptyValue)
+  })
+
+  it('offers to change the base, orders or not', async () => {
     const wrapper = render(RatesView)
     await flushPromises()
 

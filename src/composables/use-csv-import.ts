@@ -2,6 +2,7 @@ import { categoriesApi } from '@/api/categories'
 import { currenciesApi } from '@/api/currencies'
 import { productsApi } from '@/api/products'
 import { supplierRatesApi } from '@/api/supplier-rates'
+import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
@@ -10,7 +11,7 @@ import type { NewProduct } from '@/types/database'
 import type { CsvField, CsvMapping, CsvTable } from '@/utils/csv'
 import { CSV_FIELDS, decodeCsv, extractProducts, guessMapping, readCsvTable } from '@/utils/csv'
 import { safeStorage } from '@/utils/storage'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 // The mapping a user confirmed for a supplier, kept per brand: the next price
@@ -48,6 +49,7 @@ export function useCsvImport() {
   const inventory = useInventoryStore()
   const toast = useToast()
   const { t } = useI18n()
+  const { supplierCurrency } = useCurrency()
 
   const step = ref<1 | 2>(1)
   const brandId = ref('')
@@ -56,6 +58,12 @@ export function useCsvImport() {
   // wholesale, and making every one of them reactive would cost for nothing.
   const table = shallowRef<CsvTable | null>(null)
   const mapping = ref<CsvMapping>(blankMapping())
+  // The currency the list is priced in. Starts at the one the supplier's
+  // products already use, and can be changed before importing.
+  const currency = ref(supplierCurrency(null))
+  watch(brandId, (id) => {
+    currency.value = supplierCurrency(id)
+  })
   const applyRate = ref(true)
   const importing = ref(false)
   const error = ref<string | null>(null)
@@ -160,7 +168,7 @@ export function useCsvImport() {
       // the whole list without rewriting it.
       const brand = reference.brandsById.get(brandId.value)
       const baseCurrency = auth.company?.base_currency ?? 'UAH'
-      const costCurrency = brand?.catalog_currency ?? baseCurrency
+      const costCurrency = currency.value || baseCurrency
       const willApplyRate = applyRate.value && !!parsed.value.rate && costCurrency !== baseCurrency
 
       const rows: NewProduct[] = parsed.value.products.map((p) => ({
@@ -190,10 +198,10 @@ export function useCsvImport() {
       // The rate printed on the list ("Курс: 44,50") is this supplier's rate
       // for its currency: one cell of the matrix. The currency has to be in
       // use for that cell to exist on the rates page.
+      if (costCurrency !== baseCurrency && !reference.currencies.some((c) => c.code === costCurrency)) {
+        await currenciesApi.create({ company_id: companyId, code: costCurrency })
+      }
       if (willApplyRate && brand) {
-        if (!reference.currencies.some((c) => c.code === costCurrency)) {
-          await currenciesApi.create({ company_id: companyId, code: costCurrency })
-        }
         await supplierRatesApi.set({
           company_id: companyId,
           brand_id: brand.id,
@@ -219,6 +227,7 @@ export function useCsvImport() {
   function reset() {
     step.value = 1
     brandId.value = ''
+    currency.value = supplierCurrency(null)
     fileName.value = ''
     table.value = null
     mapping.value = blankMapping()
@@ -231,6 +240,7 @@ export function useCsvImport() {
   return {
     step,
     brandId,
+    currency,
     fileName,
     table,
     mapping,

@@ -25,7 +25,7 @@ export const profileApi = {
 
   updateCompany: async (
     companyId: string,
-    patch: Partial<Pick<Company, 'name' | 'display_currency' | 'base_currency'>>,
+    patch: Partial<Pick<Company, 'name' | 'display_currency'>>,
   ): Promise<Company> => {
     const { data, error } = await supabase
       .from('companies')
@@ -33,6 +33,18 @@ export const profileApi = {
       .eq('id', companyId)
       .select('*')
       .single()
+    if (error) throw error
+    return data as Company
+  },
+
+  // Move the base (see 0020). With orders on the books, `rate` — new base per
+  // 1 unit of the old — converts them; the supplier rates are reset either way.
+  changeBaseCurrency: async (companyId: string, code: string, rate: number | null): Promise<Company> => {
+    const { data, error } = await supabase.rpc('change_base_currency', {
+      p_company_id: companyId,
+      p_code: code,
+      p_rate: rate,
+    })
     if (error) throw error
     return data as Company
   },

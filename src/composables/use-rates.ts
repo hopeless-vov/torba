@@ -1,11 +1,12 @@
-import { brandsApi } from '@/api/brands'
 import { ordersApi } from '@/api/orders'
+import { platformCurrenciesApi } from '@/api/platform-currencies'
 import { supplierRatesApi } from '@/api/supplier-rates'
 import { useCurrency } from '@/composables/use-currency'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useReferenceStore } from '@/stores/reference'
 import type { RateHistoryEntry } from '@/types/database'
+import { currencySymbol } from '@/utils/world-currencies'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -25,40 +26,29 @@ export function useRates() {
   const saving = ref(false)
   const history = ref<RateHistoryEntry[]>([])
   const loadingHistory = ref(false)
-  // Whether the company has sold anything, which is what pins the base.
-  // Null until known, so the page does not offer a change it might then
-  // have to take back.
-  const baseLocked = ref<boolean | null>(null)
+  // Whether the company has orders, which a base change then has to convert
+  // — and for that it needs a rate from the old base to the new one. Null
+  // until known.
+  const hasOrders = ref<boolean | null>(null)
 
   async function reload() {
     if (auth.companyId) await reference.load(auth.companyId)
   }
 
   /** Base units per 1 `currency`, for this supplier. */
-  async function setRate(brandId: string, currency: string, rate: number): Promise<boolean> {
+  async function setRate(brandId: string, currency: string, rate: number, quiet = false): Promise<boolean> {
     if (!auth.companyId || !(rate > 0)) return false
     saving.value = true
     try {
       await supplierRatesApi.set({ company_id: auth.companyId, brand_id: brandId, currency, rate })
       await reload()
-      toast.success(t('toasts.rateUpdated'))
+      if (!quiet) toast.success(t('toasts.rateUpdated'))
       return true
     } catch {
       toast.error(t('errors.save'))
       return false
     } finally {
       saving.value = false
-    }
-  }
-
-  /** The currency a supplier quotes in by default — for new products and price lists. */
-  async function setCatalogCurrency(brandId: string, code: string) {
-    try {
-      await brandsApi.setCatalogCurrency(brandId, code)
-      await reload()
-      toast.success(t('toasts.saved'))
-    } catch {
-      toast.error(t('errors.save'))
     }
   }
 
@@ -73,30 +63,33 @@ export function useRates() {
     }
   }
 
-  async function checkBaseLock() {
+  async function checkOrders() {
     if (!auth.companyId) return
     try {
-      baseLocked.value = (await ordersApi.count(auth.companyId)) > 0
+      hasOrders.value = (await ordersApi.count(auth.companyId)) > 0
     } catch {
-      baseLocked.value = null
+      hasOrders.value = null
     }
   }
 
   /**
-   * Move the base. The database refuses once an order exists, and resets the
-   * supplier rates when it agrees; a refusal that arrives here anyway (an
-   * order placed a moment ago) is said as such, not as a generic failure.
+   * Move the base. Every supplier rate is reset; orders on the books are
+   * converted with `rate` (new base per 1 unit of the old). If an order
+   * appeared since the page looked, the database asks for that rate, and the
+   * page is told so rather than shown a generic failure.
    */
-  async function changeBase(code: string): Promise<boolean> {
+  async function changeBase(code: string, rate: number | null = null): Promise<boolean> {
     try {
-      await setBase(code)
+      // A currency no company has used yet joins the platform list first.
+      if (!reference.platformByCode.has(code)) await platformCurrenciesApi.ensure(code, currencySymbol(code))
+      await setBase(code, rate)
       toast.success(t('toasts.saved'))
       return true
     } catch (e) {
       const message = typeof e === 'object' && e && 'message' in e ? String(e.message) : ''
-      const locked = message.includes('base_currency_locked')
-      if (locked) baseLocked.value = true
-      toast.error(locked ? t('rates.baseLocked') : t('errors.save'))
+      const needsRate = message.includes('base_currency_rate_required') || message.includes('base_currency_locked')
+      if (needsRate) hasOrders.value = true
+      toast.error(needsRate ? t('rates.baseRateRequired') : t('errors.save'))
       return false
     }
   }
@@ -105,11 +98,10 @@ export function useRates() {
     saving,
     history,
     loadingHistory,
-    baseLocked,
+    hasOrders,
     setRate,
-    setCatalogCurrency,
     loadHistory,
-    checkBaseLock,
+    checkOrders,
     changeBase,
   }
 }

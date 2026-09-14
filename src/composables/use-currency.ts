@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/stores/auth'
+import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
 import { CURRENCY_SYMBOLS, formatAmount } from '@/utils/format'
 import { costOf, retailOf } from '@/utils/pricing'
@@ -31,6 +32,7 @@ const DEFAULT_BASE = 'UAH'
 export function useCurrency() {
   const reference = useReferenceStore()
   const auth = useAuthStore()
+  const inventory = useInventoryStore()
 
   const functionalCode = computed(() => auth.company?.base_currency || DEFAULT_BASE)
 
@@ -129,13 +131,36 @@ export function useCurrency() {
   }
 
   /**
-   * Make another currency the base. Allowed only while the company has no
-   * orders, and it resets every supplier rate — both enforced by the
-   * database (0019), so this persists the change and reloads what it moved.
+   * The currency a supplier usually prices in: the one most of its products
+   * are costed in, else the base. What a new product or price list of theirs
+   * starts in.
    */
-  async function setBase(code: string): Promise<void> {
+  function supplierCurrency(brandId: string | null | undefined): string {
+    if (!brandId) return functionalCode.value
+    const counts = new Map<string, number>()
+    for (const p of inventory.products) {
+      if (p.brand_id === brandId) counts.set(p.cost_currency, (counts.get(p.cost_currency) ?? 0) + 1)
+    }
+    let best = functionalCode.value
+    let most = 0
+    for (const [code, count] of counts) {
+      if (count > most) {
+        best = code
+        most = count
+      }
+    }
+    return best
+  }
+
+  /**
+   * Make another currency the base. Every supplier rate is reset, and orders
+   * already on the books are converted with `rate` (new base per 1 unit of
+   * the old) — the database requires it when there are any (0020). This
+   * persists the change and reloads what it moved.
+   */
+  async function setBase(code: string, rate: number | null = null): Promise<void> {
     if (code === functionalCode.value) return
-    await auth.setBaseCurrency(code)
+    await auth.setBaseCurrency(code, rate)
     if (auth.companyId) await reference.load(auth.companyId)
   }
 
@@ -154,6 +179,7 @@ export function useCurrency() {
     missingRate,
     format,
     formatIn,
+    supplierCurrency,
     setBase,
   }
 }

@@ -3,20 +3,22 @@ import uk from '@/locales/uk.json'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
-import type { Brand, Company, PlatformCurrency, Product } from '@/types/database'
+import type { Company, PlatformCurrency, Product } from '@/types/database'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent } from 'vue'
 import { createI18n } from 'vue-i18n'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Which platform currencies a company uses. The list comes from the platform;
-// the company only picks from it, and cannot drop one a price still needs.
+// Which currencies a company uses. Any real currency can be picked — a new
+// one joins the platform list — and one a price still needs cannot be dropped.
 const api = vi.hoisted(() => ({
   create: vi.fn(async () => ({})),
   remove: vi.fn(async () => undefined),
 }))
+const platformApi = vi.hoisted(() => ({ ensure: vi.fn(async () => ({})) }))
 vi.mock('@/api/currencies', () => ({ currenciesApi: api }))
+vi.mock('@/api/platform-currencies', () => ({ platformCurrenciesApi: platformApi }))
 
 const platform: PlatformCurrency[] = [
   { code: 'UAH', symbol: '₴', sort: 10, created_at: '' },
@@ -64,12 +66,25 @@ function harness() {
 beforeEach(() => {
   api.create.mockClear()
   api.remove.mockClear()
+  platformApi.ensure.mockClear()
 })
 
 describe('useCurrencies', () => {
-  it('offers the platform currencies not in use yet — never the base', () => {
+  it('offers every real currency not in use yet — never the base', () => {
     const { currencies } = harness()
-    expect(currencies.available.value.map((c) => c.code)).toEqual(['EUR'])
+    const codes = currencies.available.value.map((c) => c.code)
+    expect(codes).toContain('EUR')
+    expect(codes).toContain('PLN')
+    expect(codes).not.toContain('USD')
+    expect(codes).not.toContain('UAH')
+  })
+
+  it('puts a currency the platform does not list yet on it, then adds it', async () => {
+    const { currencies } = harness()
+    expect(await currencies.addCurrency('PLN')).toBe(true)
+
+    expect(platformApi.ensure).toHaveBeenCalledWith('PLN', expect.any(String))
+    expect(api.create).toHaveBeenCalledWith({ company_id: 'c', code: 'PLN' })
   })
 
   it('adds a currency from the platform list', async () => {
@@ -80,9 +95,9 @@ describe('useCurrencies', () => {
     expect(reference.load).toHaveBeenCalled()
   })
 
-  it('refuses a code the platform does not offer, or one already in use', async () => {
+  it('refuses a code that is not a currency, or one already in use', async () => {
     const { currencies } = harness()
-    await currencies.addCurrency('GBP')
+    await currencies.addCurrency('XYZ1')
     await currencies.addCurrency('USD')
     await currencies.addCurrency('UAH')
 
@@ -98,11 +113,16 @@ describe('useCurrencies', () => {
     expect(api.remove).not.toHaveBeenCalled()
   })
 
-  it('nor one a supplier quotes in by default', async () => {
-    const { currencies, reference } = harness()
-    reference.brands = [{ id: 'b1', company_id: 'c', name: 'X', catalog_currency: 'USD', created_at: '' } as Brand]
+  it('knows which currencies each supplier’s prices are in', () => {
+    const { currencies, inventory } = harness()
+    inventory.products = [
+      { id: 'p1', brand_id: 'b1', cost_currency: 'USD', retail_amount: null, retail_currency: 'EUR' } as Product,
+    ]
 
-    expect(await currencies.removeCurrency('cur-usd')).toBe(false)
+    expect(currencies.supplierUses('b1', 'USD')).toBe(true)
+    // A retail currency with no retail price asks for nothing.
+    expect(currencies.supplierUses('b1', 'EUR')).toBe(false)
+    expect(currencies.supplierUses('b2', 'USD')).toBe(false)
   })
 
   it('removes a currency nothing depends on', async () => {

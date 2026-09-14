@@ -10,18 +10,19 @@ import { createI18n } from 'vue-i18n'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // The rates page's logic: one cell of the supplier matrix at a time, and a
-// base currency that is pinned once anything has been sold.
+// base currency that converts the orders when it moves.
 const rates = vi.hoisted(() => ({
   set: vi.fn(async () => ({})),
   history: vi.fn(async () => []),
   list: vi.fn(async () => []),
 }))
 const orders = vi.hoisted(() => ({ count: vi.fn(async () => 0) }))
-const profile = vi.hoisted(() => ({ updateCompany: vi.fn() }))
+const profile = vi.hoisted(() => ({ changeBaseCurrency: vi.fn() }))
+const platform = vi.hoisted(() => ({ ensure: vi.fn(async () => ({})), list: vi.fn(async () => []) }))
 vi.mock('@/api/supplier-rates', () => ({ supplierRatesApi: rates }))
 vi.mock('@/api/orders', () => ({ ordersApi: orders }))
 vi.mock('@/api/profile', () => ({ profileApi: profile }))
-vi.mock('@/api/brands', () => ({ brandsApi: { setCatalogCurrency: vi.fn(async () => ({})) } }))
+vi.mock('@/api/platform-currencies', () => ({ platformCurrenciesApi: platform }))
 
 const company = {
   id: 'c',
@@ -45,6 +46,10 @@ function harness() {
         auth.activeCompanyId = 'c'
         const reference = useReferenceStore()
         reference.load = vi.fn()
+        reference.platformCurrencies = [
+          { code: 'UAH', symbol: '₴', sort: 10, created_at: '' },
+          { code: 'USD', symbol: '$', sort: 20, created_at: '' },
+        ]
         ctx = { reference, use: useRates() }
         return () => null
       },
@@ -82,37 +87,42 @@ describe('useRates — the matrix', () => {
 })
 
 describe('useRates — the base', () => {
-  it('knows the base is pinned once the company has sold anything', async () => {
+  it('knows whether there are orders a base change would convert', async () => {
     const { use } = harness()
     orders.count.mockResolvedValueOnce(3)
+    await use.checkOrders()
+    expect(use.hasOrders.value).toBe(true)
 
-    await use.checkBaseLock()
-    expect(use.baseLocked.value).toBe(true)
-  })
-
-  it('leaves it free while nothing has been sold', async () => {
-    const { use } = harness()
     orders.count.mockResolvedValueOnce(0)
-
-    await use.checkBaseLock()
-    expect(use.baseLocked.value).toBe(false)
+    await use.checkOrders()
+    expect(use.hasOrders.value).toBe(false)
   })
 
-  // An order placed a moment ago: the database refuses, and the page says why
-  // instead of reporting a generic failure.
-  it('reports a refusal from the database as the lock it is', async () => {
+  // An order placed a moment ago: the database asks for a rate, and the page
+  // is told so instead of a generic failure.
+  it('reports a missing conversion rate as such', async () => {
     const { use } = harness()
-    profile.updateCompany.mockRejectedValueOnce({ message: 'base_currency_locked' })
+    profile.changeBaseCurrency.mockRejectedValueOnce({ message: 'base_currency_rate_required' })
 
     expect(await use.changeBase('USD')).toBe(false)
-    expect(use.baseLocked.value).toBe(true)
+    expect(use.hasOrders.value).toBe(true)
   })
 
-  it('changes the base when the database agrees', async () => {
+  it('changes the base, with the rate for the orders', async () => {
     const { use } = harness()
-    profile.updateCompany.mockResolvedValueOnce({ ...company, base_currency: 'USD' })
+    profile.changeBaseCurrency.mockResolvedValueOnce({ ...company, base_currency: 'USD' })
 
-    expect(await use.changeBase('USD')).toBe(true)
-    expect(profile.updateCompany).toHaveBeenCalledWith('c', { base_currency: 'USD' })
+    expect(await use.changeBase('USD', 0.024)).toBe(true)
+    expect(profile.changeBaseCurrency).toHaveBeenCalledWith('c', 'USD', 0.024)
+    expect(platform.ensure).not.toHaveBeenCalled()
+  })
+
+  // A currency no company has used yet joins the platform list first.
+  it('puts a new currency on the platform list before making it the base', async () => {
+    const { use } = harness()
+    profile.changeBaseCurrency.mockResolvedValueOnce({ ...company, base_currency: 'PLN' })
+
+    expect(await use.changeBase('PLN')).toBe(true)
+    expect(platform.ensure).toHaveBeenCalledWith('PLN', expect.any(String))
   })
 })

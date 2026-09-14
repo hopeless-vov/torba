@@ -8,6 +8,8 @@ import Modal from '@/components/ui/Modal.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { useCurrency } from '@/composables/use-currency'
+import { usePermissions } from '@/composables/use-permissions'
+import { useRates } from '@/composables/use-rates'
 import { useReferenceStore } from '@/stores/reference'
 import type { NewProduct, Product } from '@/types/database'
 import { computed, reactive, ref, watch } from 'vue'
@@ -21,7 +23,9 @@ const props = defineProps<{
 const emit = defineEmits<{ submit: [payload: Omit<NewProduct, 'company_id'>] }>()
 
 const { t } = useI18n()
-const { functionalCode, options, hasRate } = useCurrency()
+const { functionalCode, functionalSymbol, options, hasRate, supplierCurrency } = useCurrency()
+const { setRate } = useRates()
+const { canConfigure } = usePermissions()
 const reference = useReferenceStore()
 const open = defineModel<boolean>('open', { default: false })
 
@@ -37,7 +41,7 @@ const form = reactive({
 const isEdit = computed(() => !!props.product)
 
 // Cost and retail each carry the currency they were entered in; no conversion
-// on save. Both default to the currency the brand quotes in: the supplier
+// on save. Both default to the currency the supplier usually prices in: it
 // says what you buy at and what you sell at, in its own money, and its rate
 // takes both into the base.
 const priceModel = ref(0)
@@ -45,11 +49,8 @@ const costCurrency = ref('USD')
 const retailModel = ref(0)
 const retailCurrency = ref(functionalCode.value)
 
-// The catalog currency follows the selected brand — that is the currency the
-// supplier prices its goods in, and the default for a new product's cost.
-const catalogCurrency = computed(
-  () => reference.brandsById.get(form.brand_id)?.catalog_currency ?? functionalCode.value,
-)
+// The currency the selected supplier's other products are priced in.
+const catalogCurrency = computed(() => supplierCurrency(form.brand_id))
 
 const currencyOptions = computed(() => options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })))
 
@@ -96,15 +97,23 @@ function onQuickAdded(value: string) {
 
 const canSave = computed(() => !!form.sku.trim() && !!form.name.trim() && !!form.brand_id)
 
-// The currency among this product's prices that its supplier has no rate
+// The currencies among this product's prices that its supplier has no rate
 // for — the cost first, since without it there is no margin at all. Such a
-// price would show as unknown everywhere, so the form says so now.
-const missingCurrency = computed(() => {
-  if (!form.brand_id) return null
-  if (!hasRate(form.brand_id, costCurrency.value)) return costCurrency.value
-  if (retailModel.value && !hasRate(form.brand_id, retailCurrency.value)) return retailCurrency.value
-  return null
+// price would show as unknown everywhere, so the form offers to set the rate
+// right here; left empty, the product saves anyway and the tables point at
+// the rates page.
+const missingCurrencies = computed(() => {
+  if (!form.brand_id) return []
+  const codes: string[] = []
+  if (!hasRate(form.brand_id, costCurrency.value)) codes.push(costCurrency.value)
+  if (retailModel.value && !hasRate(form.brand_id, retailCurrency.value) && !codes.includes(retailCurrency.value)) {
+    codes.push(retailCurrency.value)
+  }
+  return codes
 })
+
+const brandName = computed(() => reference.brandsById.get(form.brand_id)?.name ?? '')
+const newRates = reactive<Record<string, number>>({})
 
 watch(
   open,
@@ -121,12 +130,19 @@ watch(
     retailModel.value = p?.retail_amount ?? 0
     retailCurrency.value = p?.retail_currency ?? catalogCurrency.value
     form.is_active = p?.is_active ?? true
+    for (const code of Object.keys(newRates)) delete newRates[code]
   },
   { immediate: true },
 )
 
-function submit() {
+async function submit() {
   if (!canSave.value) return
+  // Rates typed in here become that supplier's rates, before the product
+  // lands — so it shows converted from the first render.
+  for (const code of missingCurrencies.value) {
+    const rate = newRates[code] ?? 0
+    if (rate > 0 && !(await setRate(form.brand_id, code, rate, true))) return
+  }
   emit('submit', {
     sku: form.sku.trim(),
     name: form.name.trim(),
@@ -230,12 +246,30 @@ function submit() {
         {{ t('catalog.form.priceHint') }}
       </p>
       <div
-        v-if="missingCurrency"
-        class="col-span-1 -mt-2 sm:col-span-2"
+        v-if="missingCurrencies.length"
+        class="col-span-1 flex flex-col gap-3 rounded-lg border border-dashed border-line px-4 py-3 sm:col-span-2"
       >
+        <p class="text-xs text-warn">
+          {{ t('catalog.form.rateMissing', { brand: brandName }) }}
+        </p>
+        <template v-if="canConfigure">
+          <NumberInput
+            v-for="code in missingCurrencies"
+            :key="code"
+            v-model="newRates[code]"
+            :label="t('catalog.form.rateFor', { code, base: functionalCode })"
+            :suffix="functionalSymbol"
+            :min="0"
+            :step="0.01"
+          />
+          <p class="text-xs text-faint">
+            {{ t('catalog.form.rateHint') }}
+          </p>
+        </template>
         <MissingRateLink
+          v-else
           :brand-id="form.brand_id || null"
-          :currency="missingCurrency"
+          :currency="missingCurrencies[0] as string"
         />
       </div>
       <div class="col-span-1 sm:col-span-2">

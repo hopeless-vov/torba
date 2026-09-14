@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import Combobox from '@/components/ui/Combobox.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Modal from '@/components/ui/Modal.vue'
 import NumberInput from '@/components/ui/NumberInput.vue'
-import Select from '@/components/ui/Select.vue'
 import Spinner from '@/components/ui/Spinner.vue'
 import { useCurrencies } from '@/composables/use-currencies'
 import { useCurrency } from '@/composables/use-currency'
@@ -25,19 +25,9 @@ import { useRoute } from 'vue-router'
 // rate anywhere — every amount in the app is in the base.
 const { t } = useI18n()
 const reference = useReferenceStore()
-const { functionalCode, functionalSymbol, options, symbolOf, rateFor, formatIn } = useCurrency()
-const { available, addCurrency, removeCurrency } = useCurrencies()
-const {
-  saving,
-  history,
-  loadingHistory,
-  baseLocked,
-  setRate,
-  setCatalogCurrency,
-  loadHistory,
-  checkBaseLock,
-  changeBase,
-} = useRates()
+const { functionalCode, functionalSymbol, symbolOf, rateFor, formatIn } = useCurrency()
+const { world, available, supplierUses, addCurrency, removeCurrency } = useCurrencies()
+const { saving, history, loadingHistory, hasOrders, setRate, loadHistory, checkOrders, changeBase } = useRates()
 const { canConfigure, canAdministerCompany } = usePermissions()
 
 // Arriving from a "rate needed" link: the supplier it was about is picked
@@ -46,31 +36,43 @@ const route = useRoute()
 const focusBrand = computed(() => (typeof route.query.brand === 'string' ? route.query.brand : null))
 
 onMounted(async () => {
-  void checkBaseLock()
+  void checkOrders()
   if (!focusBrand.value) return
   await nextTick()
   document.getElementById(`rates-brand-${focusBrand.value}`)?.scrollIntoView?.({ block: 'center' })
 })
 
+function currencyLabel(c: { code: string; symbol: string; name: string }) {
+  return c.name && c.name !== c.code ? `${c.symbol}  ${c.code} · ${c.name}` : `${c.symbol}  ${c.code}`
+}
+
 // ── base currency ────────────────────────────────────────────
-// Only the owner moves it, only while nothing has been sold, and only after
-// being told that it resets every supplier rate.
+// Only the owner moves it, and only after being told that it resets every
+// supplier rate. With orders on the books, they are converted with a rate
+// the owner gives for the old base in the new.
 const nextBase = ref('')
 const baseOptions = computed(() =>
-  reference.platformCurrencies
-    .filter((c) => c.code !== functionalCode.value)
-    .map((c) => ({ value: c.code, label: `${c.symbol}  ${c.code}` })),
+  world.value.filter((c) => c.code !== functionalCode.value).map((c) => ({ value: c.code, label: currencyLabel(c) })),
 )
 const baseConfirmOpen = ref(false)
 const switchingBase = ref(false)
+const baseRate = ref(0)
+const canConfirmBase = computed(() => !!nextBase.value && (hasOrders.value !== true || baseRate.value > 0))
+
+function askBase() {
+  if (!nextBase.value) return
+  baseRate.value = 0
+  baseConfirmOpen.value = true
+}
 
 async function confirmBase() {
-  if (!nextBase.value) return
+  if (!canConfirmBase.value) return
   switchingBase.value = true
   try {
-    if (await changeBase(nextBase.value)) {
+    if (await changeBase(nextBase.value, hasOrders.value ? baseRate.value : null)) {
       baseConfirmOpen.value = false
       nextBase.value = ''
+      void checkOrders()
     }
   } finally {
     switchingBase.value = false
@@ -79,14 +81,11 @@ async function confirmBase() {
 
 // ── company currencies ───────────────────────────────────────
 const toAdd = ref('')
-const availableOptions = computed(() =>
-  available.value.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.code}` })),
-)
+const availableOptions = computed(() => available.value.map((c) => ({ value: c.code, label: currencyLabel(c) })))
 
 async function add() {
   if (!toAdd.value) return
-  await addCurrency(toAdd.value)
-  toAdd.value = ''
+  if (await addCurrency(toAdd.value)) toAdd.value = ''
 }
 
 const pendingRemoval = ref<Currency | null>(null)
@@ -112,16 +111,10 @@ async function confirmRemove() {
 
 // ── the supplier rate matrix ─────────────────────────────────
 // One column per currency the company uses; the base has none — a price in
-// the base needs no rate at all.
+// the base needs no rate at all. A cell only asks for a rate when that
+// supplier actually has a price in the currency; otherwise it stays empty,
+// and can still be filled in ahead of time.
 const rateColumns = computed(() => reference.currencies.map((c) => c.code))
-
-const catalogOptions = computed(() =>
-  options.value.map((o) => ({ value: o.code, label: `${o.symbol}  ${o.code}` })),
-)
-
-function onCatalog(brand: Brand, code: string | undefined) {
-  if (code && code !== brand.catalog_currency) void setCatalogCurrency(brand.id, code)
-}
 
 // One cell is edited at a time, in place.
 const editing = ref<{ brandId: string; code: string } | null>(null)
@@ -178,24 +171,26 @@ function openHistory(brand: Brand, code: string) {
             {{ functionalCode }}
           </p>
           <p
-            v-if="canAdministerCompany && baseLocked != null"
+            v-if="canAdministerCompany"
             class="text-xs text-faint"
           >
-            {{ baseLocked ? t('rates.baseLocked') : t('rates.baseChangeHint') }}
+            {{ t('rates.baseChangeHint') }}
           </p>
         </div>
 
         <form
-          v-if="canAdministerCompany && baseLocked === false"
+          v-if="canAdministerCompany"
           class="flex flex-wrap items-end gap-2"
-          @submit.prevent="baseConfirmOpen = true"
+          @submit.prevent="askBase"
         >
-          <div class="w-40">
-            <Select
+          <div class="w-56">
+            <Combobox
               v-model="nextBase"
               size="sm"
               :options="baseOptions"
               :placeholder="t('rates.chooseBase')"
+              :search-placeholder="t('common.search')"
+              :empty-text="t('common.noMatches')"
             />
           </div>
           <Button
@@ -256,12 +251,14 @@ function openHistory(brand: Brand, code: string) {
           class="flex flex-wrap items-end gap-2"
           @submit.prevent="add"
         >
-          <div class="w-48">
-            <Select
+          <div class="w-64">
+            <Combobox
               v-model="toAdd"
               size="sm"
               :options="availableOptions"
               :placeholder="t('rates.chooseCurrency')"
+              :search-placeholder="t('common.search')"
+              :empty-text="t('common.noMatches')"
             />
           </div>
           <Button
@@ -316,9 +313,6 @@ function openHistory(brand: Brand, code: string) {
               <th class="px-5 py-3 font-medium">
                 {{ t('rates.colBrand') }}
               </th>
-              <th class="px-3 py-3 font-medium">
-                {{ t('rates.colCatalog') }}
-              </th>
               <th
                 v-for="code in rateColumns"
                 :key="code"
@@ -337,23 +331,6 @@ function openHistory(brand: Brand, code: string) {
             >
               <td class="px-5 py-3 font-medium whitespace-nowrap text-fg">
                 {{ brand.name }}
-              </td>
-              <td class="px-3 py-2">
-                <div
-                  v-if="canConfigure"
-                  class="w-28"
-                >
-                  <Select
-                    :model-value="brand.catalog_currency"
-                    size="sm"
-                    :options="catalogOptions"
-                    @update:model-value="onCatalog(brand, $event)"
-                  />
-                </div>
-                <span
-                  v-else
-                  class="font-mono text-muted"
-                >{{ brand.catalog_currency }}</span>
               </td>
               <td
                 v-for="code in rateColumns"
@@ -422,20 +399,39 @@ function openHistory(brand: Brand, code: string) {
                   </button>
                 </div>
 
-                <!-- A supplier with no rate for a currency the company uses:
-                     any price of theirs in it has nothing to convert by. -->
+                <!-- The supplier has prices in this currency and no rate for
+                     it: those prices have nothing to convert by. -->
+                <template v-else-if="supplierUses(brand.id, code)">
+                  <button
+                    v-if="canConfigure"
+                    type="button"
+                    class="cursor-pointer rounded-md border border-dashed border-line px-2 py-1 text-xs text-warn transition-colors hover:border-line-hover"
+                    @click="startEdit(brand.id, code)"
+                  >
+                    {{ t('rates.missing') }}
+                  </button>
+                  <span
+                    v-else
+                    class="text-xs text-warn"
+                  >{{ t('rates.missing') }}</span>
+                </template>
+
+                <!-- No price of theirs in it: nothing is needed, but a rate
+                     can still be set ahead of time. -->
                 <button
                   v-else-if="canConfigure"
                   type="button"
-                  class="cursor-pointer rounded-md border border-dashed border-line px-2 py-1 text-xs text-warn transition-colors hover:border-line-hover"
+                  class="group cursor-pointer rounded-md px-2 py-1 text-xs text-faint transition-colors hover:bg-hover hover:text-fg"
+                  :title="t('rates.addRate')"
                   @click="startEdit(brand.id, code)"
                 >
-                  {{ t('rates.missing') }}
+                  <span class="group-hover:hidden">{{ t('common.emptyValue') }}</span>
+                  <span class="hidden group-hover:inline">{{ t('rates.addRate') }}</span>
                 </button>
                 <span
                   v-else
-                  class="text-xs text-warn"
-                >{{ t('rates.missing') }}</span>
+                  class="text-xs text-faint"
+                >{{ t('common.emptyValue') }}</span>
               </td>
             </tr>
           </tbody>
@@ -487,14 +483,45 @@ function openHistory(brand: Brand, code: string) {
       @confirm="confirmRemove"
     />
 
-    <ConfirmDialog
+    <!-- Changing the base: rates reset; orders, if any, converted at a rate. -->
+    <Modal
       v-model:open="baseConfirmOpen"
+      size="sm"
       :title="t('rates.baseConfirmTitle', { code: nextBase })"
-      :message="t('rates.baseConfirmMessage')"
-      :confirm-label="t('rates.changeBase')"
-      :cancel-label="t('common.cancel')"
-      :loading="switchingBase"
-      @confirm="confirmBase"
-    />
+    >
+      <form
+        class="flex flex-col gap-4"
+        @submit.prevent="confirmBase"
+      >
+        <p class="text-sm text-muted">
+          {{ t('rates.baseConfirmMessage') }}
+        </p>
+        <template v-if="hasOrders">
+          <NumberInput
+            v-model="baseRate"
+            :label="t('rates.baseRateLabel', { old: functionalCode, code: nextBase })"
+            :hint="t('rates.baseRateHint', { old: functionalCode, code: nextBase })"
+            :min="0"
+            :step="0.000001"
+          />
+        </template>
+      </form>
+      <template #footer>
+        <Button
+          variant="ghost"
+          @click="baseConfirmOpen = false"
+        >
+          {{ t('common.cancel') }}
+        </Button>
+        <Button
+          variant="primary"
+          :loading="switchingBase"
+          :disabled="!canConfirmBase"
+          @click="confirmBase"
+        >
+          {{ t('rates.changeBase') }}
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>

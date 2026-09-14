@@ -1,51 +1,96 @@
 import { currenciesApi } from '@/api/currencies'
+import { platformCurrenciesApi } from '@/api/platform-currencies'
 import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
+import { worldCurrencies, type WorldCurrency } from '@/utils/world-currencies'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-// Which of the platform's currencies the company uses besides its base.
-// Adding one opens a column in the supplier rate matrix; removing one closes
-// it and drops its rates. A currency a price is still in cannot go: that
-// price would be left with nothing to be converted by.
+// Which currencies the company uses besides its base. Any real currency can
+// be added — the first company to use a code puts it on the platform list —
+// and adding one opens a column in the supplier rate matrix. Removing one
+// closes it and drops its rates; a currency a price is still in cannot go,
+// since that price would be left with nothing to be converted by.
 export function useCurrencies() {
   const auth = useAuthStore()
   const reference = useReferenceStore()
   const inventory = useInventoryStore()
   const toast = useToast()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   const base = computed(() => auth.company?.base_currency ?? '')
 
-  /** Platform currencies not in use yet — what "add" can offer. */
-  const available = computed(() => {
-    const used = new Set(reference.currencies.map((c) => c.code))
-    return reference.platformCurrencies.filter((c) => c.code !== base.value && !used.has(c.code))
+  /** Every real currency, with the platform's symbol where it has one. */
+  const world = computed<WorldCurrency[]>(() => {
+    const list = worldCurrencies(locale.value)
+    const known = new Set(list.map((c) => c.code))
+    // A platform code the runtime does not know is still offered.
+    for (const c of reference.platformCurrencies) {
+      if (!known.has(c.code)) list.push({ code: c.code, symbol: c.symbol, name: c.code })
+    }
+    return list.map((c) => ({ ...c, symbol: reference.platformByCode.get(c.code)?.symbol ?? c.symbol }))
   })
 
-  /** Does any price, or any supplier's default, still depend on this currency? */
+  /** Currencies not in use yet — what "add" can offer. */
+  const available = computed(() => {
+    const used = new Set(reference.currencies.map((c) => c.code))
+    return world.value.filter((c) => c.code !== base.value && !used.has(c.code))
+  })
+
+  /** Does any price still depend on this currency? */
   function inUse(code: string): boolean {
     return (
-      reference.brands.some((b) => b.catalog_currency === code) ||
       inventory.products.some((p) => p.cost_currency === code || p.retail_currency === code) ||
       inventory.batches.some((b) => b.cost_currency === code || b.retail_currency === code)
     )
+  }
+
+  /** brand_id → the currencies that supplier's prices (products and batches) are in. */
+  const usedBySupplier = computed(() => {
+    const map = new Map<string, Set<string>>()
+    const brandOf = new Map<string, string>()
+    const note = (brandId: string | null, code: string | null) => {
+      if (!brandId || !code) return
+      const set = map.get(brandId) ?? new Set<string>()
+      set.add(code)
+      map.set(brandId, set)
+    }
+    for (const p of inventory.products) {
+      if (p.brand_id) brandOf.set(p.id, p.brand_id)
+      note(p.brand_id, p.cost_currency)
+      if (p.retail_amount != null) note(p.brand_id, p.retail_currency)
+    }
+    for (const b of inventory.batches) {
+      const brandId = brandOf.get(b.product_id) ?? null
+      if (b.cost_amount != null) note(brandId, b.cost_currency)
+      if (b.retail_amount != null) note(brandId, b.retail_currency)
+    }
+    return map
+  })
+
+  /** Does this supplier have any price in this currency — so needs a rate for it? */
+  function supplierUses(brandId: string, code: string): boolean {
+    return usedBySupplier.value.get(brandId)?.has(code) ?? false
   }
 
   async function reload() {
     if (auth.companyId) await reference.load(auth.companyId)
   }
 
-  async function addCurrency(code: string) {
-    if (!auth.companyId || !available.value.some((c) => c.code === code)) return
+  async function addCurrency(code: string): Promise<boolean> {
+    const pick = available.value.find((c) => c.code === code)
+    if (!auth.companyId || !pick) return false
     try {
+      if (!reference.platformByCode.has(code)) await platformCurrenciesApi.ensure(code, pick.symbol)
       await currenciesApi.create({ company_id: auth.companyId, code })
       await reload()
       toast.success(t('toasts.saved'))
+      return true
     } catch {
       toast.error(t('errors.save'))
+      return false
     }
   }
 
@@ -68,5 +113,5 @@ export function useCurrencies() {
     }
   }
 
-  return { available, inUse, addCurrency, removeCurrency }
+  return { world, available, inUse, supplierUses, addCurrency, removeCurrency }
 }
