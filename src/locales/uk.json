@@ -636,8 +636,8 @@
   "export": {
     "button": "Експорт",
     "heading": "Завантажити як",
-    "csv": "CSV — для Excel",
-    "pdf": "PDF — з логотипом",
+    "csv": "CSV",
+    "pdf": "PDF",
     "generated": "Сформовано {date}",
     "rows": "Рядків: {count}",
     "page": "Сторінка {page} з {pages}",

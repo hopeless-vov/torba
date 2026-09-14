@@ -636,8 +636,8 @@
   "export": {
     "button": "Export",
     "heading": "Download as",
-    "csv": "CSV — for Excel",
-    "pdf": "PDF — with logo",
+    "csv": "CSV",
+    "pdf": "PDF",
     "generated": "Generated {date}",
     "rows": "Rows: {count}",
     "page": "Page {page} of {pages}",
