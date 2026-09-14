@@ -61,7 +61,7 @@ Apply **all files, in order**:
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
   `0014_invitation_preview.sql`, `0015_order_item_discount.sql`,
   `0017_batch_cost.sql`, `0018_batch_retail.sql`, `0019_supplier_rates.sql`,
-  `0020_open_currencies.sql`.
+  `0020_open_currencies.sql`, `0021_no_rouble.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -160,6 +160,11 @@ of the old), multiplies every stored order amount by it, and still resets the su
 rates. A plain update of `companies.base_currency` with orders is still refused — only
 the function, which converts them, gets through. `brands.catalog_currency` stays in the
 schema but is no longer asked for.
+
+**`0021` refuses the Russian rouble** (`RUB`, and the old `RUR`): it cannot join the
+platform list, become a base or be added to a company, and it leaves the list wherever
+nothing refers to it. The app's pickers leave it out as well (`EXCLUDED_CURRENCIES` in
+[`utils/world-currencies`](src/utils/world-currencies.ts)).
 
 **`0018` does the same for the selling price.** A delivery bought on promotion is
 usually passed on cheaper, and an older delivery keeps the price it went on the

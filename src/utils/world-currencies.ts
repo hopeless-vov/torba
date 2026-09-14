@@ -33,6 +33,13 @@ export function currencyName(code: string, locale = 'uk'): string {
   }
 }
 
+/** Currencies never offered: the Russian rouble, current code and old. The database refuses them too (0021). */
+export const EXCLUDED_CURRENCIES: ReadonlySet<string> = new Set(['RUB', 'RUR'])
+
+export function isOffered(code: string): boolean {
+  return /^[A-Z]{3}$/.test(code) && !EXCLUDED_CURRENCIES.has(code)
+}
+
 export function worldCurrencies(locale = 'uk'): WorldCurrency[] {
   let codes: string[]
   try {
@@ -41,6 +48,6 @@ export function worldCurrencies(locale = 'uk'): WorldCurrency[] {
     codes = []
   }
   return codes
-    .filter((code) => /^[A-Z]{3}$/.test(code))
+    .filter(isOffered)
     .map((code) => ({ code, symbol: currencySymbol(code, locale), name: currencyName(code, locale) }))
 }

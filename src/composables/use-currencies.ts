@@ -4,7 +4,7 @@ import { useToast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
 import { useInventoryStore } from '@/stores/inventory'
 import { useReferenceStore } from '@/stores/reference'
-import { worldCurrencies, type WorldCurrency } from '@/utils/world-currencies'
+import { isOffered, worldCurrencies, type WorldCurrency } from '@/utils/world-currencies'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -28,7 +28,7 @@ export function useCurrencies() {
     const known = new Set(list.map((c) => c.code))
     // A platform code the runtime does not know is still offered.
     for (const c of reference.platformCurrencies) {
-      if (!known.has(c.code)) list.push({ code: c.code, symbol: c.symbol, name: c.code })
+      if (!known.has(c.code) && isOffered(c.code)) list.push({ code: c.code, symbol: c.symbol, name: c.code })
     }
     return list.map((c) => ({ ...c, symbol: reference.platformByCode.get(c.code)?.symbol ?? c.symbol }))
   })
