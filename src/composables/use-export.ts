@@ -28,8 +28,9 @@ export function useExport() {
   const percent = { align: 'right' as const, csvFormatted: true, format: (n: number) => formatPercent(n) }
   const count = { align: 'right' as const }
 
-  function table(title: string, columns: ExportTable['columns'], rows: ExportTable['rows'], landscape = true): ExportTable {
-    return { title, company: auth.company?.name ?? '', generatedAt: new Date(), columns, rows, landscape }
+  function table(title: string, columns: ExportTable['columns'], rows: ExportTable['rows']): ExportTable {
+    // The PDF picks portrait or landscape by what fits (see tableLayout).
+    return { title, company: auth.company?.name ?? '', generatedAt: new Date(), columns, rows }
   }
 
   function catalogTable(products: ProductView[]): ExportTable {

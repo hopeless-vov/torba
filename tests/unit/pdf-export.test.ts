@@ -1,4 +1,4 @@
-import { pdfDefinition, pdfText } from '@/utils/pdf-export'
+import { breakLongWords, pdfDefinition, pdfText, tableLayout, textEm } from '@/utils/pdf-export'
 import type { ExportTable } from '@/utils/table-export'
 import { describe, expect, it } from 'vitest'
 
@@ -63,5 +63,49 @@ describe('pdfDefinition', () => {
   it('turns wide tables sideways and numbers the pages', () => {
     expect(def.pageOrientation).toBe('landscape')
     expect(def.footer(2, 5).columns[1]!.text).toBe('2/5')
+  })
+})
+
+describe('fitting a wide table on the page', () => {
+  const A4_LANDSCAPE_ROOM = 841.89 - 64
+
+  it('estimates text no narrower than Roboto draws it', () => {
+    // Measured against Roboto Medium, in ems.
+    expect(textEm('Роздріб постачальника')).toBeGreaterThanOrEqual(11.09)
+    expect(textEm('01.09.2026')).toBeGreaterThanOrEqual(5.1)
+    expect(textEm('ЖУРНАЛ')).toBeGreaterThanOrEqual(4.32)
+  })
+
+  it('stays portrait for a narrow table and fills the width', () => {
+    const layout = tableLayout(['Імʼя', 'Телефон'], [['Олена', '+380671112233']], [false, false])
+    expect(layout.orientation).toBe('portrait')
+    expect(layout.fontSize).toBe(8)
+    expect(layout.widths.reduce((a, b) => a + b, 0) + 2 * 10).toBeCloseTo(595.28 - 64, 0)
+  })
+
+  it('turns sideways, then shrinks the type, and never runs past the margin', () => {
+    const columns = Array.from({ length: 16 }, (_, i) => `Колонка номер ${i + 1}`)
+    const row = columns.map((_, i) => (i % 2 ? '12 345 678,00 грн' : 'Дуже довга назва товару з описом і обʼємом'))
+    const right = columns.map((_, i) => i % 2 === 1)
+    const layout = tableLayout(columns, [row, row], right)
+
+    expect(layout.orientation).toBe('landscape')
+    expect(layout.fontSize).toBeLessThan(8)
+    expect(layout.widths.reduce((a, b) => a + b, 0) + 10 * columns.length).toBeLessThanOrEqual(A4_LANDSCAPE_ROOM + 0.5)
+    // A number column still holds its whole number.
+    expect(layout.widths[1]).toBeGreaterThanOrEqual(textEm('12 345 678,00 грн') * layout.fontSize - 0.01)
+  })
+
+  it('gives a long word places to break instead of overflowing its cell', () => {
+    const long = 'https://example.com/a-very-long-tracking-link-without-spaces-1234567890'
+    const broken = breakLongWords(long)
+    expect(broken).not.toBe(long)
+    expect(broken.replace(/\u200b/g, '')).toBe(long)
+    expect(breakLongWords('Коротко і ясно')).toBe('Коротко і ясно')
+  })
+
+  it('uses the computed widths in the document', () => {
+    const def = pdfDefinition(table, labels, '<svg/>') as unknown as { content: [unknown, { table: { widths: unknown[] } }] }
+    expect(def.content[1].table.widths.every((w) => typeof w === 'number')).toBe(true)
   })
 })

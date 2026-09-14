@@ -23,7 +23,7 @@ export interface ExportTable {
   generatedAt: Date
   columns: ExportColumn[]
   rows: ExportCell[][]
-  /** Wide tables print across the page. */
+  /** Force landscape. Otherwise the PDF turns sideways only when the table needs it. */
   landscape?: boolean
 }
 

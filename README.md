@@ -428,8 +428,12 @@ search and filters included, in two forms:
   to Ukrainian opens it as-is. Plain data: money rounded to 2 decimals, dates as
   `dd.MM.yyyy`. A CSV is text, so it carries no logo.
 - **PDF — with our logo.** The torba logo and name, the list's title, the company and
-  when it was made on top; the table (landscape, repeating header, zebra rows); page
-  numbers below. [pdfmake](https://pdfmake.github.io/) builds it in the browser and is
+  when it was made on top; the table (repeating header, zebra rows); page numbers
+  below. pdfmake would let a wide table run off the page, so
+  [`tableLayout`](src/utils/pdf-export.ts) sizes the columns from their contents: each
+  gets its longest word (a number stays whole), the rest goes to the wordiest columns,
+  which wrap; if the minimums still do not fit, the page turns to landscape, then the
+  type shrinks from 8 to 6 pt, and an over-long word is given break points. [pdfmake](https://pdfmake.github.io/) builds it in the browser and is
   **loaded only when a PDF is asked for**. Its Roboto font has Cyrillic but no hryvnia
   sign, so `₴` prints as *грн* ([`pdfText`](src/utils/pdf-export.ts)).
 
