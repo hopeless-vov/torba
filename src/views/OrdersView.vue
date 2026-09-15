@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { BackorderRow } from '@/api/orders'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import ExportMenu from '@/components/ExportMenu.vue'
 import ListFallback from '@/components/ListFallback.vue'
 import OrderDetailsModal from '@/components/OrderDetailsModal.vue'
 import OrderEditModal from '@/components/OrderEditModal.vue'
 import OrderStatusBadge from '@/components/OrderStatusBadge.vue'
+import ProcurementStatusBadge from '@/components/ProcurementStatusBadge.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Combobox from '@/components/ui/Combobox.vue'
@@ -21,15 +23,16 @@ import { useCurrency } from '@/composables/use-currency'
 import { type ExportFormat, useExport } from '@/composables/use-export'
 import { useOrders } from '@/composables/use-orders'
 import { usePermissions } from '@/composables/use-permissions'
+import { PROCUREMENT_STATUSES, useProcurement } from '@/composables/use-procurement'
 import { useSelection } from '@/composables/use-selection'
 import { useClientsStore } from '@/stores/clients'
 import { useOrdersStore } from '@/stores/orders'
 import { useReferenceStore } from '@/stores/reference'
 import { useUiStore } from '@/stores/ui'
-import type { Order, OrderPatch, OrderStatus } from '@/types/database'
+import type { Order, OrderPatch, OrderStatus, ProcurementStatus } from '@/types/database'
 import type { OrderView } from '@/types/models'
 import { formatDate, formatPercent } from '@/utils/format'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -132,12 +135,46 @@ async function confirmDelete() {
   }
 }
 
+// Goods an order shipped short of, as one more tab beside the statuses.
+const procurement = useProcurement()
+onMounted(() => void procurement.load())
+const showToOrder = ref(false)
+const tab = computed({
+  get: () => (showToOrder.value ? 'toOrder' : statusFilter.value),
+  set: (value: string) => {
+    showToOrder.value = value === 'toOrder'
+    if (!showToOrder.value) statusFilter.value = value as 'all' | OrderStatus
+  },
+})
+
 const statusTabs = computed(() => [
   { value: 'all', label: t('common.all') },
   { value: 'new', label: t('status.order.new') },
   { value: 'sent', label: t('status.order.sent') },
   { value: 'done', label: t('status.order.done') },
+  { value: 'toOrder', label: t('orders.toOrderTab'), count: procurement.pending.value || undefined },
 ])
+
+const procurementColumns = computed<Column[]>(() => [
+  { key: 'product', label: t('orders.toOrder.cols.product'), card: 'title' },
+  { key: 'qty', label: t('orders.toOrder.cols.qty'), align: 'right', mono: true },
+  { key: 'order', label: t('orders.toOrder.cols.order'), mono: true },
+  { key: 'client', label: t('orders.toOrder.cols.client') },
+  { key: 'status', label: t('orders.toOrder.cols.status') },
+])
+
+const PROCUREMENT_ICONS: Record<ProcurementStatus, string> = {
+  to_order: 'fa-solid fa-circle-exclamation',
+  ordered: 'fa-solid fa-truck',
+  delivered: 'fa-solid fa-circle-check',
+}
+const procurementMenu = computed(() =>
+  PROCUREMENT_STATUSES.map((value) => ({
+    value,
+    label: t(`status.procurement.${value}`),
+    icon: PROCUREMENT_ICONS[value],
+  })),
+)
 
 const paymentOptions = computed(() => [
   { value: 'all', label: t('orders.anyPayment') },
@@ -224,309 +261,398 @@ function destination(order: OrderView) {
     </div>
 
     <Tabs
-      v-model="statusFilter"
+      v-model="tab"
       :tabs="statusTabs"
       size="sm"
     />
 
-    <div class="flex flex-wrap items-end gap-3">
-      <div class="w-full md:w-72">
-        <TextInput
-          v-model="search"
-          type="search"
-          icon-left="fa-solid fa-magnifying-glass"
-          :placeholder="t('orders.searchPlaceholder')"
-        />
-      </div>
-
-      <FilterSheet
-        :title="t('common.filters')"
-        :label="t('common.filters')"
-        :done-label="t('common.filtersApply')"
-        :count="activeFilters"
-      >
-        <Combobox
-          v-model="paymentFilter"
-          :label="t('orders.cols.payment')"
-          :options="paymentOptions"
-          :search-placeholder="t('common.search')"
-          :empty-text="t('common.noMatches')"
-          class="md:w-44"
-        />
-        <Combobox
-          v-model="clientFilter"
-          :label="t('orders.cols.client')"
-          :options="clientOptions"
-          :search-placeholder="t('clients.searchPlaceholder')"
-          :empty-text="t('common.noMatches')"
-          class="md:w-44"
-        />
-        <div class="flex flex-wrap items-end gap-1.5">
-          <div class="min-w-0 flex-1 md:w-40 md:flex-none">
-            <TextInput
-              v-model="fromDate"
-              type="date"
-              :label="t('orders.dateFrom')"
-            />
-          </div>
-          <span class="hidden h-9 items-center md:flex">
-            <Icon
-              icon="fa-solid fa-minus"
-              size="xs"
-              class="text-faint"
-            />
-          </span>
-          <div class="min-w-0 flex-1 md:w-40 md:flex-none">
-            <TextInput
-              v-model="toDate"
-              type="date"
-              :label="t('orders.dateTo')"
-            />
-          </div>
-          <button
-            v-if="hasDateRange"
-            type="button"
-            class="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-line text-faint transition-colors hover:border-line-hover hover:text-fg"
-            :title="t('orders.clearDates')"
-            @click="clearDateRange"
-          >
-            <Icon
-              icon="fa-solid fa-xmark"
-              size="sm"
-            />
-          </button>
-        </div>
-      </FilterSheet>
-
-      <div class="ml-auto flex items-center gap-3">
-        <span class="text-xs text-faint">{{ t('orders.count', { count: filtered.length }) }}</span>
-        <ExportMenu
-          :loading="exporting !== null"
-          :disabled="filtered.length === 0"
-          @select="onExport"
-        />
-      </div>
-    </div>
-
-    <BulkActionBar
-      :count="selectedCount"
-      :visible="hasSelection"
-      :delete-label="t('common.deleteSelected')"
-      :clear-label="t('common.clearSelection')"
-      @delete="askDelete([...selected])"
-      @clear="clearSelection"
-    />
-
-    <div class="rounded-xl border border-line bg-panel">
-      <DataTable
-        v-model:selected="selected"
-        v-model:expanded="expanded"
-        :columns="columns"
-        :rows="filtered"
-        row-key="id"
-        :selectable="canTrade"
-        expandable
-        clickable
-        :loading="ordersStore.loading"
-        :page-size="20"
-        :prev-label="t('common.prevPage')"
-        :next-label="t('common.nextPage')"
-        max-height="calc(100dvh - 26rem)"
-        @row-click="openDetails($event as OrderView)"
-      >
-        <template #cell-number="{ row }">
-          <div class="flex flex-col">
-            <span class="font-medium text-fg">{{ `#${(row as OrderView).number}` }}</span>
-            <span class="text-xs text-faint">{{ formatDate((row as OrderView).created_at) }}</span>
-          </div>
-        </template>
-        <template #cell-client="{ row }">
-          <div class="flex flex-col">
-            <span class="font-medium text-fg">{{ (row as OrderView).client?.name ?? t('common.emptyValue') }}</span>
-            <span
-              v-if="(row as OrderView).client?.phone"
-              class="font-mono text-xs text-faint"
-            >{{ (row as OrderView).client?.phone }}</span>
-          </div>
-        </template>
-        <template #cell-products="{ row }">
-          <span
-            v-if="(row as OrderView).items.length"
-            class="flex min-w-0 items-center gap-1.5"
-          >
-            <span class="max-w-40 truncate text-sm text-muted">
-              {{ (row as OrderView).items[0].product_name }}
-            </span>
-            <span
-              v-if="(row as OrderView).items.length > 1"
-              class="shrink-0 rounded-md bg-chip px-1.5 py-0.5 font-mono text-xs text-faint tabular-nums"
-            >
-              {{ t('orders.moreItems', { n: (row as OrderView).items.length - 1 }) }}
-            </span>
-          </span>
-          <span
-            v-else
-            class="text-faint"
-          >{{ t('common.emptyValue') }}</span>
-        </template>
-        <template #cell-address="{ row }">
-          <span
-            v-if="destination(row as OrderView)"
-            class="flex max-w-56 items-start gap-1.5 text-sm text-muted"
-          >
-            <Icon
-              icon="fa-solid fa-location-dot"
-              size="xs"
-              class="mt-1 shrink-0 text-faint"
-            />
-            <span class="truncate">{{ destination(row as OrderView) }}</span>
-          </span>
-          <span
-            v-else
-            class="text-faint"
-          >{{ t('common.emptyValue') }}</span>
-        </template>
-        <template #cell-tracking="{ row }">
-          <span
-            v-if="(row as OrderView).tracking_number"
-            class="text-muted"
-          >{{ (row as OrderView).tracking_number }}</span>
-          <span
-            v-else
-            class="text-faint"
-          >{{ t('common.emptyValue') }}</span>
-        </template>
-        <template #cell-sale="{ row }">
-          {{ format((row as OrderView).saleTotal) }}
-        </template>
-        <template #cell-cost="{ row }">
-          <span class="text-muted">{{ format((row as OrderView).costTotal) }}</span>
-        </template>
-        <template #cell-profit="{ row }">
-          <span class="text-accent">{{ format((row as OrderView).profit) }}</span>
-        </template>
-        <template #cell-margin="{ row }">
-          {{ formatPercent((row as OrderView).margin) }}
-        </template>
-        <template #cell-payment="{ row }">
-          <Badge
-            v-if="(row as OrderView).payment_method"
-            tone="info"
-          >
-            {{ (row as OrderView).payment_method }}
-          </Badge>
-          <span
-            v-else
-            class="text-faint"
-          >{{ t('common.emptyValue') }}</span>
-        </template>
-        <template #cell-status="{ row }">
-          <!-- A viewer cannot move an order along; show the badge as plain
-               text with no menu to open. -->
-          <span
-            class="inline-flex"
-            @click.stop
-          >
+    <div
+      v-if="showToOrder"
+      class="flex flex-col gap-3"
+    >
+      <p class="text-sm text-muted">
+        {{ t('orders.toOrder.hint') }}
+      </p>
+      <div class="rounded-xl border border-line bg-panel">
+        <DataTable
+          :columns="procurementColumns"
+          :rows="procurement.rows.value"
+          row-key="id"
+          :loading="procurement.loading.value"
+          :page-size="20"
+          :prev-label="t('common.prevPage')"
+          :next-label="t('common.nextPage')"
+          max-height="calc(100dvh - 22rem)"
+        >
+          <template #cell-product="{ row }">
+            <div class="flex flex-col">
+              <span class="font-medium text-fg">{{ (row as BackorderRow).product_name }}</span>
+              <span
+                v-if="(row as BackorderRow).sku"
+                class="font-mono text-xs text-faint"
+              >{{ (row as BackorderRow).sku }}</span>
+            </div>
+          </template>
+          <template #cell-qty="{ row }">
+            <span class="font-medium text-fg">{{ (row as BackorderRow).backorder_qty }}</span>
+          </template>
+          <template #cell-order="{ row }">
+            <div class="flex flex-col">
+              <span class="text-fg">{{ `#${(row as BackorderRow).order.number}` }}</span>
+              <span class="text-xs text-faint">{{ formatDate((row as BackorderRow).order.created_at) }}</span>
+            </div>
+          </template>
+          <template #cell-client="{ row }">
+            <div class="flex flex-col">
+              <span class="text-fg">{{ (row as BackorderRow).order.client?.name ?? t('common.emptyValue') }}</span>
+              <span
+                v-if="(row as BackorderRow).order.client?.phone"
+                class="font-mono text-xs text-faint"
+              >{{ (row as BackorderRow).order.client?.phone }}</span>
+            </div>
+          </template>
+          <template #cell-status="{ row }">
             <DropdownMenu
               v-if="canTrade"
-              :items="statusMenu"
-              @select="setStatus((row as OrderView).id, $event as OrderStatus)"
+              :items="procurementMenu"
+              @select="procurement.setStatus((row as BackorderRow).id, $event as ProcurementStatus)"
             >
               <button
                 type="button"
                 class="cursor-pointer"
                 :title="t('orders.changeStatus')"
               >
-                <OrderStatusBadge :status="(row as OrderView).status" />
+                <ProcurementStatusBadge :status="(row as BackorderRow).procurement_status ?? 'to_order'" />
               </button>
             </DropdownMenu>
-            <OrderStatusBadge
+            <ProcurementStatusBadge
               v-else
-              :status="(row as OrderView).status"
+              :status="(row as BackorderRow).procurement_status ?? 'to_order'"
             />
-          </span>
-        </template>
-        <template #cell-actions="{ row }">
-          <span
-            class="inline-flex"
-            @click.stop
-          >
-            <DropdownMenu
-              v-if="canTrade"
-              :items="rowMenu"
-              @select="onMenu(row as OrderView, $event)"
+          </template>
+          <template #empty>
+            <ListFallback
+              v-if="procurement.error.value"
+              state="error"
+              @retry="procurement.load"
             />
-          </span>
-        </template>
-        <template #expanded="{ row }">
-          <ul class="flex flex-col divide-y divide-line-soft rounded-lg border border-line-soft bg-panel">
-            <li
-              v-for="item in (row as OrderView).items"
-              :key="item.id"
-              class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2"
-            >
-              <span class="min-w-0 flex-1 text-sm text-fg">{{ item.product_name }}</span>
-              <span
-                v-if="item.sku"
-                class="shrink-0 font-mono text-xs text-faint"
-              >{{ item.sku }}</span>
-              <span class="shrink-0 font-mono text-xs text-muted tabular-nums">
-                {{ `${item.qty} × ${format(item.unitNet)}` }}
-              </span>
-              <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
-                {{ format(item.lineSale) }}
-              </span>
-            </li>
-            <li
-              v-if="!(row as OrderView).items.length"
-              class="px-3 py-3 text-center text-sm text-faint"
-            >
-              {{ t('orders.noItems') }}
-            </li>
-          </ul>
-        </template>
+            <EmptyState
+              v-else
+              icon="fa-solid fa-circle-check"
+              :title="t('orders.toOrder.empty')"
+            />
+          </template>
+        </DataTable>
+      </div>
+    </div>
 
-        <template #empty>
-          <ListFallback
-            v-if="ordersStore.error || total > 0"
-            :state="ordersStore.error ? 'error' : 'noMatches'"
-            @retry="reload"
-            @clear="clearFilters"
+    <template v-else>
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="w-full md:w-72">
+          <TextInput
+            v-model="search"
+            type="search"
+            icon-left="fa-solid fa-magnifying-glass"
+            :placeholder="t('orders.searchPlaceholder')"
           />
-          <EmptyState
-            v-else
-            icon="fa-solid fa-arrow-right-arrow-left"
-            :title="t('orders.empty')"
-          >
-            <Button
-              v-if="canTrade"
-              variant="primary"
-              icon="fa-solid fa-basket-shopping"
-              @click="router.push({ name: 'cart' })"
-            >
-              {{ t('orders.openCart') }}
-            </Button>
-          </EmptyState>
-        </template>
-      </DataTable>
+        </div>
 
-      <!-- The list opens on a recent window rather than every order ever
+        <FilterSheet
+          :title="t('common.filters')"
+          :label="t('common.filters')"
+          :done-label="t('common.filtersApply')"
+          :count="activeFilters"
+        >
+          <Combobox
+            v-model="paymentFilter"
+            :label="t('orders.cols.payment')"
+            :options="paymentOptions"
+            :search-placeholder="t('common.search')"
+            :empty-text="t('common.noMatches')"
+            class="md:w-44"
+          />
+          <Combobox
+            v-model="clientFilter"
+            :label="t('orders.cols.client')"
+            :options="clientOptions"
+            :search-placeholder="t('clients.searchPlaceholder')"
+            :empty-text="t('common.noMatches')"
+            class="md:w-44"
+          />
+          <div class="flex flex-wrap items-end gap-1.5">
+            <div class="min-w-0 flex-1 md:w-40 md:flex-none">
+              <TextInput
+                v-model="fromDate"
+                type="date"
+                :label="t('orders.dateFrom')"
+              />
+            </div>
+            <span class="hidden h-9 items-center md:flex">
+              <Icon
+                icon="fa-solid fa-minus"
+                size="xs"
+                class="text-faint"
+              />
+            </span>
+            <div class="min-w-0 flex-1 md:w-40 md:flex-none">
+              <TextInput
+                v-model="toDate"
+                type="date"
+                :label="t('orders.dateTo')"
+              />
+            </div>
+            <button
+              v-if="hasDateRange"
+              type="button"
+              class="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-line text-faint transition-colors hover:border-line-hover hover:text-fg"
+              :title="t('orders.clearDates')"
+              @click="clearDateRange"
+            >
+              <Icon
+                icon="fa-solid fa-xmark"
+                size="sm"
+              />
+            </button>
+          </div>
+        </FilterSheet>
+
+        <div class="ml-auto flex items-center gap-3">
+          <span class="text-xs text-faint">{{ t('orders.count', { count: filtered.length }) }}</span>
+          <ExportMenu
+            :loading="exporting !== null"
+            :disabled="filtered.length === 0"
+            @select="onExport"
+          />
+        </div>
+      </div>
+
+      <BulkActionBar
+        :count="selectedCount"
+        :visible="hasSelection"
+        :delete-label="t('common.deleteSelected')"
+        :clear-label="t('common.clearSelection')"
+        @delete="askDelete([...selected])"
+        @clear="clearSelection"
+      />
+
+      <div class="rounded-xl border border-line bg-panel">
+        <DataTable
+          v-model:selected="selected"
+          v-model:expanded="expanded"
+          :columns="columns"
+          :rows="filtered"
+          row-key="id"
+          :selectable="canTrade"
+          expandable
+          clickable
+          :loading="ordersStore.loading"
+          :page-size="20"
+          :prev-label="t('common.prevPage')"
+          :next-label="t('common.nextPage')"
+          max-height="calc(100dvh - 26rem)"
+          @row-click="openDetails($event as OrderView)"
+        >
+          <template #cell-number="{ row }">
+            <div class="flex flex-col">
+              <span class="font-medium text-fg">{{ `#${(row as OrderView).number}` }}</span>
+              <span class="text-xs text-faint">{{ formatDate((row as OrderView).created_at) }}</span>
+            </div>
+          </template>
+          <template #cell-client="{ row }">
+            <div class="flex flex-col">
+              <span class="font-medium text-fg">{{ (row as OrderView).client?.name ?? t('common.emptyValue') }}</span>
+              <span
+                v-if="(row as OrderView).client?.phone"
+                class="font-mono text-xs text-faint"
+              >{{ (row as OrderView).client?.phone }}</span>
+            </div>
+          </template>
+          <template #cell-products="{ row }">
+            <span
+              v-if="(row as OrderView).items.length"
+              class="flex min-w-0 items-center gap-1.5"
+            >
+              <span class="max-w-40 truncate text-sm text-muted">
+                {{ (row as OrderView).items[0].product_name }}
+              </span>
+              <span
+                v-if="(row as OrderView).items.length > 1"
+                class="shrink-0 rounded-md bg-chip px-1.5 py-0.5 font-mono text-xs text-faint tabular-nums"
+              >
+                {{ t('orders.moreItems', { n: (row as OrderView).items.length - 1 }) }}
+              </span>
+            </span>
+            <span
+              v-else
+              class="text-faint"
+            >{{ t('common.emptyValue') }}</span>
+          </template>
+          <template #cell-address="{ row }">
+            <span
+              v-if="destination(row as OrderView)"
+              class="flex max-w-56 items-start gap-1.5 text-sm text-muted"
+            >
+              <Icon
+                icon="fa-solid fa-location-dot"
+                size="xs"
+                class="mt-1 shrink-0 text-faint"
+              />
+              <span class="truncate">{{ destination(row as OrderView) }}</span>
+            </span>
+            <span
+              v-else
+              class="text-faint"
+            >{{ t('common.emptyValue') }}</span>
+          </template>
+          <template #cell-tracking="{ row }">
+            <span
+              v-if="(row as OrderView).tracking_number"
+              class="text-muted"
+            >{{ (row as OrderView).tracking_number }}</span>
+            <span
+              v-else
+              class="text-faint"
+            >{{ t('common.emptyValue') }}</span>
+          </template>
+          <template #cell-sale="{ row }">
+            {{ format((row as OrderView).saleTotal) }}
+          </template>
+          <template #cell-cost="{ row }">
+            <span class="text-muted">{{ format((row as OrderView).costTotal) }}</span>
+          </template>
+          <template #cell-profit="{ row }">
+            <span class="text-accent">{{ format((row as OrderView).profit) }}</span>
+          </template>
+          <template #cell-margin="{ row }">
+            {{ formatPercent((row as OrderView).margin) }}
+          </template>
+          <template #cell-payment="{ row }">
+            <Badge
+              v-if="(row as OrderView).payment_method"
+              tone="info"
+            >
+              {{ (row as OrderView).payment_method }}
+            </Badge>
+            <span
+              v-else
+              class="text-faint"
+            >{{ t('common.emptyValue') }}</span>
+          </template>
+          <template #cell-status="{ row }">
+            <!-- A viewer cannot move an order along; show the badge as plain
+               text with no menu to open. -->
+            <span
+              class="inline-flex"
+              @click.stop
+            >
+              <DropdownMenu
+                v-if="canTrade"
+                :items="statusMenu"
+                @select="setStatus((row as OrderView).id, $event as OrderStatus)"
+              >
+                <button
+                  type="button"
+                  class="cursor-pointer"
+                  :title="t('orders.changeStatus')"
+                >
+                  <OrderStatusBadge :status="(row as OrderView).status" />
+                </button>
+              </DropdownMenu>
+              <OrderStatusBadge
+                v-else
+                :status="(row as OrderView).status"
+              />
+            </span>
+          </template>
+          <template #cell-actions="{ row }">
+            <span
+              class="inline-flex"
+              @click.stop
+            >
+              <DropdownMenu
+                v-if="canTrade"
+                :items="rowMenu"
+                @select="onMenu(row as OrderView, $event)"
+              />
+            </span>
+          </template>
+          <template #expanded="{ row }">
+            <ul class="flex flex-col divide-y divide-line-soft rounded-lg border border-line-soft bg-panel">
+              <li
+                v-for="item in (row as OrderView).items"
+                :key="item.id"
+                class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2"
+              >
+                <span class="min-w-0 flex-1 text-sm text-fg">{{ item.product_name }}</span>
+                <span
+                  v-if="item.backorder_qty > 0"
+                  class="inline-flex shrink-0 items-center gap-1.5"
+                >
+                  <span class="text-xs text-faint">{{ t('orders.toOrder.short', { count: item.backorder_qty }) }}</span>
+                  <ProcurementStatusBadge :status="item.procurement_status ?? 'to_order'" />
+                </span>
+                <span
+                  v-if="item.sku"
+                  class="shrink-0 font-mono text-xs text-faint"
+                >{{ item.sku }}</span>
+                <span class="shrink-0 font-mono text-xs text-muted tabular-nums">
+                  {{ `${item.qty} × ${format(item.unitNet)}` }}
+                </span>
+                <span class="shrink-0 font-mono text-sm text-fg tabular-nums">
+                  {{ format(item.lineSale) }}
+                </span>
+              </li>
+              <li
+                v-if="!(row as OrderView).items.length"
+                class="px-3 py-3 text-center text-sm text-faint"
+              >
+                {{ t('orders.noItems') }}
+              </li>
+            </ul>
+          </template>
+
+          <template #empty>
+            <ListFallback
+              v-if="ordersStore.error || total > 0"
+              :state="ordersStore.error ? 'error' : 'noMatches'"
+              @retry="reload"
+              @clear="clearFilters"
+            />
+            <EmptyState
+              v-else
+              icon="fa-solid fa-arrow-right-arrow-left"
+              :title="t('orders.empty')"
+            >
+              <Button
+                v-if="canTrade"
+                variant="primary"
+                icon="fa-solid fa-basket-shopping"
+                @click="router.push({ name: 'cart' })"
+              >
+                {{ t('orders.openCart') }}
+              </Button>
+            </EmptyState>
+          </template>
+        </DataTable>
+
+        <!-- The list opens on a recent window rather than every order ever
            placed. Saying so is the difference between a fast screen and a
            screen that has quietly lost the older half of the history. -->
-      <p
-        v-if="ordersStore.loadedFrom"
-        class="flex flex-wrap items-center justify-center gap-2 border-t border-line-soft px-4 py-3 text-xs text-faint"
-      >
-        {{ t('orders.loadedFrom', { date: formatDate(ordersStore.loadedFrom) }) }}
-        <button
-          type="button"
-          class="cursor-pointer text-accent transition-colors hover:underline"
-          @click="loadAll"
+        <p
+          v-if="ordersStore.loadedFrom"
+          class="flex flex-wrap items-center justify-center gap-2 border-t border-line-soft px-4 py-3 text-xs text-faint"
         >
-          {{ t('orders.loadAll') }}
-        </button>
-      </p>
-    </div>
+          {{ t('orders.loadedFrom', { date: formatDate(ordersStore.loadedFrom) }) }}
+          <button
+            type="button"
+            class="cursor-pointer text-accent transition-colors hover:underline"
+            @click="loadAll"
+          >
+            {{ t('orders.loadAll') }}
+          </button>
+        </p>
+      </div>
+    </template>
 
     <OrderDetailsModal
       v-model:open="detailsOpen"

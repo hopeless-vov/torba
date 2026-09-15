@@ -25,11 +25,17 @@ import { createI18n } from 'vue-i18n'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Lines the orders page lists as goods to order.
+const backorders = vi.hoisted(() => [] as unknown[])
+
 // The rates page asks whether anything has been sold; answer without a
 // network round trip. Everything else in the orders api stays real.
 vi.mock('@/api/orders', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/api/orders')>()
-  return { ...original, ordersApi: { ...original.ordersApi, count: vi.fn(async () => 0) } }
+  return {
+    ...original,
+    ordersApi: { ...original.ordersApi, count: vi.fn(async () => 0), backorders: vi.fn(async () => backorders) },
+  }
 })
 
 // Render smoke tests: every screen is mounted against seeded stores so a
@@ -342,6 +348,52 @@ describe('OrdersView', () => {
     // The product-info modal resolves the live product: brand + stock.
     expect(document.body.textContent).toContain('Fairy')
     expect(document.body.textContent).toContain(uk.catalog.cols.stock)
+  })
+})
+
+describe('OrdersView — goods to order', () => {
+  const line = {
+    id: 'i9',
+    company_id: 'c',
+    order_id: 'o1',
+    product_id: 'p1',
+    batch_id: null,
+    product_name: 'Fairy Засіб для миття посуду',
+    sku: 'FRY-500',
+    qty: 5,
+    backorder_qty: 2,
+    procurement_status: 'to_order',
+    order: { id: 'o1', number: 3001, created_at: '2026-07-01T10:00:00Z', status: 'new', client: { name: 'Олег Петренко', phone: null } },
+  }
+
+  beforeEach(() => {
+    backorders.splice(0, backorders.length, line)
+  })
+
+  async function openTab(role: MembershipRole = 'owner') {
+    const wrapper = render(OrdersView, role)
+    await flushPromises()
+    const tab = wrapper.findAll('button').find((b) => b.text().startsWith(uk.orders.toOrderTab))
+    expect(tab).toBeTruthy()
+    // The tab counts what is not delivered yet.
+    expect(tab?.text()).toContain('1')
+    await tab?.trigger('click')
+    return wrapper
+  }
+
+  it('lists what an order shipped short of, with its status', async () => {
+    const wrapper = await openTab()
+    expect(wrapper.text()).toContain(uk.orders.toOrder.hint)
+    expect(wrapper.text()).toContain('#3001')
+    expect(wrapper.text()).toContain('Олег Петренко')
+    expect(wrapper.text()).toContain(uk.status.procurement.to_order)
+    expect(wrapper.find(`[title="${uk.orders.changeStatus}"]`).exists()).toBe(true)
+  })
+
+  it('shows a viewer the status without a menu', async () => {
+    const wrapper = await openTab('viewer')
+    expect(wrapper.text()).toContain(uk.status.procurement.to_order)
+    expect(wrapper.find(`[title="${uk.orders.changeStatus}"]`).exists()).toBe(false)
   })
 })
 

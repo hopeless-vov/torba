@@ -61,7 +61,7 @@ Apply **all files, in order**:
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
   `0014_invitation_preview.sql`, `0015_order_item_discount.sql`,
   `0017_batch_cost.sql`, `0018_batch_retail.sql`, `0019_supplier_rates.sql`,
-  `0020_open_currencies.sql`, `0021_no_rouble.sql`, `0022_fix_rouble_check.sql`.
+  `0020_open_currencies.sql`, `0021_no_rouble.sql`, `0022_fix_rouble_check.sql`, `0023_backorders.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -170,6 +170,11 @@ nothing refers to it. The app's pickers leave it out as well (`EXCLUDED_CURRENCI
 `new.base_currency` in one expression, which PL/pgSQL resolves on both tables — so
 adding a company currency and changing the base both failed. Apply `0022` wherever
 `0021` is in. It also takes `anon` off the two currency functions.
+
+**`0023` records goods to order.** `create_order` keeps what a line shipped short:
+`order_items.backorder_qty` and `procurement_status` (`to_order` → `ordered` →
+`delivered`). `delete_orders` now puts back only what a batch line actually took. Orders
+placed before `0023` have no record of what they lacked.
 
 **`0018` does the same for the selling price.** A delivery bought on promotion is
 usually passed on cheaper, and an older delivery keeps the price it went on the
@@ -500,6 +505,14 @@ a line that exceeds what is on hand ships short and the remainder stays a
 the batch (and therefore the expiry date) it draws from and can be switched to
 another one, so two deliveries of the same product are never confused.
 
+What an order shipped short of is kept on the line (migration `0023`) and listed on
+the orders page under **«Потрібно замовити»** — a tab beside the statuses, counting
+what is not delivered yet. Each line moves along **Замовити → Замовлено → Доставлено**
+on its own, whatever its order's status, and the expanded order row shows the same
+badge. The list reads `order_items` directly, so an old order's missing goods stay in
+it however far back the orders window starts. Marking a line delivered does not touch
+the warehouse: the goods are the client's, not stock.
+
 Every cart line also carries its **own price and its own discount**. The price
 starts at the catalog retail and can be raised or lowered for this sale; the
 original stays on the line so the override is visible and one click undoes it.
@@ -562,7 +575,8 @@ src/
                            use-warehouse, use-clients, use-rates, use-selection,
                            use-personalization, use-dashboard, use-theme,
                            use-locale, use-toast, use-popover-position,
-                           use-permissions, use-members, use-invite, use-export)
+                           use-permissions, use-members, use-invite, use-export,
+                           use-procurement)
   locales/               → uk.json (default) + en.json
   router/                → routes + auth guard (meta.public, meta.minRole)
   stores/                → Pinia state (auth, reference, inventory, clients,

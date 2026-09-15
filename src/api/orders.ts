@@ -1,5 +1,14 @@
 import { supabase } from '@/api/supabase'
-import type { Client, NewOrder, NewOrderItem, Order, OrderItem, OrderPatch, OrderStatus } from '@/types/database'
+import type {
+  Client,
+  NewOrder,
+  NewOrderItem,
+  Order,
+  OrderItem,
+  OrderPatch,
+  OrderStatus,
+  ProcurementStatus,
+} from '@/types/database'
 
 export type OrderRow = Order & {
   client: Client | null
@@ -7,6 +16,13 @@ export type OrderRow = Order & {
 }
 
 const SELECT_WITH_RELATIONS = '*, client:clients(*), items:order_items(*)'
+
+// A line that shipped short, with enough of its order to say whose it is.
+export type BackorderRow = OrderItem & {
+  order: Pick<Order, 'id' | 'number' | 'created_at' | 'status'> & {
+    client: Pick<Client, 'name' | 'phone'> | null
+  }
+}
 
 // Deletion goes through delete_orders so the quantities drawn from
 // batch-tied lines land back on the shelf (see migration 0004).
@@ -138,6 +154,30 @@ export const ordersApi = {
       .single()
     if (error) throw error
     return data as unknown as OrderRow
+  },
+
+  // Every line that shipped short, newest first — however old its order, so
+  // goods still to get never fall out of the list with the orders window.
+  backorders: async (companyId: string): Promise<BackorderRow[]> => {
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('*, order:orders(id, number, created_at, status, client:clients(name, phone))')
+      .eq('company_id', companyId)
+      .gt('backorder_qty', 0)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []) as unknown as BackorderRow[]
+  },
+
+  setProcurementStatus: async (itemId: string, status: ProcurementStatus): Promise<OrderItem> => {
+    const { data, error } = await supabase
+      .from('order_items')
+      .update({ procurement_status: status })
+      .eq('id', itemId)
+      .select('*')
+      .single()
+    if (error) throw error
+    return data as OrderItem
   },
 
   remove: async (id: string, companyId: string): Promise<void> => {

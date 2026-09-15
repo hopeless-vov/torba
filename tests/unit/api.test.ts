@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // method returns the same object, and awaiting it resolves to `result`.
 function builder(result: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {}
-  for (const method of ['select', 'insert', 'update', 'delete', 'upsert', 'eq', 'in', 'order', 'single', 'maybeSingle']) {
+  for (const method of ['select', 'insert', 'update', 'delete', 'upsert', 'eq', 'gt', 'in', 'order', 'single', 'maybeSingle']) {
     chain[method] = vi.fn(() => chain)
   }
   chain.then = (resolve: (value: unknown) => unknown) => resolve(result)
@@ -111,6 +111,29 @@ describe('ordersApi.count', () => {
     const { ordersApi } = await import('@/api/orders')
     expect(await ordersApi.count('c1')).toBe(3)
     expect(chain.select).toHaveBeenCalledWith('id', { count: 'exact', head: true })
+  })
+})
+
+describe('ordersApi backorders', () => {
+  // Lines that shipped short, straight from order_items — not limited to the
+  // orders window the list loads.
+  it('lists the lines with something to order', async () => {
+    const chain = builder({ data: [{ id: 'i1', backorder_qty: 2 }], error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { ordersApi } = await import('@/api/orders')
+    expect(await ordersApi.backorders('c1')).toEqual([{ id: 'i1', backorder_qty: 2 }])
+    expect(mocked.from).toHaveBeenCalledWith('order_items')
+    expect(chain.eq).toHaveBeenCalledWith('company_id', 'c1')
+    expect(chain.gt).toHaveBeenCalledWith('backorder_qty', 0)
+  })
+
+  it('moves one line along', async () => {
+    const chain = builder({ data: { id: 'i1', procurement_status: 'ordered' }, error: null })
+    mocked.from.mockReturnValue(chain as never)
+    const { ordersApi } = await import('@/api/orders')
+    expect(await ordersApi.setProcurementStatus('i1', 'ordered')).toEqual({ id: 'i1', procurement_status: 'ordered' })
+    expect(chain.update).toHaveBeenCalledWith({ procurement_status: 'ordered' })
+    expect(chain.eq).toHaveBeenCalledWith('id', 'i1')
   })
 })
 

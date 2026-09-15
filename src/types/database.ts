@@ -5,6 +5,8 @@
 // and composables, never in the persisted shape.
 
 export type OrderStatus = 'new' | 'sent' | 'done'
+// Where getting goods an order shipped short stands (see 0023).
+export type ProcurementStatus = 'to_order' | 'ordered' | 'delivered'
 
 // What a member may do in one organization, weakest to strongest.
 // `memberships.role` is the authority; `profiles.role` below is a leftover
@@ -231,6 +233,8 @@ export interface OrderItem {
   unit_price: number // list price / unit, gross — the line discount is kept separate
   unit_cost: number
   discount: number // percent (0..100) off this line, before the order discount
+  backorder_qty: number // how much of qty was not on the shelf when the order was placed
+  procurement_status: ProcurementStatus | null // null when nothing was short
   created_at: string
 }
 

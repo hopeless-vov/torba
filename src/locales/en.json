@@ -327,6 +327,19 @@
     "clearDates": "Clear range",
     "count": "{count} orders",
     "changeStatus": "Change status",
+    "toOrderTab": "To order",
+    "toOrder": {
+      "hint": "Goods that were not in stock when the order was placed. Change the status once you order them from the supplier and once they arrive.",
+      "empty": "Everything sold was in stock — nothing to order.",
+      "cols": {
+        "product": "Product",
+        "qty": "Qty",
+        "order": "Order",
+        "client": "Client",
+        "status": "Status"
+      },
+      "short": "Short: {count}"
+    },
     "cols": {
       "number": "№ / Date",
       "client": "Client",
@@ -505,6 +518,11 @@
       "new": "New",
       "sent": "Sent",
       "done": "Done"
+    },
+    "procurement": {
+      "to_order": "To order",
+      "ordered": "Ordered",
+      "delivered": "Delivered"
     }
   },
   "toasts": {
