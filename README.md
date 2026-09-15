@@ -61,7 +61,7 @@ Apply **all files, in order**:
   `0012_invitations.sql`, `0013_role_enforcement.sql`,
   `0014_invitation_preview.sql`, `0015_order_item_discount.sql`,
   `0017_batch_cost.sql`, `0018_batch_retail.sql`, `0019_supplier_rates.sql`,
-  `0020_open_currencies.sql`, `0021_no_rouble.sql`.
+  `0020_open_currencies.sql`, `0021_no_rouble.sql`, `0022_fix_rouble_check.sql`.
 
 **`0010` is a security fix — apply it before letting anyone else sign up.**
 Tenant isolation resolves through `current_company_id()`, which reads
@@ -165,6 +165,11 @@ schema but is no longer asked for.
 platform list, become a base or be added to a company, and it leaves the list wherever
 nothing refers to it. The app's pickers leave it out as well (`EXCLUDED_CURRENCIES` in
 [`utils/world-currencies`](src/utils/world-currencies.ts)).
+
+**`0022` fixes that check.** `0021`'s `refuse_rouble` named `new.code` and
+`new.base_currency` in one expression, which PL/pgSQL resolves on both tables — so
+adding a company currency and changing the base both failed. Apply `0022` wherever
+`0021` is in. It also takes `anon` off the two currency functions.
 
 **`0018` does the same for the selling price.** A delivery bought on promotion is
 usually passed on cheaper, and an older delivery keeps the price it went on the
